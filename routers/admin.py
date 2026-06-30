@@ -65,6 +65,17 @@ async def migrate_questions():
     )
 
 
+@router.post("/update/seo-fields", response_model=MigrationResponse)
+async def update_seo_fields():
+    """Mevcut 67 satırın SEO alanlarını title üzerinden güncelle."""
+    result = _run_script("update_seo_fields.py")
+    return MigrationResponse(
+        ok=result.get("exit_code") == 0,
+        message="SEO güncelleme tamamlandı" if result.get("exit_code") == 0 else "SEO güncelleme başarısız",
+        details=result,
+    )
+
+
 @router.post("/migrate/tutorials", response_model=MigrationResponse)
 async def migrate_tutorials():
     """7 fallback tutorial'ı 'tutorials' tablosuna migrate et."""
