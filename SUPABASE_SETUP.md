@@ -66,17 +66,20 @@ https://pymulakat-frontend.vercel.app/auth/reset-password
 
 ```sql
 -- profiles tablosu (Supabase auth.users'a bağlı)
+-- is_verified alanı sadece cache — gerçek kaynak Supabase auth.users.email_confirmed_at
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL,
   is_verified BOOLEAN DEFAULT FALSE,
   points INT DEFAULT 0,
-  verification_code TEXT,
-  verification_code_expires_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- (Varsa eski verification_code kolonlarını kaldır)
+ALTER TABLE profiles DROP COLUMN IF EXISTS verification_code;
+ALTER TABLE profiles DROP COLUMN IF EXISTS verification_code_expires_at;
 
 -- RLS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -134,6 +137,8 @@ ALTER TABLE questions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view questions" ON questions
   FOR SELECT USING (true);
 ```
+
+> **Önemli:** `is_verified` alanı Supabase'in `auth.users.email_confirmed_at` kolonundan senkronize edilen bir cache. Asıl doğrulama Supabase tarafında yapılır; backend login ve `/auth/me` sırasında bu değeri otomatik günceller.
 
 ## 5. Backend Environment Variables
 
