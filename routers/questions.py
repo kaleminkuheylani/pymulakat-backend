@@ -179,7 +179,8 @@ def get_question_detail(question_id: int, include_starter: bool = Query(False)):
 # ═══════════════════════════════════════════════════════════════
 
 @router.get("/{question_id}/tests", response_model=QuestionTestsResponse)
-def get_question_tests(question_id: int, user=Depends(get_current_user)):
+def get_question_tests(question_id: int):
+    """Test caseleri herkese acik — misafir de okuyabilir (kod calistirma login gerektirir)."""
     q = get_question(question_id)
     if not q:
         raise HTTPException(404, f"Soru #{question_id} bulunamadı")
