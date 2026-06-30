@@ -76,7 +76,7 @@ def test_connection():
 
 
 def migrate_questions():
-    """Ana migration akışı."""
+    """Ana migration akışı — UPDATE first (idempotent), INSERT only if missing."""
     # SEO content'i önce uygula (QUESTIONS mutate olur)
     print("\n[1/3] SEO content uygulaniyor...")
     from data.SEO_CONTENT import apply_seo_content
@@ -84,7 +84,16 @@ def migrate_questions():
 
     from data.QUESTIONS import QUESTIONS
 
-    print(f"\n[2/3] {len(QUESTIONS)} soru migrate ediliyor...")
+    print(f"\n[2/3] {len(QUESTIONS)} soru migrate ediliyor (UPDATE-first)...")
+
+    # Once mevcut id'leri al
+    try:
+        existing = supabase.table("interwiews").select("id").execute()
+        existing_ids = {row["id"] for row in (existing.data or [])}
+        print(f"  [INFO] Mevcut soru sayisi: {len(existing_ids)}")
+    except Exception as e:
+        print(f"  [WARN] Mevcut id'ler alinamadi: {e}")
+        existing_ids = set()
 
     success = 0
     failed = []
@@ -116,23 +125,46 @@ def migrate_questions():
                 "reading_time_minutes": 5,
             }
 
-            # UPSERT — id çakışırsa günceller (PRIMARY KEY)
-            res = supabase.table("interwiews").upsert(row, on_conflict="id").execute()
-            if res.data:
-                success += 1
-                # Relation'ları biriktir
-                for rel_id in getattr(q, "related_question_ids", []) or []:
-                    relations_to_insert.append({
-                        "source_id": q.id,
-                        "related_id": rel_id,
-                        "relation_type": "related",
-                        "weight": 1,
-                    })
+            if q.id in existing_ids:
+                # Mevcut satir — sadece eksik/SEO alanlarini UPDATE et
+                update_res = supabase.table("interwiews").update({
+                    "slug": row["slug"],
+                    "explanation": row["explanation"],
+                    "complexity": row["complexity"],
+                    "related_concepts": row["related_concepts"],
+                    "related_question_ids": row.get("related_question_ids", []),
+                    "tutorial_slug": row["tutorial_slug"],
+                    "hints": row["hints"],
+                    "function_name": row["function_name"],
+                    "starter_code": row["starter_code"],
+                    "topic": row["topic"],
+                    "tags": row["tags"],
+                    "reading_time_minutes": row["reading_time_minutes"],
+                }).eq("id", q.id).execute()
+                if update_res.data:
+                    success += 1
+                else:
+                    failed.append((q.id, q.title, "update bos response"))
             else:
-                failed.append((q.id, q.title, "bos response"))
+                # Yeni satir — INSERT
+                insert_res = supabase.table("interwiews").insert(row).execute()
+                if insert_res.data:
+                    success += 1
+                    existing_ids.add(q.id)
+                else:
+                    failed.append((q.id, q.title, "insert bos response"))
+
+            # Relation'ları biriktir
+            for rel_id in getattr(q, "related_question_ids", []) or []:
+                relations_to_insert.append({
+                    "source_id": q.id,
+                    "related_id": rel_id,
+                    "relation_type": "related",
+                    "weight": 1,
+                })
 
         except Exception as e:
-            failed.append((q.id, q.title, str(e)[:100]))
+            failed.append((q.id, q.title, str(e)[:150]))
 
     print(f"\n  [OK] {success}/{len(QUESTIONS)} soru basariyla migrate edildi")
     if failed:
