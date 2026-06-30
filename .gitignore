@@ -38,3 +38,19 @@ cron.log
 
 # Bun
 bun.lockb
+# Python venv
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Logs
+*.log

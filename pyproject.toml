@@ -3,38 +3,19 @@ name = "backend"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 dependencies = [
-    "supabase",
-    "resend",
-    "uvicorn",
-    "pydantic[email]",
-    "fastapi[standard]",
-    "email-validator",
-    "requests",
-    "python-dotenv",
-    "httpx",
-    "python-multipart",
-    "passlib[bcrypt]",
-    "gunicorn",
-    "uvicorn[standard]",
-    "pydantic",
-    "fastapi",
-    "requests",
-    "resend",
-    "supabase",
-    "email-validator",
-    "pydantic[email]",
-    "fastapi[standard]",
-    "email-validator",
-    "requests",
-    "python-dotenv",
-    "pyjwt",
-    "asyncpg",
-    "alembic",
-    "httpx",
-    "python-multipart",
-    "passlib[bcrypt]",
-    "google-generativeai",
-    "uvicorn"
+    "supabase>=2.0.0",
+    "resend>=2.0.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic[email]>=2.5.0",
+    "fastapi[standard]>=0.110.0",
+    "email-validator>=2.0.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.26.0",
+    "python-multipart>=0.0.6",
+    "pyjwt>=2.8.0",
+    "google-generativeai>=0.3.0",
+    "gunicorn>=21.2.0"
 ]
