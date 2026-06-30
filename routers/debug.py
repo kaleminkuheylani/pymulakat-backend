@@ -6,12 +6,14 @@ router = APIRouter(prefix="/debug", tags=["debug"])
 
 
 @router.get("/profiles-schema")
-def profiles_schema():
-    """profiles tablosunun kolonlarını listele."""
+def profiles_schema(email: str = None):
+    """profiles tablosunun kolonlarını listele. ?email=... ile belirli kullanıcıyı getir."""
     try:
         sb = get_supabase_admin()
-        # En az bir satır çek (kolon yapısı response'da döner)
-        result = sb.table("profiles").select("*").limit(1).execute()
+        query = sb.table("profiles").select("*")
+        if email:
+            query = query.eq("email", email)
+        result = query.limit(1).execute()
         return {
             "ok": True,
             "data": result.data,
