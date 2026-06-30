@@ -59,6 +59,8 @@ attempts_v1 = try_include("routers.attempts", "attempts (v1)")
 
 # ─── v2 (yeni) ──────────────────────────────────────────
 questions_v2 = try_include("routers.questions", "questions (v2)")
+debug_module = try_include("routers.debug", "debug")
+
 categories_v2 = try_include("routers.categories", "categories (v2)")
 
 
@@ -73,6 +75,7 @@ def health():
             "attempts_v1": attempts_v1 is not None,
             "questions_v2": questions_v2 is not None,
             "categories_v2": categories_v2 is not None,
+            "debug": debug_module is not None,
         },
         "total_routes": len(app.routes),
     }
