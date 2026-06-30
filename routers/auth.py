@@ -149,25 +149,37 @@ async def register(payload: RegisterPayload):
         # 2. Profile oluştur
         _ensure_profile(sb_admin, user_id, payload.email, payload.username)
 
-        # 3. Supabase'in gönderdiği confirmation email'i tetiklemek için
-        #    admin.invite_user veya resend ile tetikle.
-        #    create_user email_confirm=False ile Supabase zaten mail atıyor,
-        #    ama bazı projelerde tetiklenmiyor — bu yüzden emin olmak için resend.
+        # 3. Confirmation email gönder.
+        #    Supabase Cloud'da admin.create_user email GÖNDERMİYOR — ayrıca tetiklemek lazım.
+        #    resend() Supabase'in default 'Confirm signup' template'ini kullanır.
+        email_sent = False
         try:
-            from supabase_client import get_supabase_admin as _ga
-            _ga().auth.admin.generate_link({
+            resend_result = sb_admin.auth.resend({
                 "type": "signup",
                 "email": payload.email,
                 "options": {"redirect_to": f"{app_url}/auth/callback?type=signup"},
             })
-        except Exception as link_err:
-            # generate_link başarısız olsa bile create_user ile user oluştu,
-            # Supabase zaten confirmation email göndermiş olmalı.
-            logger.warning(f"generate_link fallback: {link_err}")
+            logger.info(f"📧 Resend signup email to {payload.email}: {resend_result}")
+            email_sent = True
+        except Exception as resend_err:
+            logger.warning(f"resend signup email başarısız: {resend_err}")
+
+        # Fallback: generate_link ile action_link üret, logla (debug için)
+        if not email_sent:
+            try:
+                link_result = sb_admin.auth.admin.generate_link({
+                    "type": "signup",
+                    "email": payload.email,
+                    "options": {"redirect_to": f"{app_url}/auth/callback?type=signup"},
+                })
+                logger.info(f"🔗 Generated signup link (manual send needed): {getattr(link_result, 'properties', {}).get('action_link', '?')}")
+            except Exception as link_err:
+                logger.warning(f"generate_link fallback başarısız: {link_err}")
 
         return MessageResponse(
             ok=True,
-            message="Kayıt başarılı. E-postana gönderilen doğrulama linkine tıkla.",
+            message="Kayıt başarılı. E-postana gönderilen doğrulama linkine tıkla." if email_sent
+                    else "Kayıt başarılı. Eğer e-posta gelmezse, 'Linki Tekrar Gönder' butonunu kullan.",
         )
     except HTTPException:
         raise
