@@ -1,6 +1,6 @@
 # data/QUESTIONS.py
 from dataclasses import dataclass, field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 @dataclass
 class Question:
@@ -12,6 +12,12 @@ class Question:
     starter_code: str
     test_cases: List[Dict[str, Any]]
     hints: List[str] = field(default_factory=list)
+    # 🆕 SEO alanları
+    explanation: str = ""              # Çözüm yaklaşımı (200-400 kelime, markdown)
+    complexity: str = "O(n)"           # Big-O notasyonu
+    related_concepts: List[str] = field(default_factory=list)  # ['string', 'regex', 'palindrome']
+    related_question_ids: List[int] = field(default_factory=list) # Benzer sorular
+    tutorial_slug: Optional[str] = None  # /guides/[slug] URL'i (varsa)
 
 
 QUESTIONS: List[Question] = [

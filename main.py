@@ -13,6 +13,13 @@ print("=" * 60)
 print("🚀 PythonMulakat API başlatılıyor (v2.4)...")
 print("=" * 60)
 
+# 🆕 SEO içeriklerini QUESTIONS'e uygula (explanation, complexity, related_concepts, ...)
+try:
+    from data.SEO_CONTENT import apply_seo_content
+    apply_seo_content()
+except Exception as e:
+    print(f"⚠️ SEO content yüklenemedi: {e}")
+
 # ─── App oluştur ────────────────────────────────────────
 app = FastAPI(title="PythonMulakat API", version="2.4")
 

@@ -27,6 +27,12 @@ class QuestionOut(BaseModel):
     tags: list[str] = Field(default_factory=list)
     starter_code: Optional[str] = None
     test_count: int = 0
+    # 🆕 SEO alanları
+    explanation: Optional[str] = None
+    complexity: Optional[str] = None
+    related_concepts: list[str] = Field(default_factory=list)
+    related_question_ids: list[int] = Field(default_factory=list)
+    tutorial_slug: Optional[str] = None
 
 
 class QuestionTestsResponse(BaseModel):
@@ -87,6 +93,11 @@ def _to_question_out(q, include_starter=False):
         tags=_q_get(q, "tags", []) or [],
         starter_code=_q_get(q, "starter_code") if include_starter else None,
         test_count=len(test_cases),
+        explanation=_q_get(q, "explanation") or None,
+        complexity=_q_get(q, "complexity") or None,
+        related_concepts=_q_get(q, "related_concepts", []) or [],
+        related_question_ids=_q_get(q, "related_question_ids", []) or [],
+        tutorial_slug=_q_get(q, "tutorial_slug"),
     )
 
 
