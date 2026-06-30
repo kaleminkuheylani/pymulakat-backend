@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Build outputs
+.next/
+dist/
+build/
+out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+*.log
+logs/
+cron.log
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# TypeScript build info
+*.tsbuildinfo
+.tsbuildinfo
+
+# Vercel
+.vercel/
+
+# Bun
+bun.lockb
