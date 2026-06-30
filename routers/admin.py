@@ -76,6 +76,77 @@ async def migrate_tutorials():
     )
 
 
+@router.post("/migrate/schema", response_model=MigrationResponse)
+async def migrate_schema():
+    """interwiews tablosuna yeni kolonları ekle (idempotent)."""
+    import subprocess
+    sql_path = os.path.join(os.path.dirname(__file__), "..", "scripts", "migrate_schema.sql")
+    sql_path = os.path.abspath(sql_path)
+
+    if not os.path.exists(sql_path):
+        raise HTTPException(404, f"SQL bulunamadı: {sql_path}")
+
+    try:
+        from supabase_client import get_service_role
+        sb = get_service_role()
+
+        with open(sql_path, "r") as f:
+            sql_content = f.read()
+
+        # SQL'i statement'lara böl ve her birini çalıştır
+        statements = [s.strip() for s in sql_content.split(";") if s.strip() and not s.strip().startswith("--")]
+
+        results = []
+        for i, stmt in enumerate(statements):
+            try:
+                # rpc ile SQL çalıştır (PostgREST bunu desteklemiyor)
+                # Alternatif: psycopg2 kullan
+                results.append({"index": i, "stmt_preview": stmt[:80], "ok": True})
+            except Exception as e:
+                results.append({"index": i, "stmt_preview": stmt[:80], "ok": False, "error": str(e)})
+
+        # psycopg2 ile direkt connection
+        try:
+            import psycopg2
+            db_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL")
+            if db_url:
+                conn = psycopg2.connect(db_url)
+                conn.autocommit = True
+                cur = conn.cursor()
+                cur.execute(sql_content)
+                cur.close()
+                conn.close()
+                return MigrationResponse(
+                    ok=True,
+                    message="Schema migration tamamlandı (psycopg2)",
+                    details={"method": "psycopg2", "statements": len(statements)},
+                )
+        except ImportError:
+            pass
+        except Exception as e:
+            return MigrationResponse(
+                ok=False,
+                message=f"psycopg2 hatası: {e}",
+                details={"hint": "DATABASE_URL tanımlı mı? psycopg2 yüklü mü?"},
+            )
+
+        # Fallback: supabase rpc (exec_sql fonksiyonu gerekli)
+        return MigrationResponse(
+            ok=False,
+            message="Schema migration için DATABASE_URL veya Supabase exec_sql gerekli",
+            details={
+                "hint": "Supabase Dashboard → SQL Editor'da migrate_schema.sql'i manuel çalıştır",
+                "sql_file_path": sql_path,
+            },
+        )
+    except Exception as e:
+        return MigrationResponse(
+            ok=False,
+            message=f"Schema migration hatası: {e}",
+            details={},
+        )
+
+
 @router.get("/health")
 async def admin_health():
     """Admin endpoint sağlık kontrolü."""
