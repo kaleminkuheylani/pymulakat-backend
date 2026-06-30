@@ -211,7 +211,7 @@ async def register(payload: RegisterPayload):
 
         sb_admin = get_supabase_admin()
 
-        # 1. User oluştur
+        # 1. User oluştur — service_role ile
         try:
             auth_result = sb_admin.auth.admin.create_user({
                 "email": payload.email,
@@ -220,12 +220,36 @@ async def register(payload: RegisterPayload):
                 "user_metadata": {"username": payload.username},
             })
             user_id = auth_result.user.id
-            logger.info(f"✅ User created: {user_id}")
-        except Exception as e:
-            error_msg = str(e).lower()
-            if "already" in error_msg or "exists" in error_msg:
-                raise HTTPException(409, "Bu e-posta zaten kayıtlı")
-            raise HTTPException(400, f"Kayıt hatası: {str(e)}")
+            logger.info(f"✅ User created (admin): {user_id}")
+        except Exception as admin_err:
+            logger.warning(f"admin.create_user başarısız: {admin_err}, public signUp deneniyor...")
+
+            # Fallback: public anon client ile signUp
+            from supabase_client import get_supabase
+            sb_public = get_supabase()
+            try:
+                auth_result = sb_public.auth.sign_up({
+                    "email": payload.email,
+                    "password": payload.password,
+                    "options": {
+                        "data": {"username": payload.username},
+                        "email_redirect_to": f"{os.environ.get('APP_URL', 'https://pythonmulakat.com')}/auth/callback?type=signup",
+                    },
+                })
+                if not auth_result.user:
+                    raise HTTPException(400, "Kullanıcı oluşturulamadı")
+                user_id = auth_result.user.id
+                logger.info(f"✅ User created (public signUp): {user_id}")
+            except Exception as public_err:
+                error_msg = str(public_err).lower()
+                if "already" in error_msg or "exists" in error_msg:
+                    raise HTTPException(409, "Bu e-posta zaten kayıtlı")
+                if "user not allowed" in error_msg or "signups not allowed" in error_msg or "signups_disabled" in error_msg:
+                    raise HTTPException(
+                        403,
+                        "Yeni kayıtlar şu anda kapalı. Supabase Dashboard → Authentication → Sign Up → 'Allow new users to sign up' toggle'ini aç.",
+                    )
+                raise HTTPException(400, f"Kayıt hatası: {str(public_err)}")
 
         # 2. Profile oluştur
         _ensure_profile(sb_admin, user_id, payload.email, payload.username)
