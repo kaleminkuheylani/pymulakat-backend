@@ -116,8 +116,8 @@ def migrate_questions():
                 "reading_time_minutes": 5,
             }
 
-            # UPSERT — slug çakışırsa günceller
-            res = supabase.table("interwiews").upsert(row, on_conflict="slug").execute()
+            # UPSERT — id çakışırsa günceller (PRIMARY KEY)
+            res = supabase.table("interwiews").upsert(row, on_conflict="id").execute()
             if res.data:
                 success += 1
                 # Relation'ları biriktir
