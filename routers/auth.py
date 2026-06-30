@@ -214,11 +214,14 @@ def _verify_code(sb_admin, email: str, code: str, consume: bool = True) -> bool:
         ).eq("email", email).maybe_single().execute()
 
         if not result.data:
+            logger.warning(f"Verify fail: profile not found for {email}")
             return False
 
         profile = result.data
-        stored_code = str(profile.get("verification_code", ""))
+        stored_code = str(profile.get("verification_code", "") or "")
         attempts = int(profile.get("verification_attempts", 0))
+
+        logger.info(f"Verify {email}: stored='{stored_code}' given='{code}' attempts={attempts}")
 
         # Süre kontrolü
         expires_str = profile.get("verification_code_expires_at", "")
@@ -226,12 +229,14 @@ def _verify_code(sb_admin, email: str, code: str, consume: bool = True) -> bool:
             try:
                 expires = datetime.datetime.fromisoformat(expires_str.replace("Z", "+00:00"))
                 if datetime.datetime.now(datetime.timezone.utc) > expires:
+                    logger.warning(f"Verify fail: code expired for {email}")
                     return False
             except (ValueError, TypeError):
                 pass
 
         # Attempt limit
         if attempts >= MAX_ATTEMPTS_PER_CODE:
+            logger.warning(f"Verify fail: max attempts for {email}")
             return False
 
         # Kod karşılaştır
@@ -240,6 +245,7 @@ def _verify_code(sb_admin, email: str, code: str, consume: bool = True) -> bool:
             sb_admin.table("profiles").update({
                 "verification_attempts": attempts + 1,
             }).eq("email", email).execute()
+            logger.warning(f"Verify fail: code mismatch for {email} (given {code}, stored {stored_code})")
             return False
 
         # Başarılı — kodu temizle (consume)
@@ -251,6 +257,7 @@ def _verify_code(sb_admin, email: str, code: str, consume: bool = True) -> bool:
                 "is_verified": True,  # register flow için
             }).eq("email", email).execute()
 
+        logger.info(f"✅ Verify OK: {email}")
         return True
     except Exception as e:
         logger.exception(f"Verify code issue: {e}")
