@@ -10,21 +10,13 @@ def profiles_schema(email: str = None):
     """profiles tablosunun kolonlarını listele. ?email=... ile belirli kullanıcıyı getir."""
     try:
         sb = get_supabase_admin()
-        query = sb.table("profiles").select("*")
         if email:
-            query = query.eq("email", email)
-        result = query.limit(1).execute()
-        return {
-            "ok": True,
-            "data": result.data,
-            "error": str(result) if hasattr(result, "error") else None,
-        }
+            result = sb.table("profiles").select("*").eq("email", email).execute()
+            return {"ok": True, "found": len(result.data or []), "data": result.data}
+        result = sb.table("profiles").select("*").limit(5).execute()
+        return {"ok": True, "count": len(result.data or []), "data": result.data}
     except Exception as e:
-        return {
-            "ok": False,
-            "error": str(e),
-            "hint": "profiles tablosu yok. Supabase SQL Editor'da CREATE TABLE çalıştır.",
-        }
+        return {"ok": False, "error": str(e)}
 
 
 @router.get("/tables")
