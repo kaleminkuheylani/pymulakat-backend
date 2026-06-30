@@ -211,3 +211,55 @@ async def my_stats(
             success_rate=0, points=0, solution_average_time=0,
             solution_average_time_ms=0,
         )
+
+
+# ═══════════════════════════════════════════════════════════════
+# Solved question IDs — QuestionTable için
+# ═══════════════════════════════════════════════════════════════
+
+class SolvedListResponse(BaseModel):
+    solved: List[int] = []  # Tam çözülmüş sorular (success=true)
+    attempted: List[int] = []  # Denenmiş ama tam çözülmemiş
+
+
+@router.get("/solved-batch", response_model=SolvedListResponse)
+async def solved_batch(request: Request):
+    """Kullanıcının solved + attempted question_id listesi.
+
+    QuestionTable her soruda 'solved' badge göstermek için kullanır.
+    Misafir → boş liste döner.
+    """
+    try:
+        from dependencies import get_current_user
+        user = await get_current_user(request)
+
+        if not user or not user.get("id"):
+            return SolvedListResponse(solved=[], attempted=[])
+
+        user_id = user["id"]
+        sb = get_supabase_admin()
+
+        # success=true olan question_id'ler (solved)
+        solved_res = (
+            sb.table("interview_attempts")
+            .select("question_id")
+            .eq("user_id", user_id)
+            .eq("success", True)
+            .execute()
+        )
+        solved_ids = sorted(set(r["question_id"] for r in (solved_res.data or [])))
+
+        # success=false olan question_id'ler (attempted, henüz çözülmedi)
+        attempted_res = (
+            sb.table("interview_attempts")
+            .select("question_id")
+            .eq("user_id", user_id)
+            .eq("success", False)
+            .execute()
+        )
+        attempted_ids = sorted(set(r["question_id"] for r in (attempted_res.data or [])))
+
+        return SolvedListResponse(solved=solved_ids, attempted=attempted_ids)
+    except Exception as e:
+        print(f"[WARN] solved-batch failed: {e}")
+        return SolvedListResponse(solved=[], attempted=[])
