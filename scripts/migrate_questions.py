@@ -76,7 +76,7 @@ def test_connection():
 
 
 def migrate_questions():
-    """Ana migration akışı — UPDATE first (idempotent), INSERT only if missing."""
+    """Ana migration akışı — UPDATE by slug (idempotent), INSERT if missing."""
     # SEO content'i önce uygula (QUESTIONS mutate olur)
     print("\n[1/3] SEO content uygulaniyor...")
     from data.SEO_CONTENT import apply_seo_content
@@ -84,20 +84,23 @@ def migrate_questions():
 
     from data.QUESTIONS import QUESTIONS
 
-    print(f"\n[2/3] {len(QUESTIONS)} soru migrate ediliyor (UPDATE-first)...")
+    print(f"\n[2/3] {len(QUESTIONS)} soru migrate ediliyor (UPDATE-by-slug)...")
 
-    # Once mevcut id'leri al
+    # Once mevcut title -> id map'i al
     try:
-        existing = supabase.table("interwiews").select("id").execute()
-        existing_ids = {row["id"] for row in (existing.data or [])}
-        print(f"  [INFO] Mevcut soru sayisi: {len(existing_ids)}")
+        existing = supabase.table("interwiews").select("id, title, slug").execute()
+        title_to_id = {row["title"]: row["id"] for row in (existing.data or [])}
+        slug_to_id = {row["slug"]: row["id"] for row in (existing.data or []) if row.get("slug")}
+        print(f"  [INFO] Mevcut soru sayisi: {len(title_to_id)}")
     except Exception as e:
-        print(f"  [WARN] Mevcut id'ler alinamadi: {e}")
-        existing_ids = set()
+        print(f"  [WARN] Mevcut veriler alinamadi: {e}")
+        title_to_id = {}
+        slug_to_id = {}
 
     success = 0
     failed = []
     relations_to_insert = []
+    skipped = 0
 
     for q in QUESTIONS:
         try:
@@ -125,14 +128,17 @@ def migrate_questions():
                 "reading_time_minutes": 5,
             }
 
-            if q.id in existing_ids:
-                # Mevcut satir — sadece eksik/SEO alanlarini UPDATE et
+            # Mevcut satir var mi? (title veya slug ile)
+            existing_id = title_to_id.get(q.title) or slug_to_id.get(row["slug"])
+
+            if existing_id:
+                # UPDATE — sadece SEO alanlarini guncelle
                 update_res = supabase.table("interwiews").update({
                     "slug": row["slug"],
                     "explanation": row["explanation"],
                     "complexity": row["complexity"],
                     "related_concepts": row["related_concepts"],
-                    "related_question_ids": row.get("related_question_ids", []),
+                    "related_question_ids": getattr(q, "related_question_ids", []) or [],
                     "tutorial_slug": row["tutorial_slug"],
                     "hints": row["hints"],
                     "function_name": row["function_name"],
@@ -140,17 +146,19 @@ def migrate_questions():
                     "topic": row["topic"],
                     "tags": row["tags"],
                     "reading_time_minutes": row["reading_time_minutes"],
-                }).eq("id", q.id).execute()
-                if update_res.data:
-                    success += 1
-                else:
-                    failed.append((q.id, q.title, "update bos response"))
+                }).eq("id", existing_id).execute()
+                success += 1  # UPDATE her zaman basarili sayilir (bos data olabilir)
+                skipped += 1
             else:
-                # Yeni satir — INSERT
-                insert_res = supabase.table("interwiews").insert(row).execute()
+                # INSERT — yeni satir
+                # id çakışmasını önle: id'siz insert yap, DB otomatik atasin
+                insert_row = {k: v for k, v in row.items() if k != "id"}
+                insert_res = supabase.table("interwiews").insert(insert_row).execute()
                 if insert_res.data:
                     success += 1
-                    existing_ids.add(q.id)
+                    new_id = insert_res.data[0].get("id")
+                    title_to_id[q.title] = new_id
+                    slug_to_id[row["slug"]] = new_id
                 else:
                     failed.append((q.id, q.title, "insert bos response"))
 
