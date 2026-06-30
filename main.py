@@ -70,6 +70,7 @@ debug_module = try_include("routers.debug", "debug")
 
 categories_v2 = try_include("routers.categories", "categories (v2)")
 tutorials_v2 = try_include("routers.tutorials", "tutorials (v2)")
+admin_module = try_include("routers.admin", "admin (migration)")
 
 
 @app.get("/health")
