@@ -181,6 +181,65 @@ async def migrate_slugs(force: bool = False):
         )
     except Exception as e:
         print(f"❌ [SLUGS] {type(e).__name__}: {e}")
+
+@router.post("/migrate/related-questions")
+async def migrate_related_questions():
+    """QuestionMeta'daki related_questions'i DB'ye yaz (server-side fetchRelatedTitles icin).
+
+    DB'de related_question_ids (bigint[]) kolonu dolu olur.
+    Frontend server-side'da fetchRelatedTitles ile 5 sorunun title/slug/category bilgisini alir.
+    """
+    import re
+    try:
+        # 1. QuestionMeta.ts'i parse et (frontend sync)
+        qmeta_path = "/workspace/pymulakat-frontend/lib/questionMeta.ts"
+        with open(qmeta_path, "r") as f:
+            content = f.read()
+
+        # Her entry'den related_questions'i cikar
+        # Pattern: id: N, ..., related_questions: [...], slug: "..."
+        pattern = r'(\d+): \{ id: (\d+), title: "[^"]+", function_name: "[^"]+", topic: "[^"]+", difficulty_note: "[^"]+", related_concepts: \[[^\]]*\], related_questions: (\[[^\]]*\]), slug: "[^"]+" \},'
+        entry_map = {}
+        for m in re.finditer(pattern, content):
+            qid = int(m.group(1))
+            related_str = m.group(2)
+            # Parse [1, 2, 3] -> [1, 2, 3]
+            try:
+                related_list = eval(related_str)
+                if isinstance(related_list, list):
+                    entry_map[qid] = related_list
+            except:
+                pass
+
+        print(f"QuestionMeta'dan {len(entry_map)} entry parse edildi")
+
+        # 2. DB'ye yaz
+        from supabase_client import get_supabase_admin
+        sb = get_supabase_admin()
+
+        updated = 0
+        errors = []
+        for qid, related_list in entry_map.items():
+            try:
+                sb.table("interwiews").update({"related_question_ids": related_list}).eq("id", qid).execute()
+                updated += 1
+            except Exception as e:
+                errors.append({"id": qid, "error": str(e)[:100]})
+
+        return {
+            "ok": True,
+            "message": f"{updated} soruya related_question_ids yazildi",
+            "details": {
+                "updated": updated,
+                "total": len(entry_map),
+                "errors": errors[:5],
+            }
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"ok": False, "message": f"Hata: {e}"}
+
         import traceback
         traceback.print_exc()
         return MigrationResponse(ok=False, message=f"Slug migration hatasi: {str(e)[:200]}")
