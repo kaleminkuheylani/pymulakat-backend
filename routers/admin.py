@@ -92,30 +92,33 @@ async def migrate_slugs():
     """interviews tablosuna title'dan slug üretip yaz (canonical URL için)."""
     import re
     try:
-        # 1. ÖNCE: slug kolonu yoksa ekle (psycopg2)
-        try:
-            import psycopg2
-            db_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL")
-            if db_url:
-                conn = psycopg2.connect(db_url)
-                conn.autocommit = True
-                cur = conn.cursor()
-                cur.execute("ALTER TABLE public.interviews ADD COLUMN IF NOT EXISTS slug TEXT")
-                cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_interviews_slug ON public.interviews(slug) WHERE slug IS NOT NULL")
-                cur.execute("NOTIFY pgrst, 'reload schema'")
-                cur.close()
-                conn.close()
-                print("✅ Slug kolonu + index eklendi (psycopg2)")
-        except Exception as e:
-            print(f"⚠️ psycopg2 ALTER basarisiz (kolon zaten var olabilir): {e}")
-
-        # 2. Supabase admin ile devam
         from supabase_client import get_supabase_admin
         sb = get_supabase_admin()
 
-        result = sb.table("interviews").select("id, title, slug").execute()
+        # 1. ÖNCE: mevcut slug kolonu var mı kontrol
+        try:
+            test_result = sb.table("interviews").select("id, title, slug").limit(1).execute()
+            has_slug = True
+        except Exception as e:
+            has_slug = False
+            print(f"⚠️ Slug kolonu yok gibi gorunuyor: {e}")
+
+        if not has_slug:
+            # Kolon yoksa sadece id+title al, sonra kolon eklemeyi dene
+            try:
+                test_result = sb.table("interviews").select("id, title").limit(1).execute()
+                has_id_title = True
+            except Exception as e:
+                has_id_title = False
+                print(f"❌ Temel SELECT bile calismadi: {e}")
+                return MigrationResponse(
+                    success=False,
+                    message=f"DB baglantisi yok veya tablo erisilemez: {e}",
+                )
+
+        result = sb.table("interviews").select("id, title" if not has_slug else "id, title, slug").execute()
         rows = result.data or []
-        print(f"📝 [SLUGS] {len(rows)} soru bulundu")
+        print(f"📝 [SLUGS] {len(rows)} soru bulundu (slug kolonu: {'VAR' if has_slug else 'YOK'})")
 
         def slugify(text: str) -> str:
             tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
@@ -145,8 +148,8 @@ async def migrate_slugs():
 
         return MigrationResponse(
             success=True,
-            message=f"{updated}/{len(rows)} slug guncellendi",
-            details={"updated": updated, "total": len(rows), "errors": errors[:5]},
+            message=f"{updated}/{len(rows)} slug guncellendi (slug kolonu: {'VAR' if has_slug else 'YOK - Supabase UI'dan ekleyin'})",
+            details={"updated": updated, "total": len(rows), "errors": errors[:5], "slug_column_exists": has_slug},
         )
     except Exception as e:
         print(f"❌ [SLUGS] {type(e).__name__}: {e}")
