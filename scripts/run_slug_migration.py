@@ -91,12 +91,15 @@ def main():
         cur = conn.cursor()
 
         print("   + ALTER TABLE (slug kolonu ekle)")
-        cur.execute("ALTER TABLE public.interviews ADD COLUMN IF NOT EXISTS slug TEXT")
+        try:
+            cur.execute("ALTER TABLE public.interwiews ADD COLUMN IF NOT EXISTS slug TEXT")
+        except Exception as e:
+            print(f"   ALTER skip (kolon zaten var olabilir): {e}")
 
         print("   + CREATE UNIQUE INDEX")
         cur.execute("""
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_interviews_slug
-            ON public.interviews(slug) WHERE slug IS NOT NULL
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_interwiews_slug
+            ON public.interwiews(slug) WHERE slug IS NOT NULL
         """)
 
         print("   + NOTIFY pgrst, 'reload schema'")
@@ -112,7 +115,7 @@ def main():
     # 3. Mevcut soruları çek
     print(f"\n[2/3] Sorular çekiliyor...")
     try:
-        result = sb.table("interviews").select("id, title, slug").execute()
+        result = sb.table("interwiews").select("id, title, slug").execute()
         rows = result.data or []
         print(f"   + {len(rows)} soru bulundu")
     except Exception as e:
@@ -144,7 +147,7 @@ def main():
         seen.add(final_slug)
 
         try:
-            sb.table("interviews").update({"slug": final_slug}).eq("id", row["id"]).execute()
+            sb.table("interwiews").update({"slug": final_slug}).eq("id", row["id"]).execute()
             updated += 1
             if updated <= 5 or updated % 10 == 0:
                 print(f"   + #{row['id']}: {title[:30]} → {final_slug}")
