@@ -435,12 +435,13 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
 
         # 7. Gemini'den al
         from services.gemini import AIQuestionGenerator
+        import google.generativeai as genai_mod
         gen = AIQuestionGenerator()
 
         try:
             response = gen.model.generate_content(
                 prompt,
-                generation_config=__import__("google.generativeai").GenerationConfig(
+                generation_config=genai_mod.GenerationConfig(
                     response_mime_type="application/json"
                 ),
             )
