@@ -77,7 +77,7 @@ admin_module = try_include("routers.admin", "admin (migration)")
 def health():
     return {
         "status": "ok",
-        "version": "2.4",
+        "version": "2.5",
         "loaded": {
             "auth": auth_module is not None,
             "interviews_v1": interviews_v1 is not None,
@@ -96,7 +96,7 @@ def health():
 def root():
     return {
         "service": "PythonMulakat API",
-        "version": "2.4",
+        "version": "2.5",
         "endpoints": {
             "register": "POST /auth/register",
             "verify_email": "POST /auth/verify-email",
