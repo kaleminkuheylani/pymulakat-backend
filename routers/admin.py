@@ -186,6 +186,20 @@ async def migrate_slugs():
         return MigrationResponse(ok=False, message=f"Slug migration hatasi: {str(e)[:200]}")
 
 
+@router.get("/debug/slugs")
+async def debug_slugs():
+    """Debug: tüm soruların gerçek slug değerlerini döndür."""
+    from supabase_client import get_supabase_admin
+    sb = get_supabase_admin()
+    result = sb.table("interwiews").select("id, title, slug").limit(10).execute()
+    return {
+        "rows": [
+            {"id": r["id"], "title": r["title"][:40], "slug": r.get("slug"), "slug_type": type(r.get("slug")).__name__}
+            for r in (result.data or [])
+        ]
+    }
+
+
 @router.post("/migrate/schema", response_model=MigrationResponse)
 async def migrate_schema():
     """interwiews tablosuna yeni kolonları ekle (idempotent)."""
@@ -264,4 +278,4 @@ async def admin_health():
         "ok": True,
         "supabase_url": os.getenv("SUPABASE_URL", "NOT SET"),
         "has_service_key": bool(os.getenv("SUPABASE_SERVICE_ROLE_KEY")),
-    }
+    }# 1782883061
