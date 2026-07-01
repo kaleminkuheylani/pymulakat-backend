@@ -577,6 +577,13 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
 
         # 10. Supabase'e INSERT
         inserted_ids = []
+        # Mevcut slug'ları topla (unique kontrolü için)
+        try:
+            existing_slugs_res = sb.table("interwiews").select("slug").execute()
+            existing_slugs = {r["slug"] for r in (existing_slugs_res.data or []) if r.get("slug")}
+        except Exception:
+            existing_slugs = set()
+
         for item in valid_questions:
             try:
                 item.setdefault("day", 1)
@@ -587,7 +594,15 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
                 item.setdefault("related_question_ids", [])
 
                 if not item.get("slug"):
-                    item["slug"] = re.sub(r"[^a-z0-9]+", "-", item["title"].lower()).strip("-")[:80]
+                    base = re.sub(r"[^a-z0-9]+", "-", item["title"].lower()).strip("-")[:80]
+                    slug_candidate = f"{base}-{item['id']}" if base else f"q{item['id']}"
+                    counter = 1
+                    final = slug_candidate
+                    while final in existing_slugs:
+                        final = f"{slug_candidate}-{counter}"
+                        counter += 1
+                    item["slug"] = final
+                    existing_slugs.add(final)
 
                 result = sb.table("interwiews").insert(item).execute()
                 if result.data:
