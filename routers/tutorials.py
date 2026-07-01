@@ -3,10 +3,13 @@
 DB-first, fallback Python dict.
 """
 
+import logging
 from fastapi import APIRouter, HTTPException
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from supabase_client import get_supabase
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v2/tutorials", tags=["tutorials-v2"])
 
@@ -582,7 +585,7 @@ async def _get_from_db():
         res = sb.table("tutorials").select("*").execute()
         return res.data if res.data else None
     except Exception as e:
-        print(f"[WARN] tutorials DB fetch failed: {e}")
+        logger.warning("tutorials.list.db_failed: %s", e)
         return None
 
 
@@ -617,7 +620,7 @@ async def get_tutorial(slug: str):
         if res.data and len(res.data) > 0:
             return {"data": res.data[0], "source": "db"}
     except Exception as e:
-        print(f"[WARN] tutorial DB fetch: {e}")
+        logger.warning("tutorials.detail.db_failed slug=%s: %s", slug, e)
 
     # Fallback
     fallback = _fallback_tutorial(slug)

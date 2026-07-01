@@ -1,8 +1,18 @@
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import sys
 import os
 import importlib
+
+# ─── Logging config ────────────────────────────────────
+# Production'da sadece WARNING+ görünür (user data sızıntısı önlenir).
+# Debug için LOG_LEVEL=INFO veya DEBUG env verilebilir.
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "WARNING").upper(),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    stream=sys.stderr,
+)
 
 # ─── Python path ────────────────────────────────────────
 backend_dir = os.path.dirname(os.path.abspath(__file__))
@@ -10,7 +20,7 @@ if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
 print("=" * 60)
-print("🚀 PythonMulakat API başlatılıyor (v2.4)...")
+print("🚀 PythonMulakat API başlatılıyor (v2.5)...")
 print("=" * 60)
 
 # 🆕 SEO içeriklerini QUESTIONS'e uygula (explanation, complexity, related_concepts, ...)

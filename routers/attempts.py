@@ -1,5 +1,8 @@
-# backend/routers/attempts.py — DEBUG VERSION
+# backend/routers/attempts.py
+# Production logs temizlendi — kullanıcı kodu/verisi artık print()'lenmiyor.
+# Hata logları için Python logging modülü kullanılıyor (INFO+DEBUG varsayılan kapalı).
 
+import logging
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
@@ -7,6 +10,8 @@ from supabase import Client
 from dependencies import get_current_user
 from supabase_client import get_supabase, get_supabase_admin
 from question_loader import get_question
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v2/attempts", tags=["attempts-v2"])
 
@@ -60,7 +65,8 @@ async def create_attempt(
             raise HTTPException(401, "User bulunamadı")
 
         user_id = user["id"]
-        print(f"📝 [ATTEMPT] user_id={user_id}, payload={payload}")
+        # ⚠️ user_code içerebileceğinden payload loglanmıyor
+        logger.debug("attempt.create user=%s q=%s passed=%s/%s", user_id, payload.get("question_id"), payload.get("passed_tests"), payload.get("total_tests"))
 
         # ✅ SERVICE_ROLE kullan (RLS bypass)
         sb = get_supabase_admin()
@@ -76,23 +82,21 @@ async def create_attempt(
             "user_code": str(payload.get("user_code", "")),
         }
 
-        print(f"💾 [ATTEMPT] Saving: {attempt_data}")
+
 
         result = sb.table("interview_attempts").insert(attempt_data).execute()
 
         if not result.data:
-            print(f"❌ [ATTEMPT] Insert returned no data")
+            logger.error("attempt.insert.empty user=%s q=%s", user_id, attempt_data["question_id"])
             raise HTTPException(500, "Attempt kaydedilemedi")
 
-        print(f"✅ [ATTEMPT] Saved with id={result.data[0].get('id')}")
+        logger.debug("attempt.saved user=%s id=%s", user_id, result.data[0].get("id"))
         return {"ok": True, "id": str(result.data[0].get("id"))}
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ [ATTEMPT] Error: {type(e).__name__}: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(500, f"Attempt hatası: {str(e)}")
+        logger.exception("attempt.create failed user=%s", user_id)
+        raise HTTPException(500, "Attempt kaydedilemedi")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -113,7 +117,7 @@ async def list_my_attempts(
             return AttemptsListResponse(data=[], total=0)
 
         user_id = user["id"]
-        print(f"📋 [LIST] user_id={user_id}, limit={limit}")
+        logger.debug("attempts.list user=%s limit=%s", user_id, limit)
 
         # ✅ SERVICE_ROLE kullan (RLS bypass)
         sb = get_supabase_admin()
@@ -128,7 +132,7 @@ async def list_my_attempts(
         )
 
         rows = result.data or []
-        print(f"📊 [LIST] Found {len(rows)} rows for user {user_id}")
+        logger.debug("attempts.list.count user=%s count=%s", user_id, len(rows))
 
         items = []
         for r in rows:
@@ -150,9 +154,7 @@ async def list_my_attempts(
 
         return AttemptsListResponse(data=items, total=len(items))
     except Exception as e:
-        print(f"❌ [LIST] Error: {type(e).__name__}: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("attempts.list.failed user=%s", user_id)
         return AttemptsListResponse(data=[], total=0)
 
 
@@ -205,7 +207,7 @@ async def my_stats(
             solution_average_time_ms=int(avg_time_ms),
         )
     except Exception as e:
-        print(f"❌ [STATS] Error: {str(e)}")
+        logger.exception("attempts.stats.failed user=%s", user_id)
         return AttemptStatsResponse(
             total_attempts=0, success_count=0, fail_count=0,
             success_rate=0, points=0, solution_average_time=0,
@@ -261,5 +263,5 @@ async def solved_batch(request: Request):
 
         return SolvedListResponse(solved=solved_ids, attempted=attempted_ids)
     except Exception as e:
-        print(f"[WARN] solved-batch failed: {e}")
+        logger.warning("attempts.solved_batch.failed user=%s", user_id)
         return SolvedListResponse(solved=[], attempted=[])

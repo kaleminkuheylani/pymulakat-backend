@@ -2,6 +2,7 @@
 # /api/v2/questions — RESTful, envelope, RFC uyumlu pagination
 # FIXED VERSION — test_cases güvenli normalize
 
+import logging
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
@@ -9,6 +10,8 @@ from supabase import Client
 from question_loader import filter_questions, get_question
 from dependencies import get_current_user
 from supabase_client import get_supabase
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v2/questions", tags=["questions-v2"])
 
@@ -263,5 +266,5 @@ def get_question_progress(
         ).count or 0
         return ProgressResponse(data={"question_id": question_id, "best_attempt": result.data[0], "total_attempts": total_attempts})
     except Exception as e:
-        print(f"⚠️ Progress error: {e}")
+        logger.warning("progress.fetch.failed user=%s q=%s: %s", user.get("id") if user else None, question_id, e)
         return ProgressResponse(data={"question_id": question_id, "best_attempt": None, "total_attempts": 0})
