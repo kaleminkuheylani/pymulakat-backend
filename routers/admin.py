@@ -907,5 +907,49 @@ async def get_tutorials_schema_endpoint():
             "related_question_ids": {"type": "list", "required": False},
             "faq": {"type": "list", "required": False},
         },
-    }# 1782883061
+    }
+
+
+# ═════════════════════════════════════════════════════════════════════
+# Detay Sayfa Testleri (self-test) — /admin/test/detail-pages
+# ═════════════════════════════════════════════════════════════════════
+
+@router.get("/test/detail-pages")
+async def test_detail_pages_endpoint(include_frontend: bool = False):
+    """Tüm detay sayfalarını (API + opsiyonel Frontend) test eder.
+
+    Cron job / monitoring için kullanılır:
+      curl https://backend/admin/test/detail-pages?include_frontend=true
+
+    Returns: {passed, failed, skipped, errors}
+    """
+    import io
+    from contextlib import redirect_stdout
+    import importlib.util
+
+    # scripts/test_detail_pages.py'i runtime'da import et
+    script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                              "scripts", "test_detail_pages.py")
+    spec = importlib.util.spec_from_file_location("test_detail_pages", script_path)
+    tdp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tdp)
+
+    # Frontend testlerini kapat istenirse
+    if not include_frontend:
+        tdp.FRONTEND_BASE = "http://skip-frontend-tests"
+
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        report = tdp.run_all(as_endpoint=True)
+
+    return {
+        "status": "ok" if report["failed"] == 0 else "issues_found",
+        "passed": report["passed"],
+        "failed": report["failed"],
+        "skipped": report["skipped"],
+        "elapsed_seconds": report["elapsed_seconds"],
+        "errors": report["errors"][:20],  # Ilk 20 hata
+        "console_output": buf.getvalue()[-2500:],  # Son 2500 char
+    }
+# 1782883061
 # 1782885672

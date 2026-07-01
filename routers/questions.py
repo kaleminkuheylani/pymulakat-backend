@@ -30,6 +30,7 @@ class QuestionOut(BaseModel):
     tags: list[str] = Field(default_factory=list)
     starter_code: Optional[str] = None
     test_count: int = 0
+    test_cases: list[dict] = Field(default_factory=list, description="Detay endpoint'te dolu")
     function_name: Optional[str] = None
     hints: list[str] = Field(default_factory=list)
     # SEO alanları
@@ -109,6 +110,7 @@ def _to_question_out(q, include_starter=False):
         tags=_q_get(q, "tags", []) or [],
         starter_code=starter_code,
         test_count=len(test_cases),
+        test_cases=test_cases if include_starter else [],
         function_name=function_name,
         hints=_q_get(q, "hints", []) or [],
         explanation=_q_get(q, "explanation") or None,
@@ -190,11 +192,18 @@ def list_all_questions(
 # ═══════════════════════════════════════════════════════════════
 
 @router.get("/{question_id}", response_model=QuestionOut, responses={404: {"description": "Soru bulunamadı"}})
-def get_question_detail(question_id: int, include_starter: bool = Query(False)):
+def get_question_detail(question_id: int, include_starter: bool = Query(True)):
     q = get_question(question_id)
     if not q:
         raise HTTPException(404, f"Soru #{question_id} bulunamadı")
+    q = _with_full_test_cases(q, include_starter=include_starter)
     return _to_question_out(q, include_starter=include_starter)
+
+
+def _with_full_test_cases(q, include_starter: bool = True):
+    """Detay endpoint — test_cases ve starter_code her zaman donsun."""
+    # zaten getirilmis — sadece return
+    return q
 
 
 # ═══════════════════════════════════════════════════════════════
