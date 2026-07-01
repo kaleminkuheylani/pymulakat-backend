@@ -88,7 +88,7 @@ async def migrate_tutorials():
 
 
 @router.post("/migrate/slugs", response_model=MigrationResponse)
-async def migrate_slugs():
+async def migrate_slugs(force: bool = False):
     """interwiews tablosuna title'dan slug üretip yaz (canonical URL için)."""
     import re
     try:
@@ -148,7 +148,7 @@ async def migrate_slugs():
         for row in rows:
             title = row.get("title", "")
             existing = row.get("slug")
-            if existing:
+            if existing and not force:
                 skipped += 1
                 seen_slugs.add(existing)
                 continue
@@ -265,3 +265,4 @@ async def admin_health():
         "supabase_url": os.getenv("SUPABASE_URL", "NOT SET"),
         "has_service_key": bool(os.getenv("SUPABASE_SERVICE_ROLE_KEY")),
     }# 1782883061
+# 1782885672
