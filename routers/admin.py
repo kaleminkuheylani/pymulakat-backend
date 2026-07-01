@@ -91,8 +91,8 @@ async def migrate_tutorials():
 async def migrate_slugs():
     """interviews tablosuna title'dan slug üretip yaz (canonical URL için)."""
     try:
-        from supabase_client import get_service_role
-        sb = get_service_role()
+        from supabase_client import get_supabase_admin
+        sb = get_supabase_admin()
 
         # 1. Tüm soruları çek
         result = sb.table("interviews").select("id, title, slug").execute()
