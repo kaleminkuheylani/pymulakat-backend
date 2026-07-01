@@ -86,6 +86,7 @@ def health():
             "categories_v2": categories_v2 is not None,
             "tutorials_v2": tutorials_v2 is not None,
             "debug": debug_module is not None,
+            "admin": admin_module is not None,
         },
         "total_routes": len(app.routes),
     }
@@ -118,3 +119,4 @@ if __name__ == "__main__":
 
 # Trigger redeploy Wed Jul  1 04:44:33 UTC 2026
 # Wed Jul  1 04:49:15 UTC 2026
+# Admin status check 1782881637
