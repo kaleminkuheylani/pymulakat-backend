@@ -1,16 +1,14 @@
 # routers/coach_status.py
 # Kullanıcı coach durumunu görür — HANGI kurallar tetiklendi, NE ZAMAN mail gitti.
-# Lint kullanıcıya gösterilmez (sadece admin).
+# Sadece bilgi amaçlı — puanlama, skill tree, dashboard yok.
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends, Request, Query
+from fastapi import APIRouter, HTTPException, Request
 
 from services.coach import load_user_activity, _user_recently_mailed, _calc_streak_days
 from services.coach_templates import BRAND
-from services.skills import aggregate_user_progress
 from supabase_client import get_supabase_admin
 from dependencies import get_current_user
 
@@ -63,10 +61,9 @@ async def get_my_status(request: Request):
         raise HTTPException(404, "Profil bulunamadı")
 
     # Hangi kurallar şu an tetiklenebilir durumda
-    from services.coach import ALL_RULES, recommend_for_user
+    from services.coach import ALL_RULES
     available_rules = []
     for rule_name, fn in ALL_RULES:
-        # dry_run=True → sadece bilgi amaçlı, göndermez
         if _user_recently_mailed(user_id, rule_name):
             status = "rate_limited"
             note = "Son 7 gün içinde gönderildi"
@@ -98,7 +95,6 @@ async def get_my_status(request: Request):
         if prof.data:
             recent = prof.data[0].get("coach_recent_sent") or {}
             if recent:
-                # En son hangi kural çalıştı
                 sorted_recent = sorted(recent.items(), key=lambda x: x[1], reverse=True)
                 last_rule, last_mail_iso = sorted_recent[0]
                 total_mails = len(recent)
@@ -123,18 +119,6 @@ async def get_my_status(request: Request):
         except Exception:
             pass
 
-    # Skill progress (topic bazlı)
-    skill_progress = aggregate_user_progress(act.attempts)
-    skill_summary = []
-    for topic, stats in sorted(skill_progress.items(), key=lambda x: -x[1]["attempted"]):
-        skill_summary.append({
-            "topic": topic,
-            "attempted": stats["attempted"],
-            "solved": stats["solved"],
-            "failed": stats["failed"],
-            "success_rate": round(100 * stats["solved"] / max(stats["attempted"], 1)),
-        })
-
     return {
         "user": {
             "username": act.username,
@@ -151,20 +135,4 @@ async def get_my_status(request: Request):
             "frequency_cap_days": 7,
             "available_rules": available_rules,
         },
-        "skills": skill_summary[:20],  # top 20
     }
-
-
-@router.post("/admin/lint")
-async def admin_lint(request: Request):
-    """Admin-only — topic graph lint raporu. Kullanıcıya gösterilmez, sadece server log."""
-    try:
-        user = await get_current_user(request)
-    except Exception:
-        raise HTTPException(401, "Giriş gerekli")
-    # Basit admin check — gerçek projede role column ekle
-    if not user or not user.get("is_admin"):
-        raise HTTPException(403, "Admin yetkisi gerekli")
-
-    from services.skills_lint import lint_all_questions
-    return lint_all_questions()
