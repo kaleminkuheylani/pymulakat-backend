@@ -61,12 +61,10 @@ def try_include(name: str, label: str):
 
 # ─── v1 (eski) ──────────────────────────────────────────
 auth_module = try_include("routers.auth", "auth")
-interviews_v1 = try_include("routers.interviews", "interviews (v1)")
 attempts_v1 = try_include("routers.attempts", "attempts (v1)")
 
 # ─── v2 (yeni) ──────────────────────────────────────────
 questions_v2 = try_include("routers.questions", "questions (v2)")
-debug_module = try_include("routers.debug", "debug")
 
 categories_v2 = try_include("routers.categories", "categories (v2)")
 tutorials_v2 = try_include("routers.tutorials", "tutorials (v2)")
@@ -80,12 +78,10 @@ def health():
         "version": "2.5",
         "loaded": {
             "auth": auth_module is not None,
-            "interviews_v1": interviews_v1 is not None,
             "attempts_v1": attempts_v1 is not None,
             "questions_v2": questions_v2 is not None,
             "categories_v2": categories_v2 is not None,
             "tutorials_v2": tutorials_v2 is not None,
-            "debug": debug_module is not None,
             "admin": admin_module is not None,
         },
         "total_routes": len(app.routes),
