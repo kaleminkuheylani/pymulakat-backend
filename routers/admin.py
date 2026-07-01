@@ -130,7 +130,7 @@ async def migrate_slugs():
             print(f"📝 [SLUGS] {len(rows)} soru bulundu")
         except Exception as e:
             return MigrationResponse(
-                success=False,
+                ok=False,
                 message=f"SELECT hatasi (slug kolonu hala yok?): {e}. SQL durumu: {'OK' if sql_added else sql_error}",
             )
 
@@ -168,7 +168,7 @@ async def migrate_slugs():
                 errors.append({"id": row["id"], "title": title, "error": str(e)})
 
         return MigrationResponse(
-            success=True,
+            ok=True,
             message=f"{updated} yeni slug, {skipped} zaten vardi (SQL: {'OK' if sql_added else sql_error})",
             details={
                 "updated": updated,
