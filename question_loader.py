@@ -25,6 +25,7 @@ def load_questions() -> List[Question]:
                         test_cases=q_dict["test_cases"],
                         hints=q_dict.get("hints", []),
                         slug=q_dict.get("slug"),
+                        related_question_ids=q_dict.get("related_question_ids", []) or [],
                     )
                 )
             return sorted(loaded, key=lambda x: x.id)
