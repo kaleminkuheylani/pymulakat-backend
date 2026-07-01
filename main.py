@@ -81,6 +81,7 @@ tutorials_v2 = try_include("routers.tutorials", "tutorials (v2)")
 admin_module = try_include("routers.admin", "admin (migration)")
 coach_v2 = try_include("routers.coach", "coach (email)")
 coach_status_v2 = try_include("routers.coach_status", "coach-status (user view)")
+dashboard_v2 = try_include("routers.dashboard", "dashboard (personal)")
 
 
 @app.get("/health")
@@ -97,6 +98,7 @@ def health():
             "admin": admin_module is not None,
             "coach": coach_v2 is not None,
             "coach_status": coach_status_v2 is not None,
+            "dashboard": dashboard_v2 is not None,
         },
         "total_routes": len(app.routes),
     }
