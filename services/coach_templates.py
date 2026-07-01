@@ -357,3 +357,179 @@ def gentle_nudge(user: Dict, hours_active_avg: float) -> Dict[str, Any]:
         "subject": "🐍 Günün sorusu — 5 dakika yeter",
         "html": _shell("Günün önerisi", body, "Time-of-day nudge"),
     }
+
+
+# ═══════════════════════════════════════════════════════════
+# Hata-tabanlı template'ler
+# ═══════════════════════════════════════════════════════════
+
+def _error_intro(user: Dict, category_label: str, count: int) -> str:
+    return f'''
+    <p style="margin: 0 0 16px 0;">Selam <strong>{user.get("username","mülakatçı")}</strong>,</p>
+    <p style="margin: 0 0 16px 0;">
+      Son 14 günde <strong>{count} kez</strong> <strong style="color: {BRAND['accent']};">{category_label}</strong> ile karşılaştın.
+      Spesifik bir hata, spesifik bir çözüm demek — spam değil, hedefe yönelik bir rehber.
+    </p>
+    '''
+
+
+def error_index_bounds(user: Dict, count: int, tutorial: Optional[Dict] = None) -> Dict[str, Any]:
+    body = _error_intro(user, "Liste/Metin Sınır Hatası", count)
+    body += '''
+    <h3 style="margin: 16px 0 8px 0; color: #ffffff;">📐 Neden olur?</h3>
+    <ul style="margin: 0 0 16px 0; padding-left: 20px; color: rgba(255,255,255,0.85);">
+      <li><code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">for i in range(len(arr))</code> döngüsünde <code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">arr[i+1]</code> kullanmak (off-by-one)</li>
+      <li><code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">arr[len(arr)]</code> yazmak (son indeks <code>len-1</code>)</li>
+    </ul>
+    <h3 style="margin: 16px 0 8px 0; color: #ffffff;">✅ Çözüm</h3>
+    <pre style="background: rgba(99,102,241,0.08); border-left: 3px solid #6366f1; padding: 12px; border-radius: 6px; color: rgba(255,255,255,0.9); font-size: 13px; overflow-x: auto;">for i in range(len(arr) - 1):
+    if arr[i] == arr[i + 1]:
+        # ...</pre>
+    '''
+    if tutorial:
+        body += _tutorial_card(tutorial)
+    body += _cta(f"{BRAND['site_url']}/interviews?category=list-dict", "Liste Sorularını Çöz →")
+    return {
+        "subject": "🐛 Sınır hatası mı? 3 kez yapmışsın — hızlı çözüm",
+        "html": _shell("Liste Sınırı Hatası", body, "Liste/Metin index problemi"),
+    }
+
+
+def error_type_check(user: Dict, count: int, tutorial: Optional[Dict] = None) -> Dict[str, Any]:
+    body = _error_intro(user, "Tip Hatası", count)
+    body += '''
+    <h3 style="margin: 16px 0 8px 0; color: #ffffff;">🎯 Yaygın nedenler</h3>
+    <ul style="margin: 0 0 16px 0; padding-left: 20px; color: rgba(255,255,255,0.85);">
+      <li><code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">None</code> değerini matematiksel işleme sokmak</li>
+      <li><code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">str + int</code> veya <code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">int + str</code> birleştirme</li>
+    </ul>
+    <h3 style="margin: 16px 0 8px 0; color: #ffffff;">✅ İki kalıp</h3>
+    <pre style="background: rgba(99,102,241,0.08); border-left: 3px solid #6366f1; padding: 12px; border-radius: 6px; color: rgba(255,255,255,0.9); font-size: 13px; overflow-x: auto;"># 1. None kontrolü
+if value is not None:
+    total = value + 1
+
+# 2. Tip dönüşümü
+msg = "count: " + str(n)</pre>
+    '''
+    if tutorial:
+        body += _tutorial_card(tutorial)
+    body += _cta(f"{BRAND['site_url']}/interviews?category=python-basics", "Tip Sorularını Çöz →")
+    return {
+        "subject": "🎯 Tip hatasını 3 kez yaptın — bu 2 kalıbı öğren",
+        "html": _shell("Tip Kontrolü", body, "Type mismatch problemi"),
+    }
+
+
+def error_recursion_base(user: Dict, count: int, tutorial: Optional[Dict] = None) -> Dict[str, Any]:
+    body = _error_intro(user, "Özyineleme Hatası (Recursion)", count)
+    body += '''
+    <h3 style="margin: 16px 0 8px 0; color: #ffffff;">🔁 Belirtisi</h3>
+    <p style="margin: 0 0 16px 0;">
+      <code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">RecursionError</code> veya <code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">MemoryError</code> —
+      fonksiyon kendini sonsuz kez çağırıyor.
+    </p>
+    <h3 style="margin: 16px 0 8px 0; color: #ffffff;">✅ Base case formülü</h3>
+    <p style="margin: 0 0 8px 0; color: rgba(255,255,255,0.85);">
+      Her recursive fonksiyon şu 3 parçayı içermeli:
+    </p>
+    <ol style="margin: 0 0 16px 0; padding-left: 20px; color: rgba(255,255,255,0.85);">
+      <li><strong>Base case:</strong> ne zaman duracağını söyle</li>
+      <li><strong>Recursive case:</strong> problemi küçült ve kendini çağır</li>
+      <li><strong>İlerleme:</strong> her adımda base case'e yaklaş</li>
+    </ol>
+    <pre style="background: rgba(99,102,241,0.08); border-left: 3px solid #6366f1; padding: 12px; border-radius: 6px; color: rgba(255,255,255,0.9); font-size: 13px; overflow-x: auto;">def factorial(n):
+    if n <= 1:           # ← base case
+        return 1
+    return n * factorial(n - 1)  # ← recursive case</pre>
+    '''
+    if tutorial:
+        body += _tutorial_card(tutorial)
+    body += _cta(f"{BRAND['site_url']}/interviews?category=algorithms", "Recursion Sorularını Çöz →")
+    return {
+        "subject": "🔁 Recursion patladı mı? Base case'i unutma",
+        "html": _shell("Özyineleme Base Case", body, "Recursion base case rehberi"),
+    }
+
+
+def error_name(user: Dict, count: int, tutorial: Optional[Dict] = None) -> Dict[str, Any]:
+    body = _error_intro(user, "Tanımsız Değişken", count)
+    body += '''
+    <h3 style="margin: 16px 0 8px 0; color: #ffffff;">🔤 Yaygın nedenler</h3>
+    <ul style="margin: 0 0 16px 0; padding-left: 20px; color: rgba(255,255,255,0.85);">
+      <li>Değişken kullanılmadan önce tanımlanmamış</li>
+      <li>Tip adı yanlış (örn. <code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">leng</code> yerine <code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">len</code>)</li>
+      <li>Scope dışı kullanım (for içinde tanımlayıp dışarıda kullanmak)</li>
+    </ul>
+    <p style="margin: 0 0 16px 0; color: rgba(255,255,255,0.7); font-size: 13px;">
+      💡 İpucu: IDE'de <strong>Python</strong> eklentisi kullanırsan değişken tanımsızsa anında kırmızı çizer.
+    </p>
+    '''
+    if tutorial:
+        body += _tutorial_card(tutorial)
+    body += _cta(f"{BRAND['site_url']}/interviews?category=python-basics", "Değişken Sorularını Çöz →")
+    return {
+        "subject": "🔤 Tanımsız değişken hatası mı? 3 kez",
+        "html": _shell("Değişken Tanımı", body, "NameError rehberi"),
+    }
+
+
+def error_attribute(user: Dict, count: int, tutorial: Optional[Dict] = None) -> Dict[str, Any]:
+    body = _error_intro(user, "Nesne Özelliği Yok", count)
+    body += '''
+    <h3 style="margin: 16px 0 8px 0; color: #ffffff;">🧩 Neden olur?</h3>
+    <ul style="margin: 0 0 16px 0; padding-left: 20px; color: rgba(255,255,255,0.85);">
+      <li><code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">.push()</code> (JS/Java alışkanlığı — Python'da <code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">.append()</code>)</li>
+      <li><code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">.length</code> (JS — Python'da <code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">len(x)</code> fonksiyon)</li>
+      <li><code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">dict.sort()</code> (dict sıralanamaz — key'leri alıp sırala)</li>
+    </ul>
+    <h3 style="margin: 16px 0 8px 0; color: #ffffff;">✅ Python yolu</h3>
+    <pre style="background: rgba(99,102,241,0.08); border-left: 3px solid #6366f1; padding: 12px; border-radius: 6px; color: rgba(255,255,255,0.9); font-size: 13px; overflow-x: auto;">lst = [3, 1, 2]
+lst.append(4)        # ekle
+print(len(lst))      # uzunluk
+lst.sort()           # sırala</pre>
+    '''
+    if tutorial:
+        body += _tutorial_card(tutorial)
+    body += _cta(f"{BRAND['site_url']}/interviews?category=oop", "OOP Sorularını Çöz →")
+    return {
+        "subject": "🧩 .push() mı yazıyorsun? Python'da yok",
+        "html": _shell("Nesne Metotları", body, "AttributeError rehberi"),
+    }
+
+
+def error_key(user: Dict, count: int, tutorial: Optional[Dict] = None) -> Dict[str, Any]:
+    body = _error_intro(user, "Sözlük Anahtarı Yok", count)
+    body += '''
+    <h3 style="margin: 16px 0 8px 0; color: #ffffff;">🔑 Neden olur?</h3>
+    <p style="margin: 0 0 16px 0;">
+      <code style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;">d['key']</code> anahtar yoksa patlar.
+    </p>
+    <h3 style="margin: 16px 0 8px 0; color: #ffffff;">✅ Güvenli erişim</h3>
+    <pre style="background: rgba(99,102,241,0.08); border-left: 3px solid #6366f1; padding: 12px; border-radius: 6px; color: rgba(255,255,255,0.9); font-size: 13px; overflow-x: auto;"># 1. .get() ile None döner
+val = d.get('key')
+
+# 2. .get() ile varsayılan
+val = d.get('key', 0)
+
+# 3. defaultdict (sık kullanım için)
+from collections import defaultdict
+d = defaultdict(int)
+d['count'] += 1   # yoksa 0'dan başlar</pre>
+    '''
+    if tutorial:
+        body += _tutorial_card(tutorial)
+    body += _cta(f"{BRAND['site_url']}/interviews?category=list-dict", "Sözlük Sorularını Çöz →")
+    return {
+        "subject": "🔑 KeyError mı? Güvenli erişim kalıbını öğren",
+        "html": _shell("Sözlük Erişimi", body, "KeyError rehberi"),
+    }
+
+
+ERROR_TEMPLATES = {
+    "error_index_bounds": error_index_bounds,
+    "error_type_check": error_type_check,
+    "error_recursion_base": error_recursion_base,
+    "error_name": error_name,
+    "error_attribute": error_attribute,
+    "error_key": error_key,
+}

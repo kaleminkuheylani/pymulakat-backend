@@ -458,6 +458,139 @@ def rule_gentle_nudge(act: UserActivity) -> Optional[Dict[str, Any]]:
 
 
 # ═══════════════════════════════════════════════════════════
+# Hata-tabanlı kurallar (error_classifier'dan beslenir)
+# ═══════════════════════════════════════════════════════════
+
+ERROR_RULE_THRESHOLD = 3  # Aynı hatadan 3 kez → tetikle
+ERROR_RULE_WINDOW_DAYS = 14  # Son 14 gün içinde
+
+
+def _count_recent_errors(user_id: str) -> Dict[str, int]:
+    """Son 14 gündeki hata kategori sayıları."""
+    from .error_classifier import get_recent_error_counts
+    return get_recent_error_counts(user_id, days=ERROR_RULE_WINDOW_DAYS)
+
+
+def _make_error_recommendation(user_id: str, error_category: str) -> Optional[Dict[str, Any]]:
+    """Hata kategorisi için recommendation objesi oluştur.
+
+    Çıktı formatı (diğer kurallarla uyumlu):
+      {
+        "rule": "error_index_bounds",
+        "user": {"id": ..., "username": ..., "email": ...},
+        "email": {"subject": ..., "html": ...},
+        "data": {...}  # template'e geçirilecek ek bilgi
+      }
+    """
+    from .error_classifier import CATEGORY_TO_TOPIC, CATEGORY_LABELS
+    from .coach_templates import ERROR_TEMPLATES
+
+    topic_path, topic_name = CATEGORY_TO_TOPIC[error_category]
+    label = CATEGORY_LABELS[error_category]
+
+    user = _supabase().table("profiles").select("id, username, email").eq("id", user_id).execute()
+    if not user.data:
+        return None
+    profile = user.data[0]
+
+    # Hata sayısını bul
+    counts = _count_recent_errors(user_id)
+    count = counts.get(error_category, 0)
+
+    # Tutorial bul
+    tutorial = None
+    if topic_path:
+        parts = topic_path.split(".")
+        if len(parts) >= 2:
+            t = get_tutorial_for_concept(parts[1]) or get_tutorial_for_concept(parts[0])
+            if t:
+                tutorial = t
+
+    # Template'i çağır
+    template_fn = ERROR_TEMPLATES.get(f"error_{_map_category_to_rule(error_category)}")
+    if not template_fn:
+        return None
+    email = template_fn(profile, count, tutorial)
+
+    return {
+        "rule": f"error_{_map_category_to_rule(error_category)}",
+        "user": {
+            "id": profile["id"],
+            "username": profile.get("username"),
+            "email": profile.get("email"),
+        },
+        "email": email,
+        "data": {
+            "category": error_category,
+            "category_label": label,
+            "topic_path": topic_path,
+            "topic_name": topic_name,
+            "count": count,
+            "tutorial_slug": tutorial.get("slug") if tutorial else None,
+        },
+    }
+
+
+def _map_category_to_rule(category: str) -> str:
+    return {
+        "index_error": "index_bounds",
+        "type_error": "type_check",
+        "recursion_error": "recursion_base",
+        "name_error": "name",
+        "attribute_error": "attribute",
+        "key_error": "key",
+    }.get(category, category)
+
+
+def rule_error_index_bounds(act: UserActivity) -> Optional[Dict[str, Any]]:
+    """Liste sınır hatası 3+ kez."""
+    counts = _count_recent_errors(act.user_id)
+    if counts.get("index_error", 0) >= ERROR_RULE_THRESHOLD:
+        return _make_error_recommendation(act.user_id, "index_error")
+    return None
+
+
+def rule_error_type_check(act: UserActivity) -> Optional[Dict[str, Any]]:
+    """Tip hatası 3+ kez."""
+    counts = _count_recent_errors(act.user_id)
+    if counts.get("type_error", 0) >= ERROR_RULE_THRESHOLD:
+        return _make_error_recommendation(act.user_id, "type_error")
+    return None
+
+
+def rule_error_recursion_base(act: UserActivity) -> Optional[Dict[str, Any]]:
+    """Recursion hatası 3+ kez."""
+    counts = _count_recent_errors(act.user_id)
+    if counts.get("recursion_error", 0) >= ERROR_RULE_THRESHOLD:
+        return _make_error_recommendation(act.user_id, "recursion_error")
+    return None
+
+
+def rule_error_name(act: UserActivity) -> Optional[Dict[str, Any]]:
+    """Tanımsız değişken 3+ kez."""
+    counts = _count_recent_errors(act.user_id)
+    if counts.get("name_error", 0) >= ERROR_RULE_THRESHOLD:
+        return _make_error_recommendation(act.user_id, "name_error")
+    return None
+
+
+def rule_error_attribute(act: UserActivity) -> Optional[Dict[str, Any]]:
+    """Yanlış metot 3+ kez."""
+    counts = _count_recent_errors(act.user_id)
+    if counts.get("attribute_error", 0) >= ERROR_RULE_THRESHOLD:
+        return _make_error_recommendation(act.user_id, "attribute_error")
+    return None
+
+
+def rule_error_key(act: UserActivity) -> Optional[Dict[str, Any]]:
+    """Dict key hatası 3+ kez."""
+    counts = _count_recent_errors(act.user_id)
+    if counts.get("key_error", 0) >= ERROR_RULE_THRESHOLD:
+        return _make_error_recommendation(act.user_id, "key_error")
+    return None
+
+
+# ═══════════════════════════════════════════════════════════
 # Orchestrator
 # ═══════════════════════════════════════════════════════════
 
@@ -472,6 +605,12 @@ ALL_RULES = [
     ("id_chain", rule_id_chain),
     ("concept_gap", rule_concept_gap),
     ("gentle_nudge", rule_gentle_nudge),
+    ("error_index_bounds", rule_error_index_bounds),
+    ("error_type_check", rule_error_type_check),
+    ("error_recursion_base", rule_error_recursion_base),
+    ("error_name", rule_error_name),
+    ("error_attribute", rule_error_attribute),
+    ("error_key", rule_error_key),
 ]
 
 

@@ -42,6 +42,12 @@ def _rule_meta():
         "id_chain": {"label": "İlgili Soru", "icon": "🔗", "desc": "Çözülen soruya bağlı sonraki soru önerisi"},
         "concept_gap": {"label": "Konu Boşluğu", "icon": "🧩", "desc": "Benzer kavramların eksik olduğunu fark eder"},
         "gentle_nudge": {"label": "Günlük Hatırlatma", "icon": "🐍", "desc": "Aktif olduğun saatlerde hafif hatırlatma"},
+        "error_index_bounds": {"label": "Liste Sınır Hatası", "icon": "📐", "desc": "3+ kez index out of range yaptıysan rehber"},
+        "error_type_check": {"label": "Tip Kontrolü", "icon": "🎯", "desc": "3+ kez TypeError yaptıysan type hints rehberi"},
+        "error_recursion_base": {"label": "Recursion Base Case", "icon": "🔁", "desc": "3+ kez recursion patladıysa base case rehberi"},
+        "error_name": {"label": "Tanımsız Değişken", "icon": "🔤", "desc": "3+ kez NameError yaptıysan değişken rehberi"},
+        "error_attribute": {"label": "Yanlış Metot", "icon": "🧩", "desc": "3+ kez AttributeError yaptıysan metot rehberi"},
+        "error_key": {"label": "Sözlük Güvenli Erişim", "icon": "🔑", "desc": "3+ kez KeyError yaptıysan .get() rehberi"},
     }
 
 
