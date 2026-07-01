@@ -18,6 +18,11 @@ class Question:
     related_concepts: List[str] = field(default_factory=list)  # ['string', 'regex', 'palindrome']
     related_question_ids: List[int] = field(default_factory=list) # Benzer sorular
     tutorial_slug: Optional[str] = None  # /guides/[slug] URL'i (varsa)
+    # 🆕 Curriculum (84 günlük müfredat)
+    day: int = 0                       # 1-84
+    week: int = 0                      # 1-12
+    theme: str = ""                    # "🎮 RPG Karakter Oluşturucu" gibi
+    difficulty: int = 1                # 1-5
 
 
 QUESTIONS: List[Question] = [

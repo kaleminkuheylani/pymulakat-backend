@@ -33,6 +33,7 @@ class QuestionOut(BaseModel):
     related_concepts: list[str] = Field(default_factory=list)
     related_question_ids: list[int] = Field(default_factory=list)
     tutorial_slug: Optional[str] = None
+    slug: Optional[str] = None  # Canonical URL slug
 
 
 class QuestionTestsResponse(BaseModel):
@@ -98,6 +99,7 @@ def _to_question_out(q, include_starter=False):
         related_concepts=_q_get(q, "related_concepts", []) or [],
         related_question_ids=_q_get(q, "related_question_ids", []) or [],
         tutorial_slug=_q_get(q, "tutorial_slug"),
+        slug=_q_get(q, "slug"),
     )
 
 

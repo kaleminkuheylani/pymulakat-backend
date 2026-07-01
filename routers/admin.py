@@ -87,6 +87,62 @@ async def migrate_tutorials():
     )
 
 
+@router.post("/migrate/slugs", response_model=MigrationResponse)
+async def migrate_slugs():
+    """interviews tablosuna title'dan slug üretip yaz (canonical URL için)."""
+    try:
+        from supabase_client import get_service_role
+        sb = get_service_role()
+
+        # 1. Tüm soruları çek
+        result = sb.table("interviews").select("id, title, slug").execute()
+        rows = result.data or []
+        print(f"📝 [SLUGS] {len(rows)} soru bulundu")
+
+        # 2. Slugify helper
+        import re
+        def slugify(text: str) -> str:
+            tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
+            text = text.lower().translate(tr)
+            text = re.sub(r'[^a-z0-9\s-]', '', text)
+            text = re.sub(r'\s+', '-', text).strip('-')
+            return text[:80]
+
+        # 3. Her satır için slug üret ve güncelle
+        updated = 0
+        errors = []
+        seen_slugs = set()
+        for row in rows:
+            title = row.get("title", "")
+            existing_slug = row.get("slug")
+            new_slug = slugify(title)
+
+            # Duplicate handling: aynı slug varsa id ekle
+            final_slug = new_slug
+            counter = 1
+            while final_slug in seen_slugs:
+                counter += 1
+                final_slug = f"{new_slug}-{counter}"
+            seen_slugs.add(final_slug)
+
+            try:
+                sb.table("interviews").update({"slug": final_slug}).eq("id", row["id"]).execute()
+                updated += 1
+            except Exception as e:
+                errors.append({"id": row["id"], "title": title, "error": str(e)})
+
+        return MigrationResponse(
+            success=True,
+            message=f"{updated}/{len(rows)} slug guncellendi",
+            details={"updated": updated, "total": len(rows), "errors": errors[:5]},
+        )
+    except Exception as e:
+        print(f"❌ [SLUGS] {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        return MigrationResponse(success=False, message=f"Slug migration hatasi: {e}")
+
+
 @router.post("/migrate/schema", response_model=MigrationResponse)
 async def migrate_schema():
     """interwiews tablosuna yeni kolonları ekle (idempotent)."""
