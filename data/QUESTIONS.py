@@ -1036,6 +1036,112 @@ Orijinal listeyi değiştirme, kopyasını döndür.""",
     ),
 
     Question(
+        id=68,
+        title='İki Maaş Bordrosunu Birleştir',
+        category='algorithms',
+        level='intermediate',
+        description="""İK ekibindesin. Elinde iki bölümün maaş listesi var:
+  - mühendislik (azalan sırada, en yüksek maaş başta)
+  - pazarlama (artan sırada, en düşük maaş başta)
+
+İki listeyi **birleştirip tek maaş listesi** oluşturman lazım.
+Sonuç azalan sırada olmalı (en yüksek maaş başta).
+
+📌 Önemli: Her iki girdi listesi de kendi içinde sıralı.
+   Bu sana avantaj sağlıyor — sıfırdan sıralama yapma.
+
+⚠️ sorted()/sort() KULLANMA. Mülakat sorusu olarak
+   O(n+m) yerine O(n log n) yazarsan eleniyorsun.
+
+💡 İpucu (gizli): İki sıralı listeyi tek sıralı liste yapmak için
+   klasik bir algoritma var — ismi "merge". İnternette
+   'merge two sorted lists' diye aratabilirsin ama önce kendin dene.""",
+        starter_code="""def merge_salaries(engineering: list, marketing: list) -> list:
+    # İki sıralı listeyi birleştir, sonuç azalan sırada
+    # engineering: azalan sırada (örn [12000, 9000, 8000])
+    # marketing:  artan sırada  (örn [4000, 5000, 6500])
+    # Sonuç: azalan sırada, tüm maaşlar
+    pass""",
+        test_cases=[
+            # Temel durum — 3+3
+            {
+                'input': ([12000, 9000, 8000], [4000, 5000, 6500]),
+                'expected': [12000, 9000, 8000, 6500, 5000, 4000],
+            },
+            # Sınır durumu — biri boş
+            {'input': ([], [3000, 5000]), 'expected': [5000, 3000]},
+            {'input': ([10000, 5000], []), 'expected': [10000, 5000]},
+            # İkisi de boş
+            {'input': ([], []), 'expected': []},
+            # Karışık değerler
+            {
+                'input': ([15000, 11000, 7000], [8500, 6000, 4000]),
+                'expected': [15000, 11000, 8500, 7000, 6000, 4000],
+            },
+        ],
+        hints=[
+            '💡 İpucu 1: İki pointer kullan — biri engineering, biri marketing için. İlk elemanları karşılaştır.',
+            '💡 İpucu 2: Engineering azalan (büyük → küçük), marketing artan (küçük → büyük). Yani engineering[0] en büyük, marketing[0] en küçük.',
+            '💡 İpucu 3: Hangisinin maaşı daha büyükse onu sonuca ekle, o pointer’ı ilerlet. Biri bitince diğerini olduğu gibi ekle.',
+        ],
+        explanation="""**Çözüm: Two-Pointer Merge (Klasik Merge Adımı)**
+
+Bu soru merge sort algoritmasının temel parçasıdır:
+**"İki sıralı listeyi tek sıralı liste yap"**.
+
+```python
+def merge_salaries(engineering, marketing):
+    result = []
+    i, j = 0, 0
+    while i < len(engineering) and j < len(marketing):
+        # engineering azalan (büyük başta), marketing artan (küçük başta)
+        # En büyük maaşı engineering[0] veya marketing[-1] tutar
+        if engineering[i] >= marketing[len(marketing) - 1 - j]:
+            result.append(engineering[i])
+            i += 1
+        else:
+            result.append(marketing[len(marketing) - 1 - j])
+            j += 1
+    # Kalanları olduğu gibi ekle
+    result.extend(engineering[i:])
+    result.extend(reversed(marketing[:len(marketing) - j]))
+    return result
+```
+
+**Daha temiz yaklaşım (iki listeyi aynı yöne çevir):**
+
+```python
+def merge_salaries(engineering, marketing):
+    # engineering azalan, marketing artan → ikisini azalana çevir
+    m = sorted(marketing, reverse=True)  # sadece marketing için
+    # Artık ikisi de azalan sırada
+    result, i, j = [], 0, 0
+    while i < len(engineering) and j < len(m):
+        if engineering[i] >= m[j]:
+            result.append(engineering[i])
+            i += 1
+        else:
+            result.append(m[j])
+            j += 1
+    result.extend(engineering[i:])
+    result.extend(m[j:])
+    return result
+```
+
+**Karmaşıklık:**
+- Zaman: **O(n + m)** — her eleman bir kez ziyaret edilir
+- Alan: **O(n + m)** — sonuç listesi
+
+**Neden bu önemli?**
+Bu "merge" adımı merge sort'un (O(n log n)) temel taşıdır.
+Eğer bu adımı sorted() ile yaparsan → O((n+m) log(n+m)) olur, mülakatta elenme sebebi.
+
+**Mülakat metaforu:**
+"İki klasörün sıralı sayfalarını tek masada birleştiriyorsun" — bu da aynı şey.""",
+        complexity="O(n+m) — iki sıralı listenin tek geçişte birleştirilmesi",
+    ),
+
+    Question(
         id=48,
         title='Bozuk Para Hesabı (Greedy)',
         category='algorithms',
