@@ -89,7 +89,7 @@ async def migrate_tutorials():
 
 @router.post("/migrate/slugs", response_model=MigrationResponse)
 async def migrate_slugs():
-    """interviews tablosuna title'dan slug üretip yaz (canonical URL için)."""
+    """interwiews tablosuna title'dan slug üretip yaz (canonical URL için)."""
     import re
     try:
         # 1. psycopg2 ile slug kolonu ekle (DATABASE_URL'den) — kolon zaten var muhtemelen
@@ -103,8 +103,8 @@ async def migrate_slugs():
                     conn = psycopg2.connect(db_url)
                     conn.autocommit = True
                     cur = conn.cursor()
-                    cur.execute("ALTER TABLE public.interviews ADD COLUMN IF NOT EXISTS slug TEXT")
-                    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_interviews_slug ON public.interviews(slug) WHERE slug IS NOT NULL")
+                    cur.execute("ALTER TABLE public.interwiews ADD COLUMN IF NOT EXISTS slug TEXT")
+                    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_interwiews_slug ON public.interwiews(slug) WHERE slug IS NOT NULL")
                     cur.execute("NOTIFY pgrst, 'reload schema'")
                     cur.close()
                     conn.close()
@@ -125,7 +125,7 @@ async def migrate_slugs():
         sb = get_supabase_admin()
 
         try:
-            result = sb.table("interviews").select("id, title, slug").execute()
+            result = sb.table("interwiews").select("id, title, slug").execute()
             rows = result.data or []
             print(f"📝 [SLUGS] {len(rows)} soru bulundu")
         except Exception as e:
@@ -162,7 +162,7 @@ async def migrate_slugs():
             seen_slugs.add(final_slug)
 
             try:
-                sb.table("interviews").update({"slug": final_slug}).eq("id", row["id"]).execute()
+                sb.table("interwiews").update({"slug": final_slug}).eq("id", row["id"]).execute()
                 updated += 1
             except Exception as e:
                 errors.append({"id": row["id"], "title": title, "error": str(e)})
