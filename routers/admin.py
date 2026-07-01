@@ -92,32 +92,33 @@ async def migrate_slugs():
     """interviews tablosuna title'dan slug üretip yaz (canonical URL için)."""
     import re
     try:
-        # 1. psycopg2 ile slug kolonu ekle (DATABASE_URL'den)
+        # 1. psycopg2 ile slug kolonu ekle (DATABASE_URL'den) — kolon zaten var muhtemelen
         sql_added = False
         sql_error = None
         try:
             import psycopg2
             db_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL")
             if db_url:
-                conn = psycopg2.connect(db_url)
-                conn.autocommit = True
-                cur = conn.cursor()
-                cur.execute("ALTER TABLE public.interviews ADD COLUMN IF NOT EXISTS slug TEXT")
-                cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_interviews_slug ON public.interviews(slug) WHERE slug IS NOT NULL")
-                cur.execute("NOTIFY pgrst, 'reload schema'")
-                cur.close()
-                conn.close()
-                sql_added = True
-                print("✅ Slug kolonu + index eklendi (psycopg2)")
+                try:
+                    conn = psycopg2.connect(db_url)
+                    conn.autocommit = True
+                    cur = conn.cursor()
+                    cur.execute("ALTER TABLE public.interviews ADD COLUMN IF NOT EXISTS slug TEXT")
+                    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_interviews_slug ON public.interviews(slug) WHERE slug IS NOT NULL")
+                    cur.execute("NOTIFY pgrst, 'reload schema'")
+                    cur.close()
+                    conn.close()
+                    sql_added = True
+                    print("✅ Slug kolonu + index eklendi (psycopg2)")
+                except Exception as e:
+                    sql_error = str(e)[:200]
+                    print(f"⚠️ psycopg2 ALTER basarisiz: {e}")
             else:
-                sql_error = "DATABASE_URL tanimli degil"
+                sql_error = "DATABASE_URL tanimli degil, SQL atlaniyor"
                 print(f"⚠️ {sql_error}")
         except ImportError:
             sql_error = "psycopg2 yuklu degil"
             print(f"⚠️ {sql_error}")
-        except Exception as e:
-            sql_error = str(e)
-            print(f"⚠️ psycopg2 ALTER basarisiz: {e}")
 
         # 2. Supabase admin ile devam
         from supabase_client import get_supabase_admin
@@ -182,7 +183,7 @@ async def migrate_slugs():
         print(f"❌ [SLUGS] {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
-        return MigrationResponse(success=False, message=f"Slug migration hatasi: {e}")
+        return MigrationResponse(ok=False, message=f"Slug migration hatasi: {str(e)[:200]}")
 
 
 @router.post("/migrate/schema", response_model=MigrationResponse)
