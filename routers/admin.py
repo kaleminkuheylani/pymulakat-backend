@@ -9,12 +9,16 @@ Kullanım:
     curl -X POST https://pymulakat-backend-production.up.railway.app/admin/migrate/tutorials
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 import os
 import sys
+import json
+import re
+import logging
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+logger = logging.getLogger(__name__)
 
 
 class MigrationResponse(BaseModel):
@@ -313,5 +317,228 @@ async def admin_health():
         "ok": True,
         "supabase_url": os.getenv("SUPABASE_URL", "NOT SET"),
         "has_service_key": bool(os.getenv("SUPABASE_SERVICE_ROLE_KEY")),
-    }# 1782883061
+    }
+
+
+# ═══════════════════════════════════════════════════════════
+# Gemini ile Soru Üretimi (Dağılım Analizi)
+# ═══════════════════════════════════════════════════════════
+
+class GenerateQuestionsRequest(BaseModel):
+    n: int = 5
+    target_total: int = 90
+    dry_run: bool = False
+    categories: list[str] = []  # opsiyonel: belirli kategoriler
+
+
+class GenerateQuestionsResponse(BaseModel):
+    ok: bool
+    message: str
+    distribution: dict = {}
+    gaps: list = []
+    plan: list = []
+    generated: list = []
+    inserted_ids: list = []
+    skipped: int = 0
+    error: str = ""
+
+
+@router.post("/generate/questions", response_model=GenerateQuestionsResponse)
+async def generate_questions_endpoint(req: GenerateQuestionsRequest):
+    """
+    QUESTIONS.py + Supabase dağılımını analiz et, eksik yerlere
+    Gemini ile yeni sorular üret, Supabase'e INSERT et.
+
+    Kullanım:
+        POST /admin/generate/questions
+        Body: {"n": 5, "dry_run": false}
+
+    Akış:
+    1. QUESTIONS.py'i yükle
+    2. Supabase'den mevcut soruları çek (DB üstün, fallback QUESTIONS.py)
+    3. Dağılım analizi (kategori + level)
+    4. Gap tespiti (eksik kategoriler/seviyeler)
+    5. Gemini prompt hazırla
+    6. Gemini'den soruları al
+    7. dry_run=False ise Supabase'e INSERT
+    """
+    try:
+        # 1. QUESTIONS.py'den örnek format al
+        from data.QUESTIONS import QUESTIONS as FALLBACK_QS
+        sample = FALLBACK_QS[:1]
+        if sample:
+            q = sample[0]
+            existing_questions_sample = f'''Question(
+    id={q.id},
+    title={q.title!r},
+    category={q.category!r},
+    level={q.level!r},
+    description="""{q.description[:300]}...""",
+    starter_code="""{q.starter_code}""",
+    test_cases=[{{'input': ..., 'expected': ...}}],
+    hints=["💡 İpucu 1: ..."]
+)'''
+        else:
+            existing_questions_sample = "(örnek bulunamadı)"
+
+        # 2. DB'den mevcut soruları çek (DB öncelikli)
+        from supabase_client import get_supabase_admin
+        sb = get_supabase_admin()
+        try:
+            result = sb.table("interwiews").select("id, title, category, level").execute()
+            db_questions = result.data or []
+        except Exception as e:
+            logger.warning("Supabase'den soru okunamadı, fallback kullanılıyor: %s", e)
+            db_questions = []
+
+        # 3. Dağılımı analiz et
+        from services.question_distribution import (
+            analyze_questions_py, identify_gaps,
+            select_questions_to_generate, get_next_id,
+            build_distribution_prompt,
+        )
+
+        if db_questions:
+            # DB'den gelen minimal dict'leri normalize et
+            class _Q:
+                def __init__(self, d):
+                    self.id = d.get("id", 0)
+                    self.title = d.get("title", "")
+                    self.category = d.get("category", "")
+                    self.level = d.get("level", "")
+
+            qs_objects = [_Q(d) for d in db_questions]
+            distribution = analyze_questions_py(qs_objects)
+        else:
+            distribution = analyze_questions_py(FALLBACK_QS)
+
+        # 4. Gap tespiti
+        gaps = identify_gaps(distribution, target_total=req.target_total)
+
+        # Kategori filtresi
+        if req.categories:
+            gaps = [g for g in gaps if g.get("category") in req.categories or g.get("type") == "level"]
+
+        # 5. Plan seç
+        plan = select_questions_to_generate(gaps, n=req.n)
+
+        if not plan:
+            return GenerateQuestionsResponse(
+                ok=False,
+                message="Eksik kategori bulunamadı (dağılım yeterli)",
+                distribution=distribution,
+                gaps=gaps,
+            )
+
+        # 6. Gemini prompt
+        prompt = build_distribution_prompt(plan, existing_questions_sample)
+
+        # 7. Gemini'den al
+        from services.gemini import AIQuestionGenerator
+        gen = AIQuestionGenerator()
+
+        try:
+            response = gen.model.generate_content(
+                prompt,
+                generation_config=__import__("google.generativeai").GenerationConfig(
+                    response_mime_type="application/json"
+                ),
+            )
+            raw_text = response.text.strip()
+            # Markdown code block temizle
+            if raw_text.startswith("```"):
+                raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+                raw_text = re.sub(r"\s*```$", "", raw_text)
+            generated = json.loads(raw_text)
+        except Exception as e:
+            return GenerateQuestionsResponse(
+                ok=False,
+                message=f"Gemini hatası: {e}",
+                distribution=distribution,
+                gaps=gaps,
+                plan=plan,
+                error=str(e),
+            )
+
+        # 8. Validate + ID ata
+        existing_ids = distribution["existing_ids"]
+        next_id = get_next_id(existing_ids)
+
+        valid_questions = []
+        skipped = 0
+        for item in generated:
+            try:
+                # Zorunlu alanlar
+                if not all(k in item for k in ("title", "category", "level", "description",
+                                                "starter_code", "test_cases", "hints")):
+                    skipped += 1
+                    continue
+                item["id"] = next_id
+                next_id += 1
+                # Default değerler
+                item.setdefault("complexity", "O(n)")
+                item.setdefault("tutorial_slug", None)
+                item.setdefault("slug", None)
+                valid_questions.append(item)
+            except Exception:
+                skipped += 1
+
+        # 9. dry_run ise sadece göster
+        if req.dry_run:
+            return GenerateQuestionsResponse(
+                ok=True,
+                message=f"DRY RUN: {len(valid_questions)} soru üretildi (DB'ye yazılmadı)",
+                distribution=distribution,
+                gaps=gaps,
+                plan=plan,
+                generated=valid_questions,
+                skipped=skipped,
+            )
+
+        # 10. Supabase'e INSERT
+        inserted_ids = []
+        for item in valid_questions:
+            try:
+                # day/week/theme/difficulty default
+                item.setdefault("day", 1)
+                item.setdefault("week", 1)
+                item.setdefault("theme", item["category"])
+                item.setdefault("difficulty", "medium")
+                item.setdefault("related_concepts", [])
+                item.setdefault("related_question_ids", [])
+
+                # Slug üret (title'dan)
+                if not item.get("slug"):
+                    from services.slug_helper import slugify_tr
+                    try:
+                        item["slug"] = slugify_tr(item["title"])
+                    except Exception:
+                        import re as _re
+                        item["slug"] = _re.sub(r"[^a-z0-9]+", "-", item["title"].lower()).strip("-")[:80]
+
+                result = sb.table("interwiews").insert(item).execute()
+                if result.data:
+                    inserted_ids.append(item["id"])
+            except Exception as e:
+                logger.exception("Insert failed for q%d: %s", item.get("id"), e)
+                skipped += 1
+
+        return GenerateQuestionsResponse(
+            ok=True,
+            message=f"{len(inserted_ids)} soru eklendi ({skipped} atlandı)",
+            distribution=distribution,
+            gaps=gaps,
+            plan=plan,
+            generated=valid_questions,
+            inserted_ids=inserted_ids,
+            skipped=skipped,
+        )
+
+    except Exception as e:
+        logger.exception("generate_questions_endpoint failed")
+        return GenerateQuestionsResponse(
+            ok=False,
+            message=f"Beklenmeyen hata: {e}",
+            error=str(e),
+        )# 1782883061
 # 1782885672
