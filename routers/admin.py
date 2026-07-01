@@ -15,6 +15,7 @@ import os
 import sys
 import re
 import json
+from typing import Dict, List
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -316,6 +317,66 @@ async def admin_health():
         "supabase_url": os.getenv("SUPABASE_URL", "NOT SET"),
         "has_service_key": bool(os.getenv("SUPABASE_SERVICE_ROLE_KEY")),
     }
+
+
+@router.post("/fix/duplicate-slugs", response_model=MigrationResponse)
+async def fix_duplicate_slugs():
+    """interwiews tablosundaki duplicate slug'ları temizle.
+
+    Mantık:
+    - Her slug grubundan sadece 1 tane (en küçük id) korunur
+    - Geri kalanların slug'ı 'q{id}' formatına çevrilir
+    - Bu sayede unique constraint ihlal edilmez
+    """
+    try:
+        from supabase_client import get_supabase_admin
+        sb = get_supabase_admin()
+
+        # 1. Tüm slug'ları çek
+        result = sb.table("interwiews").select("id, slug, title").execute()
+        rows = result.data or []
+
+        # 2. Slug gruplarını bul
+        slug_groups: Dict[str, List[int]] = {}
+        for r in rows:
+            s = r.get("slug")
+            if s:  # boş string ve NULL atla
+                slug_groups.setdefault(s, []).append(r["id"])
+
+        # 3. Duplicate'leri tespit et
+        duplicates = {s: ids for s, ids in slug_groups.items() if len(ids) > 1}
+        if not duplicates:
+            return MigrationResponse(
+                ok=True,
+                message="Duplicate slug yok",
+                details={"total": len(rows), "duplicates": 0, "fixed": 0},
+            )
+
+        # 4. Her gruptan ilk (en küçük id) kalsın, diğerlerini q{id} yap
+        fixed = 0
+        for slug, ids in duplicates.items():
+            ids_sorted = sorted(ids)
+            keep_id = ids_sorted[0]
+            for qid in ids_sorted[1:]:
+                new_slug = f"q{qid}"
+                try:
+                    sb.table("interwiews").update({"slug": new_slug}).eq("id", qid).execute()
+                    fixed += 1
+                except Exception as e:
+                    logger.exception("Slug fix failed for id=%s: %s", qid, e)
+
+        return MigrationResponse(
+            ok=True,
+            message=f"{fixed} duplicate slug temizlendi ({len(duplicates)} grup)",
+            details={"total": len(rows), "duplicates": len(duplicates), "fixed": fixed, "groups": duplicates},
+        )
+
+    except Exception as e:
+        logger.exception("fix_duplicate_slugs failed")
+        return MigrationResponse(
+            ok=False,
+            message=f"Hata: {e}",
+        )
 
 
 # ═══════════════════════════════════════════════════════════

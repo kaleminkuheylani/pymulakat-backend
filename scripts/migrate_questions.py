@@ -60,6 +60,13 @@ def slugify_title(title: str) -> str:
     return s or f"question-{hash(title) % 100000}"
 
 
+def unique_slug(title: str, qid: int) -> str:
+    """Slug + id bazli unique slug. Cozum: qid'yi sona ekle.
+    Bu sayede ayni title iki kez olsa bile farkli slug olur."""
+    base = slugify_title(title)
+    return f"{base}-{qid}"
+
+
 def test_connection():
     """Bağlantıyı test et — service_role key doğru mu?"""
     try:
@@ -106,7 +113,7 @@ def migrate_questions():
         try:
             row = {
                 "id": q.id,
-                "slug": getattr(q, "slug", None) or slugify_title(q.title),
+                "slug": getattr(q, "slug", None) or unique_slug(q.title, q.id),
                 "title": q.title,
                 "description": q.description or "",
                 "category": q.category or "python-basics",
