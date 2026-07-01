@@ -90,17 +90,33 @@ async def migrate_tutorials():
 @router.post("/migrate/slugs", response_model=MigrationResponse)
 async def migrate_slugs():
     """interviews tablosuna title'dan slug üretip yaz (canonical URL için)."""
+    import re
     try:
+        # 1. ÖNCE: slug kolonu yoksa ekle (psycopg2)
+        try:
+            import psycopg2
+            db_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL")
+            if db_url:
+                conn = psycopg2.connect(db_url)
+                conn.autocommit = True
+                cur = conn.cursor()
+                cur.execute("ALTER TABLE public.interviews ADD COLUMN IF NOT EXISTS slug TEXT")
+                cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_interviews_slug ON public.interviews(slug) WHERE slug IS NOT NULL")
+                cur.execute("NOTIFY pgrst, 'reload schema'")
+                cur.close()
+                conn.close()
+                print("✅ Slug kolonu + index eklendi (psycopg2)")
+        except Exception as e:
+            print(f"⚠️ psycopg2 ALTER basarisiz (kolon zaten var olabilir): {e}")
+
+        # 2. Supabase admin ile devam
         from supabase_client import get_supabase_admin
         sb = get_supabase_admin()
 
-        # 1. Tüm soruları çek
         result = sb.table("interviews").select("id, title, slug").execute()
         rows = result.data or []
         print(f"📝 [SLUGS] {len(rows)} soru bulundu")
 
-        # 2. Slugify helper
-        import re
         def slugify(text: str) -> str:
             tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
             text = text.lower().translate(tr)
@@ -108,16 +124,12 @@ async def migrate_slugs():
             text = re.sub(r'\s+', '-', text).strip('-')
             return text[:80]
 
-        # 3. Her satır için slug üret ve güncelle
         updated = 0
         errors = []
         seen_slugs = set()
         for row in rows:
             title = row.get("title", "")
-            existing_slug = row.get("slug")
             new_slug = slugify(title)
-
-            # Duplicate handling: aynı slug varsa id ekle
             final_slug = new_slug
             counter = 1
             while final_slug in seen_slugs:
@@ -154,8 +166,8 @@ async def migrate_schema():
         raise HTTPException(404, f"SQL bulunamadı: {sql_path}")
 
     try:
-        from supabase_client import get_service_role
-        sb = get_service_role()
+        from supabase_client import get_supabase_admin
+        sb = get_supabase_admin()
 
         with open(sql_path, "r") as f:
             sql_content = f.read()
