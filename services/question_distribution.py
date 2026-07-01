@@ -221,7 +221,7 @@ def get_next_id(existing_ids: List[int]) -> int:
     return max(existing_ids) + 1 if existing_ids else 1
 
 
-def build_distribution_prompt(plan: List[Dict], existing_questions_sample: str) -> str:
+def build_distribution_prompt(plan: List[Dict], existing_questions_sample: str, db_schema: Optional[Dict] = None) -> str:
     """
     Gemini için prompt — input/output ilişkisi olan sorular.
     """
@@ -237,6 +237,16 @@ def build_distribution_prompt(plan: List[Dict], existing_questions_sample: str) 
         )
     plan_lines = "\n".join(plan_lines_parts)
 
+    # DB şema bilgisini hazirla (alan isimleri, tipleri)
+    if db_schema:
+        schema_lines = []
+        for col, info in db_schema.items():
+            req = " (ZORUNLU)" if info.get("required") else ""
+            schema_lines.append(f"  - {col}: {info.get('type', '?')}{req}")
+        schema_text = "\n".join(schema_lines)
+    else:
+        schema_text = "(şema bilgisi yok)"
+
     template = """Sen uzman bir Python eğitmenisin. Aşağıdaki output type planına göre TAM OLARAK __N__ adet yeni soru üreteceksin.
 
 ⚠️ **ÖNEMLİ KURAL**: Her soru **input → output** ilişkisi olan bir dönüşüm fonksiyonu olmalı.
@@ -251,6 +261,12 @@ __PLAN__
 ```python
 __SAMPLE__
 ```
+
+**DB ŞEMASI (interwiews tablosu) — Üreteceğin alanlar BUNLARLA aynı olmalı:**
+__SCHEMA__
+
+⚠️ **ÖNEMLİ**: Her soru yukarıdaki şemadaki alan isimleriyle bire bir uyumlu olmalı.
+Alan isimlerini asla değiştirme. Ekstra alan ekleme. Mevcut alanı çıkarma.
 
 **Genel kurallar:**
 1. Her soru gerçek hayat senaryosu içermeli (günlük hayat, iş dünyası, oyun)
@@ -294,6 +310,7 @@ __SAMPLE__
     result = template.replace("__N__", str(len(plan)))
     result = result.replace("__PLAN__", plan_lines)
     result = result.replace("__SAMPLE__", existing_questions_sample)
+    result = result.replace("__SCHEMA__", schema_text)
     # URL-decode the JSON braces back to normal
     result = result.replace("%7B", "{").replace("%7D", "}")
     return result

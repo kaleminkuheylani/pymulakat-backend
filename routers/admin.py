@@ -565,6 +565,9 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
         else:
             existing_questions_sample = "(örnek bulunamadı)"
 
+        # 1b. DB şemasını çek (Gemini prompt'una ekle)
+        schema_info = _get_interwiews_schema()
+
         # 2. DB'den mevcut soruları çek
         from supabase_client import get_supabase_admin
         sb = get_supabase_admin()
@@ -616,8 +619,8 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
                 gaps=gaps,
             )
 
-        # 6. Gemini prompt
-        prompt = build_distribution_prompt(plan, existing_questions_sample)
+        # 6. Gemini prompt (DB şeması dahil)
+        prompt = build_distribution_prompt(plan, existing_questions_sample, schema_info)
 
         # 7. Gemini'den al
         from services.gemini import AIQuestionGenerator
@@ -668,20 +671,24 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
 
         valid_questions = []
         skipped = 0
+        # DB'de var olan kolonlar
+        allowed_columns = set(INTERVIEWS_SCHEMA.keys())
+        allowed_columns.add("id")  # INSERT'te id de var
         for item in generated:
             try:
                 if not all(k in item for k in ("title", "category", "level", "description",
                                                 "starter_code", "test_cases", "hints")):
                     skipped += 1
                     continue
-                item["id"] = next_id
+                # DB'de OLMAYAN alanlari filtrele
+                filtered = {k: v for k, v in item.items() if k in allowed_columns}
+                filtered["id"] = next_id
                 next_id += 1
-                item.setdefault("complexity", "O(n)")
-                item.setdefault("tutorial_slug", None)
-                item.setdefault("slug", None)
-                # Output type'ı DB'ye yazma (sadece soru üretimi için kullanıldı)
-                item.pop("output_type", None)
-                valid_questions.append(item)
+                filtered.setdefault("complexity", "O(n)")
+                filtered.setdefault("tutorial_slug", None)
+                filtered.setdefault("slug", None)
+                filtered.pop("output_type", None)
+                valid_questions.append(filtered)
             except Exception:
                 skipped += 1
 
@@ -829,5 +836,64 @@ async def cron_run_question_generation(request: Request):
 
     from services.question_scheduler import run_scheduled_generation
     result = run_scheduled_generation()
-    return result# 1782883061
+    return result
+
+
+# ═══════════════════════════════════════════════════════════
+# DB Schema Endpoint — Gemini prompt'una eklenir
+# ═══════════════════════════════════════════════════════════
+
+INTERVIEWS_SCHEMA = {
+    "title": {"type": "str", "required": True},
+    "category": {"type": "str", "required": True},
+    "level": {"type": "str", "required": True},
+    "description": {"type": "str", "required": True},
+    "starter_code": {"type": "str", "required": True},
+    "test_cases": {"type": "list", "required": True},
+    "hints": {"type": "list", "required": True},
+    "topic": {"type": "str", "required": False},
+    "function_name": {"type": "str", "required": False},
+    "difficulty": {"type": "str", "required": False},
+    "complexity": {"type": "str", "required": False},
+    "explanation": {"type": "str", "required": False},
+    "related_concepts": {"type": "list", "required": False},
+    "related_question_ids": {"type": "list", "required": False},
+    "tutorial_slug": {"type": "str", "required": False},
+    "meta_title": {"type": "str", "required": False},
+    "meta_description": {"type": "str", "required": False},
+    "meta_keywords": {"type": "list", "required": False},
+    "reading_time_minutes": {"type": "int", "required": False},
+    "tags": {"type": "list", "required": False},
+    "day": {"type": "int", "required": False},
+    "week": {"type": "int", "required": False},
+    "theme": {"type": "str", "required": False},
+    "slug": {"type": "str", "required": False},
+}
+
+
+def _get_interwiews_schema() -> Dict:
+    return INTERVIEWS_SCHEMA
+
+
+@router.get("/schema/interwiews")
+async def get_interwiews_schema_endpoint():
+    return {"table": "interwiews", "schema": INTERVIEWS_SCHEMA}
+
+
+@router.get("/schema/tutorials")
+async def get_tutorials_schema_endpoint():
+    return {
+        "table": "tutorials",
+        "schema": {
+            "slug": {"type": "str", "required": True},
+            "title": {"type": "str", "required": True},
+            "content_md": {"type": "str", "required": True},
+            "description": {"type": "str", "required": False},
+            "category": {"type": "str", "required": False},
+            "difficulty": {"type": "str", "required": False},
+            "reading_time_minutes": {"type": "int", "required": False},
+            "related_question_ids": {"type": "list", "required": False},
+            "faq": {"type": "list", "required": False},
+        },
+    }# 1782883061
 # 1782885672

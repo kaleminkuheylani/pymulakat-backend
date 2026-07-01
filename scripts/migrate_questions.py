@@ -81,11 +81,21 @@ def tr_to_ascii_slug(text: str) -> str:
     return s
 
 
-def unique_slug(title: str, qid: int) -> str:
-    """Slug + id bazli unique slug. Cozum: qid'yi sona ekle.
-    Bu sayede ayni title iki kez olsa bile farkli slug olur."""
+def unique_slug(title: str, qid: int, existing_slugs: set = None) -> str:
+    """Unique slug üret - ID eklemez, SEO dostu.
+
+    Slug = title'dan türetilir. Duplicate varsa -2, -3 ekler.
+    Ornek:
+      Q1 'Palindrome Checker' -> palindrome-checker
+      Q16 'Palindrome'        -> palindrome-checker-2 (duplicate ise)
+    """
     base = slugify_title(title)
-    return f"{base}-{qid}"
+    if not existing_slugs or base not in existing_slugs:
+        return base
+    counter = 2
+    while f"{base}-{counter}" in existing_slugs:
+        counter += 1
+    return f"{base}-{counter}"
 
 
 def test_connection():
