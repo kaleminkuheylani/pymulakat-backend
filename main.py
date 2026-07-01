@@ -40,6 +40,7 @@ app.add_middleware(
         "https://pythonmulakat.com",
         "https://pymulakat.vercel.app",
         "https://pymulakat-frontend.vercel.app",
+        "https://pymulakat-backend-production.up.railway.app",
         "http://localhost:3000",
         "http://localhost:3001",
         "http://127.0.0.1:3000",
@@ -81,7 +82,6 @@ tutorials_v2 = try_include("routers.tutorials", "tutorials (v2)")
 admin_module = try_include("routers.admin", "admin (migration)")
 coach_v2 = try_include("routers.coach", "coach (email)")
 coach_status_v2 = try_include("routers.coach_status", "coach-status (user view)")
-dashboard_v2 = try_include("routers.dashboard", "dashboard (personal)")
 
 
 @app.get("/health")
@@ -98,7 +98,6 @@ def health():
             "admin": admin_module is not None,
             "coach": coach_v2 is not None,
             "coach_status": coach_status_v2 is not None,
-            "dashboard": dashboard_v2 is not None,
         },
         "total_routes": len(app.routes),
     }
