@@ -27,13 +27,19 @@ class QuestionOut(BaseModel):
     tags: list[str] = Field(default_factory=list)
     starter_code: Optional[str] = None
     test_count: int = 0
-    # 🆕 SEO alanları
+    function_name: Optional[str] = None
+    hints: list[str] = Field(default_factory=list)
+    # SEO alanları
     explanation: Optional[str] = None
     complexity: Optional[str] = None
     related_concepts: list[str] = Field(default_factory=list)
     related_question_ids: list[int] = Field(default_factory=list)
     tutorial_slug: Optional[str] = None
     slug: Optional[str] = None  # Canonical URL slug
+    meta_title: Optional[str] = None
+    meta_description: Optional[str] = None
+    meta_keywords: list[str] = Field(default_factory=list)
+    related_questions: list[dict] = Field(default_factory=list)  # Server-side prefetch
 
 
 class QuestionTestsResponse(BaseModel):
@@ -84,6 +90,12 @@ def _to_question_out(q, include_starter=False):
     test_cases = _q_get(q, "test_cases", []) or []
     if not isinstance(test_cases, list):
         test_cases = []
+    starter_code = _q_get(q, "starter_code") if include_starter else None
+    function_name = (
+        _extract_function_name(starter_code)
+        if include_starter and starter_code
+        else (_q_get(q, "function_name") or None)
+    )
     return QuestionOut(
         id=_q_get(q, "id"),
         title=_q_get(q, "title", ""),
@@ -92,14 +104,20 @@ def _to_question_out(q, include_starter=False):
         topic=_q_get(q, "topic"),
         category=_q_get(q, "category"),
         tags=_q_get(q, "tags", []) or [],
-        starter_code=_q_get(q, "starter_code") if include_starter else None,
+        starter_code=starter_code,
         test_count=len(test_cases),
+        function_name=function_name,
+        hints=_q_get(q, "hints", []) or [],
         explanation=_q_get(q, "explanation") or None,
         complexity=_q_get(q, "complexity") or None,
         related_concepts=_q_get(q, "related_concepts", []) or [],
         related_question_ids=_q_get(q, "related_question_ids", []) or [],
         tutorial_slug=_q_get(q, "tutorial_slug"),
         slug=_q_get(q, "slug"),
+        meta_title=_q_get(q, "meta_title"),
+        meta_description=_q_get(q, "meta_description"),
+        meta_keywords=_q_get(q, "meta_keywords", []) or [],
+        related_questions=[],  # Server-side prefetch (page.tsx'te doldurulur)
     )
 
 
