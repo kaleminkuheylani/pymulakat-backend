@@ -184,42 +184,41 @@ async def migrate_slugs(force: bool = False):
 
 @router.post("/migrate/related-questions")
 async def migrate_related_questions():
-    """QuestionMeta'daki related_questions'i DB'ye yaz (server-side fetchRelatedTitles icin).
-
-    DB'de related_question_ids (bigint[]) kolonu dolu olur.
-    Frontend server-side'da fetchRelatedTitles ile 5 sorunun title/slug/category bilgisini alir.
-    """
-    import re
+    """Hardcoded mapping — frontend QuestionMeta ile senkronize."""
     try:
-        # 1. QuestionMeta.ts'i parse et (frontend sync)
-        qmeta_path = "/workspace/pymulakat-frontend/lib/questionMeta.ts"
-        with open(qmeta_path, "r") as f:
-            content = f.read()
+        RELATED_MAP = {
+            1: [2, 3, 10, 11], 2: [53, 11, 1], 3: [1, 7, 17, 19],
+            4: [30, 14, 10], 5: [9, 14, 16], 6: [11, 19, 29],
+            7: [1, 3, 17], 8: [9, 11, 16], 9: [5, 7],
+            10: [1, 3, 7, 17], 11: [12, 14, 16], 12: [26, 27, 28],
+            13: [1, 17, 23], 14: [4, 30, 10], 15: [9, 11, 16],
+            16: [17, 19, 23], 17: [23, 25, 27], 18: [1, 2, 3],
+            19: [6, 18, 20], 20: [1, 2, 3], 21: [7, 22, 24],
+            22: [1, 21, 25], 23: [11, 19, 25], 24: [19, 23, 25],
+            25: [22, 24, 27], 26: [27, 28, 29], 27: [26, 28, 29],
+            28: [26, 27, 29], 29: [26, 27, 28], 30: [14, 4, 27],
+            31: [28, 29, 30], 32: [33, 35, 36], 33: [32, 35, 36],
+            34: [28, 29, 30], 35: [8, 26, 27, 29], 36: [32, 33, 35],
+            37: [38, 41, 43], 38: [32, 33, 41], 39: [32, 33, 35],
+            40: [32, 33, 41], 41: [37, 42, 43], 42: [41, 43, 44],
+            43: [38, 42, 44], 44: [32, 42, 43], 45: [38, 41, 43],
+            46: [47, 48, 49], 47: [46, 48, 49], 48: [46, 47, 49],
+            49: [46, 47, 48], 50: [16, 47, 48, 49], 51: [1, 3, 7],
+            52: [1, 17, 23], 53: [1, 7, 17], 54: [1, 17, 19],
+            55: [1, 7, 23], 56: [1, 17, 23], 57: [19, 38, 41],
+            58: [1, 7, 17], 59: [19, 38, 41], 60: [1, 7, 17],
+            61: [19, 23, 38], 62: [1, 17, 23], 63: [19, 38, 41],
+            64: [19, 23, 38], 65: [38, 41, 42], 66: [38, 41, 43],
+            67: [38, 41, 43],
+        }
+        print(f"Mapping: {len(RELATED_MAP)} entry")
 
-        # Her entry'den related_questions'i cikar
-        # Pattern: id: N, ..., related_questions: [...], slug: "..."
-        pattern = r'(\d+): \{ id: (\d+), title: "[^"]+", function_name: "[^"]+", topic: "[^"]+", difficulty_note: "[^"]+", related_concepts: \[[^\]]*\], related_questions: (\[[^\]]*\]), slug: "[^"]+" \},'
-        entry_map = {}
-        for m in re.finditer(pattern, content):
-            qid = int(m.group(1))
-            related_str = m.group(2)
-            # Parse [1, 2, 3] -> [1, 2, 3]
-            try:
-                related_list = eval(related_str)
-                if isinstance(related_list, list):
-                    entry_map[qid] = related_list
-            except:
-                pass
-
-        print(f"QuestionMeta'dan {len(entry_map)} entry parse edildi")
-
-        # 2. DB'ye yaz
         from supabase_client import get_supabase_admin
         sb = get_supabase_admin()
 
         updated = 0
         errors = []
-        for qid, related_list in entry_map.items():
+        for qid, related_list in RELATED_MAP.items():
             try:
                 sb.table("interwiews").update({"related_question_ids": related_list}).eq("id", qid).execute()
                 updated += 1
@@ -229,21 +228,12 @@ async def migrate_related_questions():
         return {
             "ok": True,
             "message": f"{updated} soruya related_question_ids yazildi",
-            "details": {
-                "updated": updated,
-                "total": len(entry_map),
-                "errors": errors[:5],
-            }
+            "details": {"updated": updated, "total": len(RELATED_MAP), "errors": errors[:5]},
         }
     except Exception as e:
         import traceback
         traceback.print_exc()
         return {"ok": False, "message": f"Hata: {e}"}
-
-        import traceback
-        traceback.print_exc()
-        return MigrationResponse(ok=False, message=f"Slug migration hatasi: {str(e)[:200]}")
-
 
 @router.post("/migrate/schema", response_model=MigrationResponse)
 async def migrate_schema():
