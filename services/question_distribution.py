@@ -1,209 +1,286 @@
 # services/question_distribution.py
 # QUESTIONS.py ve Supabase'den soru dağılımını analiz eder.
-# Eksik kategori/level tespit edip Gemini prompt hazırlar.
+# Output type bazlı kategorizasyon: string / number / boolean / list / dict / tuple.
+# Sadece input -> output ilişkisi olan sorular (algoritma / veri dönüşüm mantığı).
 
 import os
 import re
 import logging
 from collections import Counter
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 
 logger = logging.getLogger(__name__)
 
 
+# ── Output type kategorileri ────────────────────────────
+
+OUTPUT_TYPES = {
+    "string": {
+        "label": "String Çıktı",
+        "description": "Fonksiyon str/dict[str]/formatted output döndürür",
+        "examples": [
+            "email validate -> bool",
+            "sayıyı yazıya çevir -> 'yüz yirmi üç'",
+            "şifre maskele -> 'a***@gmail.com'",
+            "tarih formatla -> '2026-07-01'",
+        ],
+        "test_expected_types": ["str"],
+    },
+    "number": {
+        "label": "Sayı Çıktı",
+        "description": "Fonksiyon int/float döndürür (count, sum, index, math)",
+        "examples": [
+            "listedeki en büyük sayı -> 42",
+            "OBEB hesapla -> 12",
+            "binary search adım sayısı -> 3",
+            "basamak sayısı -> 5",
+        ],
+        "test_expected_types": ["int", "float", "number"],
+    },
+    "boolean": {
+        "label": "Boolean Çıktı",
+        "description": "Fonksiyon True/False döndürür (check, validation)",
+        "examples": [
+            "palindrom mu? -> True",
+            "sayı asal mı? -> False",
+            "parantezler dengeli mi? -> True",
+            "iki string anagram mı? -> False",
+        ],
+        "test_expected_types": ["bool", "boolean"],
+    },
+    "list": {
+        "label": "Liste Çıktı",
+        "description": "Fonksiyon list döndürür (transform, filter, sort)",
+        "examples": [
+            "string -> char list ['h','e','l','l','o']",
+            "top 3 maaş [9000, 8000, 7500]",
+            "factoriel listesi [1, 1, 2, 6, 24]",
+            "benzersiz kelimeler sorted",
+        ],
+        "test_expected_types": ["list", "array"],
+    },
+    "dict": {
+        "label": "Sözlük Çıktı",
+        "description": "Fonksiyon dict/map döndürür (group, count, lookup)",
+        "examples": [
+            "harf sayacı {'a': 3, 'b': 1}",
+            "kelime grupları {'short': [...], 'long': [...]}",
+            "envanter {'elma': 5, 'armut': 2}",
+        ],
+        "test_expected_types": ["dict", "object"],
+    },
+    "tuple": {
+        "label": "Tuple Çıktı",
+        "description": "Fonksiyon tuple döndürür (pair, multi-return)",
+        "examples": [
+            "(min, max) -> (1, 100)",
+            "(quotient, remainder) -> (3, 1)",
+            "(rgb, hex) -> ((255,0,0), '#FF0000')",
+        ],
+        "test_expected_types": ["tuple"],
+    },
+}
+
+
+def infer_output_type(test_cases: List[Dict], starter_code: str = "") -> str:
+    """
+    Test case'lerden output type çıkar.
+    Döner: 'string' | 'number' | 'boolean' | 'list' | 'dict' | 'tuple' | 'mixed'
+    """
+    if not test_cases:
+        return "string"  # default
+
+    expected_values = [tc.get("expected") for tc in test_cases if "expected" in tc]
+    if not expected_values:
+        return "string"
+
+    # Type counter
+    type_counts = Counter()
+    for val in expected_values:
+        if isinstance(val, bool):
+            type_counts["boolean"] += 1
+        elif isinstance(val, (int, float)):
+            type_counts["number"] += 1
+        elif isinstance(val, str):
+            type_counts["string"] += 1
+        elif isinstance(val, list):
+            type_counts["list"] += 1
+        elif isinstance(val, dict):
+            type_counts["dict"] += 1
+        elif isinstance(val, tuple):
+            type_counts["tuple"] += 1
+        else:
+            type_counts["mixed"] += 1
+
+    # En çok olan tip
+    if not type_counts:
+        return "string"
+    return type_counts.most_common(1)[0][0]
+
+
 def analyze_questions_py(questions: List) -> Dict:
     """
-    QUESTIONS listesinden dağılım çıkar.
-    Döner: {
-        "total": int,
-        "by_category": {"python-basics": 5, "strings": 3, ...},
-        "by_level": {"beginner": 30, "intermediate": 25, ...},
-        "by_category_level": {("python-basics", "beginner"): 4, ...},
-        "existing_ids": [1, 2, ...]
-    }
+    QUESTIONS listesinden output_type dağılımı çıkar.
     """
-    by_category = Counter()
-    by_level = Counter()
-    by_cat_level = Counter()
+    by_type = Counter()
+    by_type_level = Counter()
     existing_ids = []
+    type_examples = {}
 
     for q in questions:
-        cat = getattr(q, "category", "unknown")
-        lvl = getattr(q, "level", "unknown")
-        qid = getattr(q, "id", 0)
-        by_category[cat] += 1
-        by_level[lvl] += 1
-        by_cat_level[(cat, lvl)] += 1
-        existing_ids.append(qid)
+        out_type = infer_output_type(q.test_cases, getattr(q, "starter_code", ""))
+        level = getattr(q, "level", "unknown")
+        by_type[out_type] += 1
+        by_type_level[(out_type, level)] += 1
+        existing_ids.append(getattr(q, "id", 0))
+
+        # Her tip için bir örnek başlık sakla
+        if out_type not in type_examples:
+            type_examples[out_type] = getattr(q, "title", "")
 
     return {
         "total": len(questions),
-        "by_category": dict(by_category),
-        "by_level": dict(by_level),
-        "by_category_level": {f"{k[0]}|{k[1]}": v for k, v in by_cat_level.items()},
+        "by_output_type": dict(by_type),
+        "by_output_type_level": {f"{k[0]}|{k[1]}": v for k, v in by_type_level.items()},
+        "type_examples": type_examples,
         "existing_ids": sorted(existing_ids),
     }
 
 
-def identify_gaps(distribution: Dict, target_total: int = 90) -> List[Dict]:
+def identify_gaps(distribution: Dict, target_per_type: int = 12) -> List[Dict]:
     """
-    Eksik kategori/level tespit et.
-    Hedef: 90 soru (beginner: 45, intermediate: 35, advanced: 10)
-    Kategori başına minimum: 5 soru
+    Eksik output type'ları tespit et.
+    Hedef: her tip için 12 soru (toplam ~72 soru, dengeli dağılım).
     """
-    # Hedef dağılım (gerçekçi bir Python mülakat seti)
-    TARGET_BY_CATEGORY = {
-        "python-basics": 12,
-        "strings": 8,
-        "list-dict": 10,
-        "oop": 8,
-        "algorithms": 12,
-        "data-types": 5,
-        "pandas": 6,
-        "numpy": 4,
-        "sqlite3": 4,
-        "sklearn": 3,
-        "matplotlib": 3,
-        "beyin-firtinasi": 5,
-        "simple-apps": 4,
-        "web": 3,
-        "async": 3,
-    }
-
-    TARGET_BY_LEVEL = {
-        "beginner": 45,
-        "intermediate": 35,
-        "advanced": 10,
-    }
+    by_type = distribution["by_output_type"]
 
     gaps = []
-    by_cat = distribution["by_category"]
-    by_lvl = distribution["by_level"]
-
-    # Kategori eksikleri
-    for cat, target in TARGET_BY_CATEGORY.items():
-        current = by_cat.get(cat, 0)
-        if current < target:
-            needed = target - current
+    for out_type, info in OUTPUT_TYPES.items():
+        current = by_type.get(out_type, 0)
+        if current < target_per_type:
+            needed = target_per_type - current
             gaps.append({
-                "type": "category",
-                "category": cat,
+                "type": "output_type",
+                "output_type": out_type,
+                "label": info["label"],
                 "current": current,
-                "target": target,
+                "target": target_per_type,
                 "needed": needed,
-                "priority": "high" if needed >= 4 else "medium",
+                "priority": "high" if needed >= 6 else "medium",
             })
 
-    # Level eksikleri
-    for lvl, target in TARGET_BY_LEVEL.items():
-        current = by_lvl.get(lvl, 0)
-        if current < target:
-            needed = target - current
-            gaps.append({
-                "type": "level",
-                "level": lvl,
-                "current": current,
-                "target": target,
-                "needed": needed,
-                "priority": "high" if needed >= 5 else "medium",
-            })
-
-    # Öncelik sırala
     gaps.sort(key=lambda g: (-g["needed"], g["priority"] != "high"))
     return gaps
 
 
-def select_questions_to_generate(
-    gaps: List[Dict], n: int = 5
-) -> List[Dict]:
+def select_questions_to_generate(gaps: List[Dict], n: int = 5) -> List[Dict]:
     """
-    Gap listesinden N adet soru üretim planı seç.
-    Öncelik: yüksek gap + dengeli kategori/level dağılımı.
+    N adet soru üretim planı seç.
+    Dengeli output type dağılımı, her seferde farklı tip.
     """
     plan = []
-    used_cats = set()
-    used_levels = set()
+    used_types = set()
+    by_type_index = {}  # Her tip için kaçıncı soruyu seçtik
 
-    for gap in gaps[:n * 2]:  # Daha fazla aday seç, sonra filtrele
+    for gap in gaps:
         if len(plan) >= n:
             break
+        out_type = gap["output_type"]
+        if out_type in used_types and len(plan) < n - 1:
+            continue  # Aynı tipte art arda alma (mümkünse)
 
-        if gap["type"] == "category":
-            cat = gap["category"]
-            # Beginner tercih et (daha çok eksik)
-            level = "beginner" if cat not in used_levels else "intermediate"
+        plan.append({
+            "output_type": out_type,
+            "level": "beginner" if gap["current"] < 4 else "intermediate",
+            "reason": f"{gap['label']}: {gap['current']}/{gap['target']}",
+            "guidance": OUTPUT_TYPES[out_type]["description"],
+            "examples": OUTPUT_TYPES[out_type]["examples"][:2],
+        })
+        used_types.add(out_type)
+        by_type_index[out_type] = by_type_index.get(out_type, 0) + 1
+
+    # Eğer plan n'den az olduysa (yeterli gap yok), duplicate tip ekle
+    if len(plan) < n:
+        for gap in gaps:
+            if len(plan) >= n:
+                break
+            out_type = gap["output_type"]
             plan.append({
-                "category": cat,
-                "level": level,
-                "reason": f"{cat}: {gap['current']}/{gap['target']}",
+                "output_type": out_type,
+                "level": "intermediate",
+                "reason": f"{gap['label']}: ek soru",
+                "guidance": OUTPUT_TYPES[out_type]["description"],
+                "examples": OUTPUT_TYPES[out_type]["examples"][:2],
             })
-            used_cats.add(cat)
-            used_levels.add(level)
-        elif gap["type"] == "level":
-            level = gap["level"]
-            # Çeşitli kategori
-            cats = [g["category"] for g in gaps if g["type"] == "category"]
-            cat = cats[0] if cats else "python-basics"
-            if cat in used_cats and len(cats) > 1:
-                cat = cats[1]
-            plan.append({
-                "category": cat,
-                "level": level,
-                "reason": f"{level}: {gap['current']}/{gap['target']}",
-            })
-            used_cats.add(cat)
-            used_levels.add(level)
 
     return plan[:n]
 
 
 def get_next_id(existing_ids: List[int]) -> int:
-    """Bir sonraki ID (max + 1)."""
+    """Bir sonraki ID."""
     return max(existing_ids) + 1 if existing_ids else 1
 
 
 def build_distribution_prompt(plan: List[Dict], existing_questions_sample: str) -> str:
     """
-    Gemini için prompt hazırla.
-    Plan: [{"category": "oop", "level": "intermediate", ...}]
-    existing_questions_sample: QUESTIONS.py'den 3 örnek (format göstermek için)
+    Gemini için prompt — input/output ilişkisi olan sorular.
     """
     plan_lines = "\n".join(
-        f"{i+1}. {p['category']} ({p['level']}) — gerekçe: {p['reason']}"
+        f"{i+1}. OUTPUT TYPE: {p['output_type']} ({p['level']}) — {p['reason']}\n"
+        f"   Kılavuz: {p['guidance']}\n"
+        f"   Örnekler:\n     • {p['examples'][0]}\n     • {p['examples'][1] if len(p['examples']) > 1 else ''}"
         for i, p in enumerate(plan)
     )
 
-    return f"""Sen uzman bir Python eğitmenisin. Aşağıdaki dağılım planına göre TAM OLARAK {len(plan)} adet yeni soru üreteceksin.
+    return f"""Sen uzman bir Python eğitmenisin. Aşağıdaki output type planına göre TAM OLARAK {len(plan)} adet yeni soru üreteceksin.
 
-**Dağılım planı (her satır bir soru için):**
+⚠️ **ÖNEMLİ KURAL**: Her soru **input → output** ilişkisi olan bir dönüşüm fonksiyonu olmalı.
+- Fonksiyon SADECE bir değer döndürmeli (return x), print/yan etki yok
+- Input ne olursa olsun, output tipi belirli bir Python tipi olmalı (str, int, float, bool, list, dict, tuple)
+- Side-effect'siz (dosya yazma, network çağrısı yok)
+
+**Plan (her satır bir soru, output type'a göre):**
 {plan_lines}
 
-**Mevcut soru formatı örneği (bunu takip et):**
+**Mevcut soru format örneği (takip et):**
 ```python
 {existing_questions_sample}
 ```
 
-**Kurallar:**
-1. Her soru gerçek hayat senaryosu içermeli (oyun, günlük hayat, iş dünyası)
-2. Starter code fonksiyon imzası + yorum + pass içermeli
-3. 2-4 test case (kolaydan zora)
-4. 3 ipucu (kademeli, 💡 İpucu N: ... formatında)
-5. Difficulty beginner için "easy", intermediate için "medium", advanced için "hard"
-6. Title'da emoji kullan
-7. Türkçe description (öğrenci kitlesi Türk)
-8. test_cases.input dict DEĞİL — direkt tek parametre (veya fonksiyon dict alıyorsa dict)
+**Genel kurallar:**
+1. Her soru gerçek hayat senaryosu içermeli (günlük hayat, iş dünyası, oyun)
+2. Starter code `def fn(param: tip) -> donus_tipi: # yorum\n    pass` formatında
+3. 2-4 test case (kolay → zor sırayla)
+4. 3 ipucu (kademeli, "💡 İpucu N: ..." formatında)
+5. Title'da emoji kullan
+6. Türkçe description
+7. test_cases.input TEK parametre ise direkt değer, çok parametre ise dict
+8. test_cases.expected SADECE belirtilen output type'ta (string için str, list için list, vs.)
+9. **Output tipi plan'a TAM UY** — string ise sadece str, number ise int/float
+
+**Her output type için beklenen expected tipleri:**
+- `string`: 'merhaba', 'kullanici@gmail.com' gibi tırnak içinde
+- `number`: 42, 3.14 gibi tırnaksız sayı
+- `boolean`: true veya false (küçük harf, JSON standardı)
+- `list`: [1, 2, 3] köşeli parantez
+- `dict`: {"key": "value"} süslü parantez
+- `tuple`: (1, 2) normal parantez
 
 **Çıktı formatı (SADECE JSON array, başka metin yok):**
 [
   {{
-    "title": "...",
-    "category": "...",
-    "level": "...",
+    "title": "🛒 Sepet Toplamı",
+    "output_type": "number",
+    "category": "python-basics",
+    "level": "beginner",
     "description": "...",
     "starter_code": "def fn(...) -> ...:\\n    pass",
-    "test_cases": [{{"input": ..., "expected": ...}}],
+    "test_cases": [
+      {{"input": "100", "expected": 150}},
+      {{"input": "200", "expected": 250}}
+    ],
     "hints": ["💡 İpucu 1: ...", "💡 İpucu 2: ...", "💡 İpucu 3: ..."],
-    "complexity": "O(n) — ..."
+    "complexity": "O(n)"
   }},
   ...
 ]

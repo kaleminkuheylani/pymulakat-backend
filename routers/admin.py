@@ -9,16 +9,12 @@ Kullanım:
     curl -X POST https://pymulakat-backend-production.up.railway.app/admin/migrate/tutorials
 """
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import os
 import sys
-import json
-import re
-import logging
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-logger = logging.getLogger(__name__)
 
 
 class MigrationResponse(BaseModel):
@@ -321,14 +317,14 @@ async def admin_health():
 
 
 # ═══════════════════════════════════════════════════════════
-# Gemini ile Soru Üretimi (Dağılım Analizi)
+# Gemini ile Soru Üretimi (Output Type Dağılımı)
 # ═══════════════════════════════════════════════════════════
 
 class GenerateQuestionsRequest(BaseModel):
     n: int = 5
-    target_total: int = 90
+    target_per_type: int = 12
     dry_run: bool = False
-    categories: list[str] = []  # opsiyonel: belirli kategoriler
+    output_types: list[str] = []  # opsiyonel: belirli tipler
 
 
 class GenerateQuestionsResponse(BaseModel):
@@ -346,18 +342,21 @@ class GenerateQuestionsResponse(BaseModel):
 @router.post("/generate/questions", response_model=GenerateQuestionsResponse)
 async def generate_questions_endpoint(req: GenerateQuestionsRequest):
     """
-    QUESTIONS.py + Supabase dağılımını analiz et, eksik yerlere
+    QUESTIONS.py + Supabase dağılımını analiz et, eksik output type'lara
     Gemini ile yeni sorular üret, Supabase'e INSERT et.
+
+    Kategoriler output_type bazlı (string, number, boolean, list, dict, tuple).
+    Sorular input → output ilişkisi olan fonksiyonlardır.
 
     Kullanım:
         POST /admin/generate/questions
         Body: {"n": 5, "dry_run": false}
 
     Akış:
-    1. QUESTIONS.py'i yükle
-    2. Supabase'den mevcut soruları çek (DB üstün, fallback QUESTIONS.py)
-    3. Dağılım analizi (kategori + level)
-    4. Gap tespiti (eksik kategoriler/seviyeler)
+    1. QUESTIONS.py'den format örneği al
+    2. Supabase'den mevcut soruları çek (DB öncelikli)
+    3. Output type dağılımı çıkar (test case'lerden)
+    4. Eksik tip tespiti
     5. Gemini prompt hazırla
     6. Gemini'den soruları al
     7. dry_run=False ise Supabase'e INSERT
@@ -381,31 +380,33 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
         else:
             existing_questions_sample = "(örnek bulunamadı)"
 
-        # 2. DB'den mevcut soruları çek (DB öncelikli)
+        # 2. DB'den mevcut soruları çek
         from supabase_client import get_supabase_admin
         sb = get_supabase_admin()
+        db_questions = []
         try:
-            result = sb.table("interwiews").select("id, title, category, level").execute()
+            result = sb.table("interwiews").select("id, title, category, level, test_cases").execute()
             db_questions = result.data or []
         except Exception as e:
             logger.warning("Supabase'den soru okunamadı, fallback kullanılıyor: %s", e)
-            db_questions = []
 
         # 3. Dağılımı analiz et
         from services.question_distribution import (
             analyze_questions_py, identify_gaps,
             select_questions_to_generate, get_next_id,
-            build_distribution_prompt,
+            build_distribution_prompt, infer_output_type,
         )
 
         if db_questions:
-            # DB'den gelen minimal dict'leri normalize et
+            # DB'den gelen dict'leri Question benzeri objeye çevir
             class _Q:
                 def __init__(self, d):
                     self.id = d.get("id", 0)
                     self.title = d.get("title", "")
                     self.category = d.get("category", "")
                     self.level = d.get("level", "")
+                    self.test_cases = d.get("test_cases") or []
+                    self.starter_code = d.get("starter_code", "")
 
             qs_objects = [_Q(d) for d in db_questions]
             distribution = analyze_questions_py(qs_objects)
@@ -413,11 +414,11 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
             distribution = analyze_questions_py(FALLBACK_QS)
 
         # 4. Gap tespiti
-        gaps = identify_gaps(distribution, target_total=req.target_total)
+        gaps = identify_gaps(distribution, target_per_type=req.target_per_type)
 
-        # Kategori filtresi
-        if req.categories:
-            gaps = [g for g in gaps if g.get("category") in req.categories or g.get("type") == "level"]
+        # Output type filtresi
+        if req.output_types:
+            gaps = [g for g in gaps if g.get("output_type") in req.output_types]
 
         # 5. Plan seç
         plan = select_questions_to_generate(gaps, n=req.n)
@@ -425,7 +426,7 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
         if not plan:
             return GenerateQuestionsResponse(
                 ok=False,
-                message="Eksik kategori bulunamadı (dağılım yeterli)",
+                message="Eksik output type bulunamadı (dağılım yeterli)",
                 distribution=distribution,
                 gaps=gaps,
             )
@@ -446,18 +447,18 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
                 ),
             )
             raw_text = response.text.strip()
-            # Markdown code block temizle (```json ... ```)
+            # Markdown code block temizle
             raw_text = re.sub(r"^```(?:json)?\s*\n?", "", raw_text, flags=re.IGNORECASE)
             raw_text = re.sub(r"\n?```\s*$", "", raw_text, flags=re.IGNORECASE)
             raw_text = raw_text.strip()
-            # JSON array/object olabilir
+
             try:
                 generated = json.loads(raw_text)
             except json.JSONDecodeError:
                 if raw_text.startswith("{") and raw_text.endswith("}"):
                     raw_text = "[" + raw_text + "]"
                 generated = json.loads(raw_text)
-            # dict ise listeye cevir
+
             if isinstance(generated, dict):
                 generated = [generated]
             # {"questions": [...]} wrapper
@@ -484,17 +485,17 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
         skipped = 0
         for item in generated:
             try:
-                # Zorunlu alanlar
                 if not all(k in item for k in ("title", "category", "level", "description",
                                                 "starter_code", "test_cases", "hints")):
                     skipped += 1
                     continue
                 item["id"] = next_id
                 next_id += 1
-                # Default değerler
                 item.setdefault("complexity", "O(n)")
                 item.setdefault("tutorial_slug", None)
                 item.setdefault("slug", None)
+                # Output type'ı DB'ye yazma (sadece soru üretimi için kullanıldı)
+                item.pop("output_type", None)
                 valid_questions.append(item)
             except Exception:
                 skipped += 1
@@ -515,7 +516,6 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
         inserted_ids = []
         for item in valid_questions:
             try:
-                # day/week/theme/difficulty default
                 item.setdefault("day", 1)
                 item.setdefault("week", 1)
                 item.setdefault("theme", item["category"])
@@ -523,14 +523,8 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
                 item.setdefault("related_concepts", [])
                 item.setdefault("related_question_ids", [])
 
-                # Slug üret (title'dan)
                 if not item.get("slug"):
-                    from services.slug_helper import slugify_tr
-                    try:
-                        item["slug"] = slugify_tr(item["title"])
-                    except Exception:
-                        import re as _re
-                        item["slug"] = _re.sub(r"[^a-z0-9]+", "-", item["title"].lower()).strip("-")[:80]
+                    item["slug"] = re.sub(r"[^a-z0-9]+", "-", item["title"].lower()).strip("-")[:80]
 
                 result = sb.table("interwiews").insert(item).execute()
                 if result.data:
