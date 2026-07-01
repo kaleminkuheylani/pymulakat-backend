@@ -446,11 +446,26 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
                 ),
             )
             raw_text = response.text.strip()
-            # Markdown code block temizle
-            if raw_text.startswith("```"):
-                raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
-                raw_text = re.sub(r"\s*```$", "", raw_text)
-            generated = json.loads(raw_text)
+            # Markdown code block temizle (```json ... ```)
+            raw_text = re.sub(r"^```(?:json)?\s*\n?", "", raw_text, flags=re.IGNORECASE)
+            raw_text = re.sub(r"\n?```\s*$", "", raw_text, flags=re.IGNORECASE)
+            raw_text = raw_text.strip()
+            # JSON array/object olabilir
+            try:
+                generated = json.loads(raw_text)
+            except json.JSONDecodeError:
+                if raw_text.startswith("{") and raw_text.endswith("}"):
+                    raw_text = "[" + raw_text + "]"
+                generated = json.loads(raw_text)
+            # dict ise listeye cevir
+            if isinstance(generated, dict):
+                generated = [generated]
+            # {"questions": [...]} wrapper
+            if isinstance(generated, list) and len(generated) == 1 and isinstance(generated[0], dict):
+                inner = generated[0]
+                list_key = next((k for k, v in inner.items() if isinstance(v, list)), None)
+                if list_key and len(inner[list_key]) > 0:
+                    generated = inner[list_key]
         except Exception as e:
             return GenerateQuestionsResponse(
                 ok=False,
