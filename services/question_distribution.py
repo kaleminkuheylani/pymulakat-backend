@@ -225,14 +225,19 @@ def build_distribution_prompt(plan: List[Dict], existing_questions_sample: str) 
     """
     Gemini için prompt — input/output ilişkisi olan sorular.
     """
-    plan_lines = "\n".join(
-        f"{i+1}. OUTPUT TYPE: {p['output_type']} ({p['level']}) — {p['reason']}\n"
-        f"   Kılavuz: {p['guidance']}\n"
-        f"   Örnekler:\n     • {p['examples'][0]}\n     • {p['examples'][1] if len(p['examples']) > 1 else ''}"
-        for i, p in enumerate(plan)
-    )
+    plan_lines_parts = []
+    for i, p in enumerate(plan):
+        ex0 = p['examples'][0]
+        ex1 = p['examples'][1] if len(p['examples']) > 1 else "—"
+        plan_lines_parts.append(
+            "{n}. OUTPUT TYPE: {ot} ({lvl}) — {r}\n   Kılavuz: {g}\n   Örnekler:\n     • {e0}\n     • {e1}".format(
+                n=i+1, ot=p['output_type'], lvl=p['level'], r=p['reason'],
+                g=p['guidance'], e0=ex0, e1=ex1
+            )
+        )
+    plan_lines = "\n".join(plan_lines_parts)
 
-    return f"""Sen uzman bir Python eğitmenisin. Aşağıdaki output type planına göre TAM OLARAK {len(plan)} adet yeni soru üreteceksin.
+    template = """Sen uzman bir Python eğitmenisin. Aşağıdaki output type planına göre TAM OLARAK __N__ adet yeni soru üreteceksin.
 
 ⚠️ **ÖNEMLİ KURAL**: Her soru **input → output** ilişkisi olan bir dönüşüm fonksiyonu olmalı.
 - Fonksiyon SADECE bir değer döndürmeli (return x), print/yan etki yok
@@ -240,16 +245,16 @@ def build_distribution_prompt(plan: List[Dict], existing_questions_sample: str) 
 - Side-effect'siz (dosya yazma, network çağrısı yok)
 
 **Plan (her satır bir soru, output type'a göre):**
-{plan_lines}
+__PLAN__
 
 **Mevcut soru format örneği (takip et):**
 ```python
-{existing_questions_sample}
+__SAMPLE__
 ```
 
 **Genel kurallar:**
 1. Her soru gerçek hayat senaryosu içermeli (günlük hayat, iş dünyası, oyun)
-2. Starter code `def fn(param: tip) -> donus_tipi: # yorum\n    pass` formatında
+2. Starter code `def fn(param: tip) -> donus_tipi: # yorum\\n    pass` formatında
 3. 2-4 test case (kolay → zor sırayla)
 4. 3 ipucu (kademeli, "💡 İpucu N: ..." formatında)
 5. Title'da emoji kullan
@@ -263,12 +268,12 @@ def build_distribution_prompt(plan: List[Dict], existing_questions_sample: str) 
 - `number`: 42, 3.14 gibi tırnaksız sayı
 - `boolean`: true veya false (küçük harf, JSON standardı)
 - `list`: [1, 2, 3] köşeli parantez
-- `dict`: {"key": "value"} süslü parantez
+- `dict`: %7B%22key%22%3A%20%22value%22%7D süslü parantez
 - `tuple`: (1, 2) normal parantez
 
 **Çıktı formatı (SADECE JSON array, başka metin yok):**
 [
-  {{
+  %7B
     "title": "🛒 Sepet Toplamı",
     "output_type": "number",
     "category": "python-basics",
@@ -276,12 +281,19 @@ def build_distribution_prompt(plan: List[Dict], existing_questions_sample: str) 
     "description": "...",
     "starter_code": "def fn(...) -> ...:\\n    pass",
     "test_cases": [
-      {{"input": "100", "expected": 150}},
-      {{"input": "200", "expected": 250}}
+      %7B"input": "100", "expected": 150%7D,
+      %7B"input": "200", "expected": 250%7D
     ],
     "hints": ["💡 İpucu 1: ...", "💡 İpucu 2: ...", "💡 İpucu 3: ..."],
     "complexity": "O(n)"
-  }},
+  %7D,
   ...
 ]
 """
+    # Placeholder replace
+    result = template.replace("__N__", str(len(plan)))
+    result = result.replace("__PLAN__", plan_lines)
+    result = result.replace("__SAMPLE__", existing_questions_sample)
+    # URL-decode the JSON braces back to normal
+    result = result.replace("%7B", "{").replace("%7D", "}")
+    return result
