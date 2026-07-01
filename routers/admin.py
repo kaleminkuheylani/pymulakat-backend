@@ -674,6 +674,11 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
         # DB'de var olan kolonlar
         allowed_columns = set(INTERVIEWS_SCHEMA.keys())
         allowed_columns.add("id")  # INSERT'te id de var
+
+        # Tip donusumleri: array olan kolonlar (text[])
+        # NOT: function_name yok (DB'de kolon yok)
+        ARRAY_COLUMNS = {"topic", "related_concepts", "related_question_ids", "tags", "hints", "meta_keywords"}
+
         for item in generated:
             try:
                 if not all(k in item for k in ("title", "category", "level", "description",
@@ -682,11 +687,22 @@ async def generate_questions_endpoint(req: GenerateQuestionsRequest):
                     continue
                 # DB'de OLMAYAN alanlari filtrele
                 filtered = {k: v for k, v in item.items() if k in allowed_columns}
+
+                # Array kolonlari duzelt: string gelirse [string] yap
+                for col in ARRAY_COLUMNS:
+                    if col in filtered and filtered[col] is not None:
+                        if not isinstance(filtered[col], list):
+                            filtered[col] = [filtered[col]]
+
                 filtered["id"] = next_id
                 next_id += 1
                 filtered.setdefault("complexity", "O(n)")
                 filtered.setdefault("tutorial_slug", None)
                 filtered.setdefault("slug", None)
+                # topic/function_name default None (text) - array ise birak
+                filtered.setdefault("topic", None)
+                filtered.setdefault("function_name", None)
+                filtered.setdefault("difficulty", None)
                 filtered.pop("output_type", None)
                 valid_questions.append(filtered)
             except Exception:
@@ -844,31 +860,27 @@ async def cron_run_question_generation(request: Request):
 # ═══════════════════════════════════════════════════════════
 
 INTERVIEWS_SCHEMA = {
-    "title": {"type": "str", "required": True},
-    "category": {"type": "str", "required": True},
-    "level": {"type": "str", "required": True},
-    "description": {"type": "str", "required": True},
-    "starter_code": {"type": "str", "required": True},
-    "test_cases": {"type": "list", "required": True},
-    "hints": {"type": "list", "required": True},
-    "topic": {"type": "str", "required": False},
-    "function_name": {"type": "str", "required": False},
-    "difficulty": {"type": "str", "required": False},
-    "complexity": {"type": "str", "required": False},
-    "explanation": {"type": "str", "required": False},
-    "related_concepts": {"type": "list", "required": False},
-    "related_question_ids": {"type": "list", "required": False},
-    "tutorial_slug": {"type": "str", "required": False},
-    "meta_title": {"type": "str", "required": False},
-    "meta_description": {"type": "str", "required": False},
-    "meta_keywords": {"type": "list", "required": False},
-    "reading_time_minutes": {"type": "int", "required": False},
-    "tags": {"type": "list", "required": False},
-    "day": {"type": "int", "required": False},
-    "week": {"type": "int", "required": False},
-    "theme": {"type": "str", "required": False},
-    "slug": {"type": "str", "required": False},
+    "title": {"type": "str", "required": True, "description": "Emoji'li baslik (text)"},
+    "category": {"type": "str", "required": True, "description": "python-basics|strings|list-dict|oop|algorithms|data-types|pandas|numpy|sqlite3|sklearn|matplotlib|beyin-firtinasi|simple-apps|web|async (text)"},
+    "level": {"type": "str", "required": True, "description": "beginner|intermediate|advanced (text)"},
+    "description": {"type": "str", "required": True, "description": "Turkce detayli aciklama (text)"},
+    "starter_code": {"type": "str", "required": True, "description": "def fn(...) -> ...:\\n    pass (text)"},
+    "test_cases": {"type": "list", "required": True, "description": "[{input: ..., expected: ...}, ...] (jsonb)"},
+    "hints": {"type": "list", "required": True, "description": "['💡 ...', ...] (text[])"},
+    "topic": {"type": "list", "required": False, "description": "Konu etiketleri (text[]) — ornek: ['merge-sort', 'arrays']"},
+    "difficulty": {"type": "str", "required": False, "description": "easy|medium|hard (text)"},
+    "complexity": {"type": "str", "required": False, "description": "Big-O notasyonu (text)"},
+    "explanation": {"type": "str", "required": False, "description": "Cozum yaklasimi markdown (text)"},
+    "related_concepts": {"type": "list", "required": False, "description": "String[] konu etiketleri (text[])"},
+    "related_question_ids": {"type": "list", "required": False, "description": "Integer[] iliskili soru id'leri (int[])"},
+    "tutorial_slug": {"type": "str", "required": False, "description": "Iliskili tutorial slug (text)"},
+    "meta_title": {"type": "str", "required": False, "description": "SEO title (text)"},
+    "meta_description": {"type": "str", "required": False, "description": "SEO description (text)"},
+    "meta_keywords": {"type": "list", "required": False, "description": "String[] SEO keywords (text[])"},
+    "reading_time_minutes": {"type": "int", "required": False, "description": "Varsayilan: 5 (int)"},
+    "tags": {"type": "list", "required": False, "description": "String[] etiketler (text[])"},
 }
+# NOT: Bu kolonlar DB'de YOK (eklenmedi): function_name, day, week, theme, slug
 
 
 def _get_interwiews_schema() -> Dict:

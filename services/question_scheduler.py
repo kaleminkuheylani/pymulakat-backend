@@ -218,6 +218,13 @@ def _generate_and_insert(n: int, target_per_type: int, dry_run: bool) -> Dict:
         item.setdefault("tutorial_slug", None)
         item.setdefault("slug", None)
         item.pop("output_type", None)
+        # Array kolonlar: string gelirse list yap (text[] array)
+        ARRAY_COLUMNS = {"topic", "related_concepts", "related_question_ids", "tags", "hints", "meta_keywords"}
+        for col in ARRAY_COLUMNS:
+            if col in item and item[col] is not None and not isinstance(item[col], list):
+                item[col] = [item[col]]
+        item.setdefault("topic", None)
+        item.setdefault("difficulty", None)
         valid.append(item)
 
     # Mevcut slug'ları oku
