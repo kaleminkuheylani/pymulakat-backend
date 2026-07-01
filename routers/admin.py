@@ -9,7 +9,7 @@ Kullanım:
     curl -X POST https://pymulakat-backend-production.up.railway.app/admin/migrate/tutorials
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 import os
 import sys
