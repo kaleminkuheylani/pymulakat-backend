@@ -92,33 +92,46 @@ async def migrate_slugs():
     """interviews tablosuna title'dan slug üretip yaz (canonical URL için)."""
     import re
     try:
+        # 1. psycopg2 ile slug kolonu ekle (DATABASE_URL'den)
+        sql_added = False
+        sql_error = None
+        try:
+            import psycopg2
+            db_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL")
+            if db_url:
+                conn = psycopg2.connect(db_url)
+                conn.autocommit = True
+                cur = conn.cursor()
+                cur.execute("ALTER TABLE public.interviews ADD COLUMN IF NOT EXISTS slug TEXT")
+                cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_interviews_slug ON public.interviews(slug) WHERE slug IS NOT NULL")
+                cur.execute("NOTIFY pgrst, 'reload schema'")
+                cur.close()
+                conn.close()
+                sql_added = True
+                print("✅ Slug kolonu + index eklendi (psycopg2)")
+            else:
+                sql_error = "DATABASE_URL tanimli degil"
+                print(f"⚠️ {sql_error}")
+        except ImportError:
+            sql_error = "psycopg2 yuklu degil"
+            print(f"⚠️ {sql_error}")
+        except Exception as e:
+            sql_error = str(e)
+            print(f"⚠️ psycopg2 ALTER basarisiz: {e}")
+
+        # 2. Supabase admin ile devam
         from supabase_client import get_supabase_admin
         sb = get_supabase_admin()
 
-        # 1. ÖNCE: mevcut slug kolonu var mı kontrol
         try:
-            test_result = sb.table("interviews").select("id, title, slug").limit(1).execute()
-            has_slug = True
+            result = sb.table("interviews").select("id, title, slug").execute()
+            rows = result.data or []
+            print(f"📝 [SLUGS] {len(rows)} soru bulundu")
         except Exception as e:
-            has_slug = False
-            print(f"⚠️ Slug kolonu yok gibi gorunuyor: {e}")
-
-        if not has_slug:
-            # Kolon yoksa sadece id+title al, sonra kolon eklemeyi dene
-            try:
-                test_result = sb.table("interviews").select("id, title").limit(1).execute()
-                has_id_title = True
-            except Exception as e:
-                has_id_title = False
-                print(f"❌ Temel SELECT bile calismadi: {e}")
-                return MigrationResponse(
-                    success=False,
-                    message=f"DB baglantisi yok veya tablo erisilemez: {e}",
-                )
-
-        result = sb.table("interviews").select("id, title" if not has_slug else "id, title, slug").execute()
-        rows = result.data or []
-        print(f"📝 [SLUGS] {len(rows)} soru bulundu (slug kolonu: {'VAR' if has_slug else 'YOK'})")
+            return MigrationResponse(
+                success=False,
+                message=f"SELECT hatasi (slug kolonu hala yok?): {e}. SQL durumu: {'OK' if sql_added else sql_error}",
+            )
 
         def slugify(text: str) -> str:
             tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
@@ -128,10 +141,17 @@ async def migrate_slugs():
             return text[:80]
 
         updated = 0
+        skipped = 0
         errors = []
         seen_slugs = set()
         for row in rows:
             title = row.get("title", "")
+            existing = row.get("slug")
+            if existing:
+                skipped += 1
+                seen_slugs.add(existing)
+                continue
+
             new_slug = slugify(title)
             final_slug = new_slug
             counter = 1
@@ -148,8 +168,15 @@ async def migrate_slugs():
 
         return MigrationResponse(
             success=True,
-            message=f"{updated}/{len(rows)} slug guncellendi (slug kolonu: {'VAR' if has_slug else 'YOK - Supabase UI'dan ekleyin'})",
-            details={"updated": updated, "total": len(rows), "errors": errors[:5], "slug_column_exists": has_slug},
+            message=f"{updated} yeni slug, {skipped} zaten vardi (SQL: {'OK' if sql_added else sql_error})",
+            details={
+                "updated": updated,
+                "skipped": skipped,
+                "total": len(rows),
+                "sql_added": sql_added,
+                "sql_error": sql_error,
+                "errors": errors[:5],
+            },
         )
     except Exception as e:
         print(f"❌ [SLUGS] {type(e).__name__}: {e}")
