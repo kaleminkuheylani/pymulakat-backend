@@ -50,14 +50,35 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 
 def slugify_title(title: str) -> str:
-    """Başlıktan URL-safe slug üret."""
+    """Başlıktan URL-safe slug üret (Türkçe karakterler ASCII'ye çevrilir)."""
     import re
-    s = title.lower().strip()
-    # Türkçe karakterleri koru, sadece gereksiz sembolleri temizle
+    # Türkçe karakterleri önce ASCII'ye çevir
+    tr_map = {
+        'ı': 'i', 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ö': 'o', 'ç': 'c',
+        'İ': 'I', 'Ğ': 'G', 'Ü': 'U', 'Ş': 'S', 'Ö': 'O', 'Ç': 'C',
+    }
+    s = title
+    for tr, asc in tr_map.items():
+        s = s.replace(tr, asc)
+    s = s.lower().strip()
     s = re.sub(r"\s+", "-", s)
-    s = re.sub(r"[^a-z0-9\-çğıöşü]", "", s, flags=re.UNICODE)
+    s = re.sub(r"[^a-z0-9\-]", "", s)
     s = re.sub(r"-+", "-", s).strip("-")
     return s or f"question-{hash(title) % 100000}"
+
+
+def tr_to_ascii_slug(text: str) -> str:
+    """Türkçe karakterleri ASCII'ye çevirip slug üret."""
+    tr_map = {
+        'ı': 'i', 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ö': 'o', 'ç': 'c',
+        'İ': 'i', 'Ğ': 'g', 'Ü': 'u', 'Ş': 's', 'Ö': 'o', 'Ç': 'c',
+    }
+    s = text
+    for tr, asc in tr_map.items():
+        s = s.replace(tr, asc)
+    import re
+    s = re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
+    return s
 
 
 def unique_slug(title: str, qid: int) -> str:

@@ -15,7 +15,7 @@ import os
 import sys
 import re
 import json
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -320,6 +320,125 @@ async def admin_health():
 
 
 @router.post("/fix/duplicate-slugs", response_model=MigrationResponse)
+@router.post("/fix/slug", response_model=MigrationResponse)
+async def fix_slug_alias():
+    """Alias for /fix/duplicate-slugs."""
+    return await fix_duplicate_slugs()
+
+
+@router.post("/fix/slug/tr-ascii", response_model=MigrationResponse)
+async def fix_slug_tr_ascii():
+    """Tüm slug'lardaki Türkçe karakterleri ASCII'ye çevir.
+
+    Ornek:
+      iki-maaş-bordrosunu-birleştir-68 → iki-maas-bordrosunu-birlestir-68
+      liste-düzleştirme-8              → liste-duzlestirme-8
+    """
+    try:
+        from supabase_client import get_supabase_admin
+        sb = get_supabase_admin()
+
+        # Tüm slug'ları oku
+        result = sb.table("interwiews").select("id, slug, title").execute()
+        rows = result.data or []
+
+        tr_map = {
+            'ı': 'i', 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ö': 'o', 'ç': 'c',
+            'İ': 'i', 'Ğ': 'g', 'Ü': 'u', 'Ş': 's', 'Ö': 'o', 'Ç': 'c',
+        }
+        fixed = 0
+        skipped = 0
+        for r in rows:
+            qid = r.get("id")
+            slug = r.get("slug", "")
+            if not qid or not slug:
+                continue
+            # ASCII'ye çevir
+            new_slug = slug
+            for tr, asc in tr_map.items():
+                new_slug = new_slug.replace(tr, asc)
+            if new_slug != slug:
+                try:
+                    sb.table("interwiews").update({"slug": new_slug}).eq("id", qid).execute()
+                    fixed += 1
+                except Exception as e:
+                    logger.exception("Slug fix q%d: %s", qid, e)
+                    skipped += 1
+
+        return MigrationResponse(
+            ok=True,
+            message=f"{fixed} slug ASCII'ye çevrildi ({skipped} hata)",
+            details={"total": len(rows), "fixed": fixed, "skipped": skipped},
+        )
+    except Exception as e:
+        logger.exception("fix_slug_tr_ascii failed")
+        return MigrationResponse(ok=False, message=f"Hata: {e}")
+
+
+class CreateTutorialRequest(BaseModel):
+    slug: str
+    title: str
+    content: str
+    excerpt: Optional[str] = None
+    related_question_ids: List[int] = []
+    reading_time_minutes: int = 5
+    difficulty: str = "beginner"
+    tags: List[str] = []
+
+
+@router.post("/create/tutorial", response_model=MigrationResponse)
+async def create_tutorial(payload: CreateTutorialRequest):
+    """Yeni tutorial oluştur ve 'tutorials' tablosuna INSERT et.
+
+    Body:
+      {
+        "slug": "python-palindrome-rehberi",
+        "title": "Python Palindrome Algoritma Rehberi",
+        "content": "Markdown içerik...",
+        "excerpt": "Kısa özet",
+        "related_question_ids": [1, 11],
+        "reading_time_minutes": 7,
+        "difficulty": "beginner",
+        "tags": ["algorithms", "strings"]
+      }
+    """
+    try:
+        from supabase_client import get_supabase_admin
+        sb = get_supabase_admin()
+
+        # Slug uniqueness kontrolü
+        existing = sb.table("tutorials").select("id, slug").eq("slug", payload.slug).execute()
+        if existing.data:
+            return MigrationResponse(
+                ok=False,
+                message=f"Bu slug zaten var: {payload.slug}",
+                details={"existing_id": existing.data[0].get("id") if existing.data else None},
+            )
+
+        # INSERT
+        tutorial = {
+            "slug": payload.slug,
+            "title": payload.title,
+            "content": payload.content,
+            "excerpt": payload.excerpt or payload.title[:150],
+            "related_question_ids": payload.related_question_ids,
+            "reading_time_minutes": payload.reading_time_minutes,
+            "difficulty": payload.difficulty,
+            "tags": payload.tags,
+        }
+
+        result = sb.table("tutorials").insert(tutorial).execute()
+        if result.data:
+            new_id = result.data[0].get("id")
+            return MigrationResponse(
+                ok=True,
+                message=f"Tutorial oluşturuldu: {payload.slug} (id={new_id})",
+                details={"id": new_id, "slug": payload.slug},
+            )
+        return MigrationResponse(ok=False, message="INSERT başarısız, data dönmedi")
+    except Exception as e:
+        logger.exception("create_tutorial failed")
+        return MigrationResponse(ok=False, message=f"Hata: {e}")
 async def fix_duplicate_slugs():
     """interwiews tablosundaki duplicate slug'ları temizle.
 
