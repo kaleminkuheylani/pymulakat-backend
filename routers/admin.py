@@ -378,12 +378,13 @@ async def fix_slug_tr_ascii():
 class CreateTutorialRequest(BaseModel):
     slug: str
     title: str
-    content: str
-    excerpt: Optional[str] = None
-    related_question_ids: List[int] = []
-    reading_time_minutes: int = 5
+    content_md: str
+    description: Optional[str] = None
+    category: str = "python-basics"
     difficulty: str = "beginner"
-    tags: List[str] = []
+    reading_time_minutes: int = 5
+    related_question_ids: List[int] = []
+    faq: List[dict] = []
 
 
 @router.post("/create/tutorial", response_model=MigrationResponse)
@@ -394,12 +395,13 @@ async def create_tutorial(payload: CreateTutorialRequest):
       {
         "slug": "python-palindrome-rehberi",
         "title": "Python Palindrome Algoritma Rehberi",
-        "content": "Markdown içerik...",
-        "excerpt": "Kısa özet",
-        "related_question_ids": [1, 11],
-        "reading_time_minutes": 7,
+        "content_md": "Markdown icerik...",
+        "description": "Kisa ozet",
+        "category": "python-basics",
         "difficulty": "beginner",
-        "tags": ["algorithms", "strings"]
+        "reading_time_minutes": 7,
+        "related_question_ids": [1, 11],
+        "faq": [{"q": "Soru", "a": "Cevap"}]
       }
     """
     try:
@@ -415,16 +417,17 @@ async def create_tutorial(payload: CreateTutorialRequest):
                 details={"existing_id": existing.data[0].get("id") if existing.data else None},
             )
 
-        # INSERT
+        # INSERT - DB semasina uygun
         tutorial = {
             "slug": payload.slug,
             "title": payload.title,
-            "content": payload.content,
-            "excerpt": payload.excerpt or payload.title[:150],
-            "related_question_ids": payload.related_question_ids,
-            "reading_time_minutes": payload.reading_time_minutes,
+            "content_md": payload.content_md,
+            "description": payload.description or payload.title[:150],
+            "category": payload.category,
             "difficulty": payload.difficulty,
-            "tags": payload.tags,
+            "reading_time_minutes": payload.reading_time_minutes,
+            "related_question_ids": payload.related_question_ids,
+            "faq": payload.faq,
         }
 
         result = sb.table("tutorials").insert(tutorial).execute()
@@ -432,10 +435,10 @@ async def create_tutorial(payload: CreateTutorialRequest):
             new_id = result.data[0].get("id")
             return MigrationResponse(
                 ok=True,
-                message=f"Tutorial oluşturuldu: {payload.slug} (id={new_id})",
+                message=f"Tutorial olusturuldu: {payload.slug} (id={new_id})",
                 details={"id": new_id, "slug": payload.slug},
             )
-        return MigrationResponse(ok=False, message="INSERT başarısız, data dönmedi")
+        return MigrationResponse(ok=False, message="INSERT basarisiz, data donmedi")
     except Exception as e:
         logger.exception("create_tutorial failed")
         return MigrationResponse(ok=False, message=f"Hata: {e}")
