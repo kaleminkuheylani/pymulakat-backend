@@ -28,7 +28,8 @@ class AttemptOut(BaseModel):
     execution_time_ms: int
     hints_used: int
     created_at: str
-    user_code: Optional[str] = None
+    # 📌 user_code KVKK uyumu icin DB'de tutulmuyor.
+    # Kod sadece kullanici tarayicisinda calistirilir, server'a gonderilmez.
 
 
 class AttemptsListResponse(BaseModel):
@@ -65,8 +66,15 @@ async def create_attempt(
             raise HTTPException(401, "User bulunamadı")
 
         user_id = user["id"]
-        # ⚠️ user_code içerebileceğinden payload loglanmıyor
-        logger.debug("attempt.create user=%s q=%s passed=%s/%s", user_id, payload.get("question_id"), payload.get("passed_tests"), payload.get("total_tests"))
+        # 📌 user_code KVKK uyumu icin kaydedilmiyor.
+        # Sandbox zaten client-side (Pyodide), kod hic server'a gelmiyor.
+        logger.debug(
+            "attempt.create user=%s q=%s passed=%s/%s",
+            user_id,
+            payload.get("question_id"),
+            payload.get("passed_tests"),
+            payload.get("total_tests"),
+        )
 
         # ✅ SERVICE_ROLE kullan (RLS bypass)
         sb = get_supabase_admin()
@@ -79,7 +87,7 @@ async def create_attempt(
             "success": bool(payload.get("success", False)),
             "execution_time_ms": int(payload.get("execution_time_ms", 0)),
             "hints_used": int(payload.get("hints_used", 0)),
-            "user_code": str(payload.get("user_code", "")),
+            # 📌 user_code KALDIRILDI — sadece stats kaydedilir
         }
 
 
@@ -149,7 +157,7 @@ async def list_my_attempts(
                 "execution_time_ms": r.get("execution_time_ms", 0),
                 "hints_used": r.get("hints_used", 0),
                 "created_at": r.get("created_at", ""),
-                "user_code": r.get("user_code"),
+                # 📌 user_code response'tan kaldirildi
             })
 
         return AttemptsListResponse(data=items, total=len(items))
