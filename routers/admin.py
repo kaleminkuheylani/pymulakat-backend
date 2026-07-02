@@ -68,6 +68,132 @@ async def migrate_questions():
     )
 
 
+@router.post("/upload/new-questions", response_model=MigrationResponse)
+async def upload_new_questions():
+    """Yeni sorulari (id 69-73) Supabase 'interwiews' tablosuna upsert eder.
+    slug kolonu gerektirmez — doğrudan id ile upsert yapar.
+    """
+    from supabase_client import get_supabase_admin
+    from dataclasses import dataclass, field
+    from typing import List, Dict, Any
+
+    @dataclass
+    class Q:
+        id: int
+        title: str
+        category: str
+        level: str
+        description: str
+        starter_code: str
+        test_cases: List[Dict[str, Any]]
+        hints: List[str] = field(default_factory=list)
+
+    NEW_QUESTIONS = [
+        Q(
+            id=69, title="İki Sıralı Listeyi Birleştir (Merge)",
+            category="algorithms", level="intermediate",
+            description="İki sıralı liste veriliyor (her ikisi de artan düzende).\nBu iki listeyi tek bir sıralı liste halinde birleştir.\nOrijinal listeleri değiştirme, yeni bir liste döndür.\n\n⚠️ sorted() veya .sort() KULLANMA.\nMülakatta O(n+m) çözüm beklenir.",
+            starter_code="def merge_sorted_lists(list1: list, list2: list) -> list:\n    # İki sıralı listeyi birleştir, sonuç sıralı olsun\n    pass",
+            test_cases=[
+                {"input": {"list1": [1, 3, 5, 7], "list2": [2, 4, 6, 8]}, "expected": [1, 2, 3, 4, 5, 6, 7, 8]},
+                {"input": {"list1": [1, 2, 3], "list2": [4, 5, 6]}, "expected": [1, 2, 3, 4, 5, 6]},
+                {"input": {"list1": [], "list2": [1, 2, 3]}, "expected": [1, 2, 3]},
+                {"input": {"list1": [1, 1, 1], "list2": [1, 1]}, "expected": [1, 1, 1, 1, 1]},
+            ],
+            hints=["💡 İpucu 1: İki işaretçi (pointer) kullan — biri list1, biri list2 için.", "💡 İpucu 2: Her adımda hangisi küçükse onu sonuca ekle ve o işaretçiyi ilerlet.", "💡 İpucu 3: Biri bitince kalanları olduğu gibi sonuca extend et."],
+        ),
+        Q(
+            id=70, title="En Yakın Rakam Toplamı",
+            category="algorithms", level="intermediate",
+            description="Bir sayı dizisinde, toplamı hedef sayıya en yakın olan iki elemanı bul.\nBirden fazla çözüm varsa, herhangi birini döndürmek yeterli.\nSonuç: [eleman1, eleman2] şeklinde liste döndür.\n\nÖrnek: [1, 2, 3, 4, 5], hedef = 8 → [3, 5] (toplam 8, tam isabet)\nÖrnek: [1, 2, 3, 4], hedef = 10 → [4, 4] veya [1, 4] (en yakın toplam 9)",
+            starter_code="def find_closest_pair(numbers: list, target: int) -> list:\n    # İki elemanın toplamı hedefe en yakın olsun\n    pass",
+            test_cases=[
+                {"input": {"numbers": [1, 2, 3, 4, 5], "target": 8}, "expected": [3, 5]},
+                {"input": {"numbers": [1, 2, 3, 4], "target": 10}, "expected": [4, 4]},
+                {"input": {"numbers": [3, 3, 3], "target": 6}, "expected": [3, 3]},
+                {"input": {"numbers": [-1, -2, -3, -4], "target": -5}, "expected": [-1, -4]},
+            ],
+            hints=["💡 İpucu 1: Önce listeyi sırala (sıralanmış liste ile çalışmak daha kolay).", "💡 İpucu 2: İki işaretçi tekniği kullan — biri başta, biri sonda.", "💡 İpucu 3: current_sum = arr[left] + arr[right]; hedefe göre işaretçileri hareket ettir."],
+        ),
+        Q(
+            id=71, title="Tekrarlanan Karakter Zinciri",
+            category="algorithms", level="intermediate",
+            description="Bir string'de art arda tekrar eden karakterlerden oluşan\nen uzun zinciri bul.\nSonuç: (karakter, zincir uzunluğu) şeklinde tuple döndür.\n\nÖrnek: 'aabbbcccddaaa' → ('b', 3) veya ('a', 3)\nÖrnek: 'abcdef' → ('a', 1) (tüm karakterler 1'er)",
+            starter_code="def longest_char_chain(s: str) -> tuple:\n    # Art arda tekrar eden en uzun zinciri bul\n    pass",
+            test_cases=[
+                {"input": "aabbbcccddaaa", "expected": ("b", 3)},
+                {"input": "abcdef", "expected": ("a", 1)},
+                {"input": "aaaaa", "expected": ("a", 5)},
+                {"input": "abbaa", "expected": ("a", 2)},
+                {"input": "", "expected": ("", 0)},
+                {"input": "abccdeeeffg", "expected": ("e", 3)},
+            ],
+            hints=["💡 İpucu 1: İki değişken tut: mevcut karakter ve mevcut sayı.", "💡 İpucu 2: Her yeni karakter için: aynıysa sayıyı artır, farklıysa sıfırla.", "💡 İpucu 3: En uzun zinciri ve karakterini takip et."],
+        ),
+        Q(
+            id=72, title="Alt Dizi Toplam Kontrolü",
+            category="algorithms", level="intermediate",
+            description="Bir sayı listesi ve bir hedef sayı veriliyor.\nListedeki herhangi bir alt dizinin (continuous subsequence)\ntoplamının hedef sayıya eşit olup olmadığını kontrol et.\n\n⚠️ Tüm alt dizileri brute-force deneme O(n²) yapma.\nDaha verimli bir yöntem düşün.",
+            starter_code="def has_subarray_with_sum(nums: list, target: int) -> bool:\n    # Alt dizi toplamı hedefe eşit mi?\n    pass",
+            test_cases=[
+                {"input": {"nums": [1, 4, 20, 3, 10, 5], "target": 33}, "expected": True},
+                {"input": {"nums": [1, 2, 3, 4], "target": 15}, "expected": False},
+                {"input": {"nums": [1, 2, 3], "target": 6}, "expected": True},
+                {"input": {"nums": [0, 0], "target": 0}, "expected": True},
+                {"input": {"nums": [-2, -1, 0, 1, 2], "target": 0}, "expected": True},
+            ],
+            hints=["💡 İpucu 1: Sliding window tekniği düşün — başlangıç ve bitiş işaretçileri.", "💡 İpucu 2: Mevcut toplam hedefi aştıysa, başlangıcı kaydır.", "💡 İpucu 3: Negatif sayılar varsa sliding window çalışmaz — prefix sum + hashmap dene."],
+        ),
+        Q(
+            id=73, title="Benzersiz Alt Dizgi Sayısı",
+            category="algorithms", level="intermediate",
+            description="Bir string'deki tüm benzersiz alt dizgilerin (substring)\nsayısını bul.\nBoş alt dizgi sayılmaz.\n\nÖrnek: 'abc' → 'a','b','c','ab','bc','abc' → 6\nÖrnek: 'aaa' → 'a','aa','aaa' → 2 (tekrarlar sayılmaz)\nÖrnek: '' → 0",
+            starter_code="def count_unique_substrings(s: str) -> int:\n    # Tüm benzersiz alt dizgilerin sayısını bul\n    pass",
+            test_cases=[
+                {"input": "abc", "expected": 6},
+                {"input": "aaa", "expected": 2},
+                {"input": "", "expected": 0},
+                {"input": "abcd", "expected": 10},
+                {"input": "aab", "expected": 4},
+            ],
+            hints=["💡 İpucu 1: Her karakterden başlayarak tüm alt dizgileri oluştur.", "💡 İpucu 2: Bir set() kullanarak benzersiz olanları sakla.", "💡 İpucu 3: İç içe döngü yerine, her i için j=i+1,...,len(s) alt dizgisini sete ekle."],
+        ),
+    ]
+
+    sb = get_supabase_admin()
+    payload = [
+        {
+            "id": q.id,
+            "title": q.title,
+            "category": q.category,
+            "level": q.level,
+            "description": q.description,
+            "starter_code": q.starter_code,
+            "test_cases": q.test_cases,
+            "hints": q.hints,
+        }
+        for q in NEW_QUESTIONS
+    ]
+
+    try:
+        result = (
+            sb.table("interwiews")
+            .upsert(payload, on_conflict="id")
+            .execute()
+        )
+        return MigrationResponse(
+            ok=True,
+            message=f"{len(payload)} soru başarıyla Supabase'e yüklendi.",
+            details={"uploaded": len(payload), "first_id": payload[0]["id"] if payload else None},
+        )
+    except Exception as e:
+        return MigrationResponse(
+            ok=False,
+            message=f"Upsert başarısız: {e}",
+            details={"error": str(e)},
+        )
+
+
 @router.post("/update/seo-fields", response_model=MigrationResponse)
 async def update_seo_fields():
     """Mevcut 67 satırın SEO alanlarını title üzerinden güncelle."""
