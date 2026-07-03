@@ -1980,5 +1980,165 @@ Boş alt dizgi sayılmaz.\nÖrnek: 'abc' → 'a','b','c','ab','bc','abc' → 6
         ],
     ),
 
+    # ════════════════════════════════════════════════════════════════
+    # 84: İç İçe Döngü — Çarpım Tablosu (donguler kategorisi yok,
+    #     en yakin kategori: python-basics)
+    # Kullanici: ic ice dongu pratiği, ipucu YOK
+    # NOT: Frontend QUESTION_META 74-83 ID'lerini kullanıyor, 84+ uygun
+    # ════════════════════════════════════════════════════════════════
+    Question(
+        id=84,
+        title='Çarpım Tablosu Matrisi',
+        category='python-basics',
+        level='beginner',
+        description="""n sayısı veriliyor (1 <= n <= 10).
+İç içe döngü kullanarak n x n çarpım tablosunu liste içinde liste olarak döndür.
+Matris[i][j] = (i+1) * (j+1) olmalı.\nÖrnek: n=3 → [[1,2,3],[2,4,6],[3,6,9]]
+Örnek: n=1 → [[1]]
+Örnek: n=4 → [[1,2,3,4],[2,4,6,8],[3,6,9,12],[4,8,12,16]]""",
+        starter_code="""def carpim_tablosu(n: int) -> list:
+    # n x n çarpım tablosu matrisi oluştur
+    # ic ice dongu kullanmalisin
+    pass""",
+        test_cases=[
+            {'input': 3, 'expected': [[1, 2, 3], [2, 4, 6], [3, 6, 9]]},
+            {'input': 1, 'expected': [[1]]},
+            {'input': 4, 'expected': [[1, 2, 3, 4], [2, 4, 6, 8], [3, 6, 9, 12], [4, 8, 12, 16]]},
+            {'input': 5, 'expected': [[1, 2, 3, 4, 5], [2, 4, 6, 8, 10], [3, 6, 9, 12, 15], [4, 8, 12, 16, 20], [5, 10, 15, 20, 25]]},
+            {'input': 2, 'expected': [[1, 2], [2, 4]]},
+        ],
+        # İPUCU YOK — kullanıcı isteği
+        hints=[],
+    ),
+
+    # ════════════════════════════════════════════════════════════════
+    # 75: Hipotenüs Hesaplama (koşullar)
+    # Kullanici: kural ver, ipucu YOK
+    # Pisagor teoremi: a² + b² = c² → c = sqrt(a² + b²)
+    # ════════════════════════════════════════════════════════════════
+    Question(
+        id=85,
+        title='Hipotenüs Hesaplama',
+        category='python-basics',
+        level='beginner',
+        description="""Bir dik üçgenin iki dik kenar uzunluğu (a, b) veriliyor.
+Pisagor teoremine göre hipotenüsü (c) hesapla ve döndür.
+c = √(a² + b²)\nÖrnek: hipotenus(3, 4) → 5.0
+Örnek: hipotenus(5, 12) → 13.0
+Örnek: hipotenus(8, 15) → 17.0
+Örnek: hipotenus(1, 1) → 1.4142135623730951
+Örnek: hipotenus(0, 5) → 5.0
+
+⚠️ Kurallar:
+1. Sonuç her zaman float olmalı
+2. math.sqrt() kullan
+3. Negatif sayı gelirse mutlak değerini al (|a| ve |b| kullan)""",
+        starter_code="""def hipotenus(a: float, b: float) -> float:
+    # Pisagor teoremi: c = sqrt(a^2 + b^2)
+    # Negatif sayılarda mutlak değer kullan
+    pass""",
+        test_cases=[
+            {'input': {'a': 3, 'b': 4}, 'expected': 5.0},
+            {'input': {'a': 5, 'b': 12}, 'expected': 13.0},
+            {'input': {'a': 8, 'b': 15}, 'expected': 17.0},
+            {'input': {'a': 1, 'b': 1}, 'expected': 1.4142135623730951},
+            {'input': {'a': 0, 'b': 5}, 'expected': 5.0},
+            {'input': {'a': -3, 'b': -4}, 'expected': 5.0},
+            {'input': {'a': 7, 'b': 24}, 'expected': 25.0},
+        ],
+        # İPUCU YOK — kullanıcı isteği
+        hints=[],
+    ),
+
+    # ════════════════════════════════════════════════════════════════
+    # 76: Sayıların Sihri (string işlemleri)
+    # "Verilen rakamdaki sayıların sihri" gibi basit
+    # ════════════════════════════════════════════════════════════════
+    Question(
+        id=86,
+        title='Sayıların Sihri — Rakamları Topla',
+        category='strings',
+        level='beginner',
+        description="""Bir sayının tüm rakamlarının toplamını bul.
+Sayıyı string'e çevirip her karakteri int yapabilirsin.\nÖrnek: 12345 → 1+2+3+4+5 = 15
+Örnek: 999 → 27
+Örnek: 1000 → 1
+Örnek: 0 → 0
+Örnek: 7 → 7""",
+        starter_code="""def rakam_toplami(n: int) -> int:
+    # Sayinin tum rakamlarini topla
+    pass""",
+        test_cases=[
+            {'input': 12345, 'expected': 15},
+            {'input': 999, 'expected': 27},
+            {'input': 1000, 'expected': 1},
+            {'input': 0, 'expected': 0},
+            {'input': 7, 'expected': 7},
+            {'input': 123456789, 'expected': 45},
+        ],
+        # İPUCU YOK — kullanıcı isteği
+        hints=[],
+    ),
+
+    # ════════════════════════════════════════════════════════════════
+    # 77: Tersine Çevir (basit string)
+    # ════════════════════════════════════════════════════════════════
+    Question(
+        id=87,
+        title='Cümleyi Kelimelere Ayır',
+        category='strings',
+        level='beginner',
+        description="""Bir cümleyi kelimelerine ayır ve liste olarak döndür.
+Boşluklarla ayrılmış kelimeler.
+Birden fazla boşluk varsa yine de doğru ayrılmalı.
+Baştaki ve sondaki boşluklar yok sayılır.\nÖrnek: 'merhaba dünya' → ['merhaba', 'dünya']
+Örnek: '  ali   veli  ' → ['ali', 'veli']
+Örnek: 'tek' → ['tek']
+Örnek: '' → []""",
+        starter_code="""def cumleyi_kelimeye_ayir(cumle: str) -> list:
+    # Cümleyi kelimelerine ayır (bosluklari temizle)
+    pass""",
+        test_cases=[
+            {'input': 'merhaba dünya', 'expected': ['merhaba', 'dünya']},
+            {'input': '  ali   veli  ', 'expected': ['ali', 'veli']},
+            {'input': 'tek', 'expected': ['tek']},
+            {'input': '', 'expected': []},
+            {'input': 'Python mülakat hazırlık', 'expected': ['Python', 'mülakat', 'hazırlık']},
+            {'input': 'a b c d', 'expected': ['a', 'b', 'c', 'd']},
+        ],
+        # İPUCU YOK — kullanıcı isteği
+        hints=[],
+    ),
+
+    # ════════════════════════════════════════════════════════════════
+    # 78: İlk ve Son Karakter (basit string)
+    # ════════════════════════════════════════════════════════════════
+    Question(
+        id=88,
+        title='İlk ve Son Karakteri Birleştir',
+        category='strings',
+        level='beginner',
+        description="""Bir string'in ilk ve son karakterini alıp aralarına '-' koyarak
+birleştirilmiş yeni bir string döndür.\nÖrnek: 'merhaba' → 'm-a'
+Örnek: 'a' → 'a-a'  (tek karakter, hem ilk hem son aynı)
+Örnek: 'xy' → 'x-y'
+Örnek: 'Python' → 'P-n'
+Örnek: '' → ''""",
+        starter_code="""def ilk_ve_son(s: str) -> str:
+    # İlk ve son karakteri '-' ile birlestir
+    pass""",
+        test_cases=[
+            {'input': 'merhaba', 'expected': 'm-a'},
+            {'input': 'a', 'expected': 'a-a'},
+            {'input': 'xy', 'expected': 'x-y'},
+            {'input': 'Python', 'expected': 'P-n'},
+            {'input': '', 'expected': ''},
+            {'input': 'ABC', 'expected': 'A-C'},
+            {'input': '12345', 'expected': '1-5'},
+        ],
+        # İPUCU YOK — kullanıcı isteği
+        hints=[],
+    ),
+
 ]
 # 1783001822

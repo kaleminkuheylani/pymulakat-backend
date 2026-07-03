@@ -1420,6 +1420,180 @@ top = stack.pop()
         "related_question_ids": [304, 306, 301],
         "tutorial_slug": None,
     },
+
+    # ═══ 74-78: Yeni eklenen sorular (2026-07-03) ═══
+    84: {
+        "explanation": """**İç içe döngü**, Python'un en temel yapılarından biridir. Bir döngü içinde başka bir döngü çalıştırmak, 2D veri yapıları (matris, tablo, satır-sütun) oluşturmak için idealdir.
+
+**Problem:** n x n çarpım tablosu matrisi oluştur.
+
+**Çözüm:**
+
+```python
+def carpim_tablosu(n: int) -> list:
+    matris = []
+    for i in range(1, n + 1):
+        satir = []
+        for j in range(1, n + 1):
+            satir.append(i * j)
+        matris.append(satir)
+    return matris
+```
+
+**Liste comprehension ile tek satır:**
+
+```python
+def carpim_tablosu(n: int) -> list:
+    return [[i * j for j in range(1, n + 1)] for i in range(1, n + 1)]
+```
+
+**Zaman/Bellek karmaşıklığı:** O(n²) — n arttıkça bellek ve süre karesel büyür.
+
+**Gerçek hayat kullanımı:** Excel tabloları, oyun tahtaları (satranç, sudoku), piksel ızgaraları, sinema salonu koltuk seçimi.""",
+        "complexity": "O(n²) zaman, O(n²) bellek",
+        "related_concepts": ["iç içe döngü", "matris", "list comprehension", "2D array"],
+        "related_question_ids": [1, 2, 76],
+        "tutorial_slug": "python-degisken-nedir",
+    },
+    85: {
+        "explanation": """**Pisagor teoremi**, dik üçgenlerin temelidir. M.Ö. 6. yüzyılda Yunan filozof Pisagor tarafından formüle edilmiştir.
+
+**Teorem:** Bir dik üçgende, dik açının karşısındaki kenarın (hipotenüs) karesi, diğer iki kenarın karelerinin toplamına eşittir.
+
+```
+a² + b² = c²
+```
+
+Burada:
+- a, b: dik kenarlar
+- c: hipotenüs (en uzun kenar)
+
+**Python'da hesaplama:**
+
+```python
+import math
+
+def hipotenus(a, b):
+    # Negatif sayılar için mutlak değer
+    a, b = abs(a), abs(b)
+    # Pisagor: c = sqrt(a² + b²)
+    return math.sqrt(a * a + b * b)
+```
+
+**Ünlü Pisagor üçlüleri:**
+- (3, 4, 5) — en küçük
+- (5, 12, 13)
+- (8, 15, 17)
+- (7, 24, 25)
+
+**Kullanım alanları:** GPS mesafe hesaplama, mimari, bilgisayar grafikleri (2 nokta arası mesafe), oyun geliştirme.
+
+**Alternatif:** `math.hypot(a, b)` aynı işi yapar ama edge case'leri (negatif sayılar) kendiniz handle etmeniz beklenir.""",
+        "complexity": "O(1) zaman, O(1) bellek",
+        "related_concepts": ["math.sqrt", "pisagor teoremi", "mutlak değer", "math.hypot"],
+        "related_question_ids": [1, 76, 78],
+        "tutorial_slug": "python-if-else-kosullar",
+    },
+    86: {
+        "explanation": """**Sayıların rakamları toplamı**, mülakatlarda ve matematik olimpiyatlarında sıkça karşılaşılan klasik bir sorudur. Sayı tabanı dönüşümü, rakam sayısı bulma, basamak analizi gibi problemlerin temelidir.
+
+**Problem:** Bir tam sayının tüm rakamlarını topla.
+
+**Üç yaklaşım:**
+
+```python
+# 1. String'e çevir (önerilen)
+def rakam_toplami(n):
+    return sum(int(rakam) for rakam in str(abs(n)))
+
+# 2. Matematiksel (mod 10)
+def rakam_toplami(n):
+    n = abs(n)
+    toplam = 0
+    while n > 0:
+        toplam += n % 10  # son rakam
+        n //= 10          # son rakamı at
+    return toplam
+
+# 3. Recursive
+def rakam_toplami(n):
+    n = abs(n)
+    if n < 10:
+        return n
+    return (n % 10) + rakam_toplami(n // 10)
+```
+
+**Neden `abs(n)`?** Negatif sayılarda `-12345` → `'-12345'` string'inin `-` karakteri patlar.
+
+**Performans:** Üçü de O(log₁₀ n) — çünkü n'in kaç rakamı varsa o kadar adım.
+
+**İleri seviye:** Aynı toplamı tekrar tekrar uygularsan **digital root** bulursun. Örn: 12345 → 15 → 6 → 6 (1-9 arası tek rakam).""",
+        "complexity": "O(log₁₀ n) zaman, O(1) bellek",
+        "related_concepts": ["string conversion", "modulo", "while loop", "digital root"],
+        "related_question_ids": [74, 77, 78],
+        "tutorial_slug": "python-degisken-nedir",
+    },
+    87: {
+        "explanation": """**String parçalama (split)**, metin işlemenin temelidir. NLP, veri temizleme, log analizi ve form işleme gibi her alanda karşına çıkar.
+
+**Problem:** Cümleyi kelimelerine ayır.
+
+**Çözüm:**
+
+```python
+def cumleyi_kelimeye_ayir(cumle):
+    return cumle.split()  # bosluklara göre ayırır, fazla boslukları temizler
+```
+
+**`str.split()` metodu:**
+- `split()` (parantez boş): Tüm boşluk karakterlerini (space, tab, newline) splitter olarak kullanır ve ardışık splitter'ları tek sayar.
+- `split(' ')` (tek boşluk): Sadece tek boşluğa göre ayırır, fazla boşlukları korur.
+
+**Örnek:**
+
+```python
+"  ali   veli  ".split()      # → ['ali', 'veli'] ✅
+"  ali   veli  ".split(' ')   # → ['', '', 'ali', '', '', 'veli', '', ''] ❌
+```
+
+**Neden bu önemli?** Gerçek dünya verisi (kullanıcı girişi, log dosyaları, web scraping) neredeyse her zaman düzensizdir. `split()` ile güvenli parsing yaparsın.
+
+**İleri:** `re.split(r'\s+', cumle.strip())` — regex ile aynı iş, ama `split()` yeterli.""",
+        "complexity": "O(n) zaman, O(n) bellek (n=cümle uzunluğu)",
+        "related_concepts": ["str.split", "string parsing", "whitespace", "text processing"],
+        "related_question_ids": [76, 78, 1],
+        "tutorial_slug": "python-degisken-nedir",
+    },
+    88: {
+        "explanation": """**İndeksleme (indexing)**, Python string'lerinin temelidir. Her karakter sıfırdan başlayan bir indekste durur.
+
+**Problem:** İlk ve son karakteri al, '-' ile birleştir.
+
+**Çözüm:**
+
+```python
+def ilk_ve_son(s):
+    if not s:           # boş string kontrolü
+        return ''
+    return f'{s[0]}-{s[-1]}'  # ilk ve son karakter
+```
+
+**Python indeksleme kuralları:**
+- `s[0]` → ilk karakter
+- `s[-1]` → son karakter
+- `s[-2]` → sondan ikinci
+- Boş string'de `s[0]` → IndexError! Bu yüzden kontrol gerekli.
+
+**f-string (formatted string literal):** Python 3.6+ ile geldi. `'merhaba'[0]` → `'m'`, `'merhaba'[-1]` → `'a'`. Birleştirilince `"m-a"`.
+
+**Kullanım alanları:** Kısaltma oluşturma (`"Ankara" → "A-a"`), ilk-son harf kontrolü (palindrome), dosya uzantısı kontrolü.
+
+**Tek karakterli edge case:** `"a"` → `"a-a"` (ilk ve son aynı). Negatif indeks bu yüzden güçlü — uzunluktan bağımsız.""",
+        "complexity": "O(1) zaman, O(1) bellek",
+        "related_concepts": ["string indexing", "negative index", "f-string", "edge case"],
+        "related_question_ids": [76, 77, 1],
+        "tutorial_slug": "python-degisken-nedir",
+    },
 }
 
 

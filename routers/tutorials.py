@@ -566,6 +566,434 @@ df.groupby('cat').apply(lambda g: pd.Series({
             {"question": "groupby.shift ne işe yarar?", "answer": "Zaman serisi analizinde lag/lead değerleri hesaplar. Örn: bir önceki güne göre değişim."},
         ],
     },
+
+    # ═══ 8: Python Değişken Rehberi (2026-07-03) ═══
+    "python-degisken-nedir": {
+        "id": 8,
+        "slug": "python-degisken-nedir",
+        "title": "Python Değişken Nedir? Nasıl Oluşturulur? — Başlangıç Rehberi",
+        "description": "Python'da değişken kavramı, atama operatörü, veri tipleri (int, float, str, bool) ve isimlendirme kuralları. Yeni başlayanlar için eksiksiz rehber.",
+        "category": "python-basics",
+        "difficulty": "beginner",
+        "reading_time_minutes": 10,
+        "related_question_ids": [74, 76, 77, 78],
+        "content_md": """# Python Değişken Nedir?
+
+Değişken, bir değeri sakladığın **isimlendirilmiş kutu**dur. Python'da her şey bir nesnedir ve değişken o nesneye referans (işaretçi) tutar.
+
+## Değişken Tanımlama
+
+Python'da değişken tanımlamak için `=` (atama operatörü) kullanılır. `let` veya `var` gibi anahtar kelimeye gerek yoktur.
+
+```python
+# Temel atamalar
+isim = "Ali"
+yas = 25
+boy = 1.75
+ogrenci = True
+```
+
+**Okunuşu:** "isim değişkenine 'Ali' ata" veya "isim 'Ali'ye eşittir" (teknik olarak eşitlik değil atamadır).
+
+## Değişken İsimlendirme Kuralları
+
+### Zorunlu kurallar (hata verir)
+- **Harf veya `_` ile başlamalı**: `sayi1`, `_gizli`, `isim2` ✅
+- **Sayı ile başlayamaz**: `1sayi` ❌
+- **Sadece harf, rakam, `_` içerebilir**: `isim-soyad` ❌ (tire olmaz)
+- **Python anahtar kelimesi olamaz**: `if`, `for`, `class`, `return` ❌
+
+### Tavsiye edilen kurallar (PEP 8)
+- **snake_case**: `kullanici_adi`, `toplam_fiyat`
+- **Türkçe karakter kullanma**: `isim` yerine `ad` veya `name`
+- **Anlamlı isim**: `x` yerine `toplam`, `s` yerine `cumle`
+- **Sabitler BÜYÜK_HARF**: `PI = 3.14`, `MAX_DENEME = 3`
+
+```python
+# ❌ Kötü
+x = 25
+s = "Ali"
+PI = 3.14
+
+# ✅ İyi
+kullanici_yasi = 25
+kullanici_adi = "Ali"
+pi_sabiti = 3.14
+```
+
+## Veri Tipleri
+
+Python'da her değişkenin bir tipi vardır. `type()` fonksiyonu ile öğrenebilirsin:
+
+```python
+sayi = 42
+print(type(sayi))        # <class 'int'> — tam sayı
+
+ondalik = 3.14
+print(type(ondalik))     # <class 'float'> — ondalıklı sayı
+
+metin = "merhaba"
+print(type(metin))       # <class 'str'> — string (metin)
+
+dogru_mu = True
+print(type(dogru_mu))    # <class 'bool'> — boolean (mantıksal)
+
+liste = [1, 2, 3]
+print(type(liste))       # <class 'list'> — liste
+```
+
+### Tip Dönüşümü
+
+```python
+# str → int
+sayi = int("42")              # 42
+
+# int → str
+metin = str(42)               # "42"
+
+# int → float
+ondalik = float(5)            # 5.0
+
+# str → float
+pi = float("3.14")            # 3.14
+```
+
+## Dinamik Tip (Dynamic Typing)
+
+Python'da değişkenin tipini **sen belirtmezsin**, Python yorumlar. Aynı değişkene farklı tipler atayabilirsin:
+
+```python
+x = 10        # x artık int
+x = "merhaba" # x artık str
+x = [1, 2, 3] # x artık list
+```
+
+Bu esneklik güçlüdür ama büyük projelerde karışıklığa yol açabilir. Çözüm: **type hints** (Python 3.5+):
+
+```python
+isim: str = "Ali"
+yas: int = 25
+```
+
+## Çoklu Atama
+
+```python
+# Aynı değer
+a = b = c = 0
+
+# Farklı değerler (tuple unpacking)
+x, y, z = 1, 2, 3
+# x=1, y=2, z=3
+
+# Takas
+a, b = b, a
+```
+
+## Pratik Örnekler
+
+**Örnek 1: Kullanıcı bilgileri**
+```python
+ad = "Zeynep"
+soyad = "Yılmaz"
+tam_ad = ad + " " + soyad  # "Zeynep Yılmaz"
+yas = 22
+dogum_yili = 2026 - yas    # 2004
+```
+
+**Örnek 2: Daire alanı**
+```python
+pi = 3.14159
+yaricap = 5
+alan = pi * yaricap ** 2    # 78.53975
+```
+
+**Örnek 3: Basit sayaç**
+```python
+sayac = 0
+sayac = sayac + 1   # 1
+sayac += 1          # 2 (kısa yazımı)
+```
+
+## Sık Yapılan Hatalar
+
+1. **Değişken tanımsız**: `print(isim)` hata verir eğer `isim` daha önce tanımlanmadıysa.
+2. **Tire kullanımı**: `kullanici-adi = "Ali"` SyntaxError.
+3. **Büyük-küçük harf duyarlılığı**: `Isim` ile `isim` farklı değişkenlerdir.
+4. **Rezerve kelimeler**: `class = "9-A"` hata verir, `sinif = "9-A"` çalışır.
+
+## Özet
+
+| Kavram | Örnek |
+|--------|-------|
+| Tanımlama | `isim = "Ali"` |
+| Tip öğrenme | `type(isim)` → `str` |
+| Çoklu atama | `a, b = 1, 2` |
+| Tip dönüşümü | `int("42")` → `42` |
+| Type hint | `yas: int = 25` |
+
+Değişken, programlamanın **temel yapı taşı**dır. İyi isimlendirme alışkanlığı edinmek, junior'dan senior'a geçişin en önemli adımıdır.
+""",
+        "faq": [
+            {"question": "Python'da değişken tanımlamak için 'let' veya 'var' gerekir mi?", "answer": "Hayır. Python dinamik tipli bir dil olduğu için sadece `=` ile atama yapılır: `isim = 'Ali'`."},
+            {"question": "Bir değişkenin tipini nasıl öğrenirim?", "answer": "`type(degisken)` fonksiyonunu kullan. Örn: `type(42)` → `<class 'int'>`."},
+            {"question": "Aynı isimde iki değişken tanımlayabilir miyim?", "answer": "Evet, ama ikincisi birincisinin üzerine yazar (rebind). `x = 5; x = 'a'` sonra `x` artık 'a' string'idir."},
+            {"question": "Türkçe karakterli değişken ismi kullanabilir miyim?", "answer": "Python 3 evet, ama PEP 8 rehberi İngilizce ASCII karakter önerir. `yaş` yerine `yas` yazmak daha yaygın."},
+            {"question": "Değişken ile sabit arasındaki fark nedir?", "answer": "Python'da sabit kavramı yoktur (constant), sadece convention vardır: BÜYÜK_HARF ile yazılan değişkenler dokunulmamalıdır (örn: `PI = 3.14`)."},
+        ],
+    },
+
+    # ═══ 9: Python If-Else Rehberi (2026-07-03) ═══
+    "python-if-else-kosullar": {
+        "id": 9,
+        "slug": "python-if-else-kosullar",
+        "title": "Python If-Else Koşulları — Nerede ve Nasıl Kullanılır?",
+        "description": "Python'da koşullu ifadeler (if, elif, else), karşılaştırma operatörleri, mantıksal operatörler (and, or, not) ve iç içe koşullar. Örneklerle başlangıç rehberi.",
+        "category": "python-basics",
+        "difficulty": "beginner",
+        "reading_time_minutes": 12,
+        "related_question_ids": [75, 76, 74],
+        "content_md": """# Python If-Else Koşulları
+
+Programlamada **karar verme** yapısıdır. "Eğer X doğruysa şunu yap, değilse bunu yap" mantığını kurar.
+
+## Temel Yapı
+
+```python
+if kosul:
+    # kosul True ise çalışır
+    yapilacak_islem()
+else:
+    # kosul False ise çalışır
+    alternatif_islem()
+```
+
+**Kritik kural:** `:` (iki nokta üst üste) ve **4 boşluk girinti** (indent) zorunludur. Girinti Python'da kod bloğunu tanımlar.
+
+## Karşılaştırma Operatörleri
+
+| Operatör | Anlam | Örnek | Sonuç |
+|----------|-------|-------|-------|
+| `==` | Eşit mi | `5 == 5` | `True` |
+| `!=` | Eşit değil mi | `5 != 3` | `True` |
+| `>` | Büyük mü | `5 > 3` | `True` |
+| `<` | Küçük mü | `5 < 3` | `False` |
+| `>=` | Büyük eşit mi | `5 >= 5` | `True` |
+| `<=` | Küçük eşit mi | `3 <= 5` | `True` |
+
+⚠️ **Yaygın hata:** `=` (atama) ile `==` (karşılaştırma) karıştırılır.
+```python
+# ❌ YANLIŞ — atama yapar, her zaman True döner
+if x = 5:
+
+# ✅ DOĞRU — karşılaştırma yapar
+if x == 5:
+```
+
+## if-elif-else Zinciri
+
+Birden fazla koşulu sırayla kontrol etmek için `elif` (else if) kullanılır:
+
+```python
+puan = 85
+
+if puan >= 90:
+    harf_notu = "AA"
+elif puan >= 80:
+    harf_notu = "BA"
+elif puan >= 70:
+    harf_notu = "BB"
+elif puan >= 60:
+    harf_notu = "CC"
+else:
+    harf_notu = "FF"
+
+print(harf_notu)  # "BA"
+```
+
+**Kritik:** `elif` sırası önemlidir. İlk doğru koşulda durur, aşağıya geçmez.
+
+## Mantıksal Operatörler
+
+Birden fazla koşulu birleştirmek için:
+
+```python
+# AND — her iki koşul da doğru olmalı
+if yas >= 18 and ehliyet_var:
+    araba_kullanabilir()
+
+# OR — en az biri doğru olmalı
+if hava_yagmurlu or kar_yagli:
+    semsiye_al()
+
+# NOT — koşulu tersine çevirir
+if not kullanici_giris_yapmis:
+    login_sayfasina_yonlendir()
+```
+
+### Truthy / Falsy
+
+Python'da koşul ifadesi sadece True/False değil, **herhangi bir değer** olabilir:
+
+```python
+# Falsy değerler (False sayılır)
+if 0:           # False
+if "":          # False (boş string)
+if []:          # False (boş liste)
+if None:        # False
+
+# Truthy değerler (True sayılır)
+if 1:           # True
+if "merhaba":   # True
+if [1, 2]:      # True (dolu liste)
+if "0":         # True (string "0", int 0'dan farklı!)
+```
+
+## İç İçe Koşullar (Nested If)
+
+```python
+yas = 20
+ehliyet_var = True
+saglikli = True
+
+if yas >= 18:
+    if ehliyet_var:
+        if saglikli:
+            print("Araba kullanabilirsin")
+        else:
+            print("Sağlık raporu gerekli")
+    else:
+        print("Ehliyetin yok")
+else:
+    print("Yaşın yetmiyor")
+```
+
+**Daha okunabilir versiyon (`and` ile):**
+
+```python
+if yas >= 18 and ehliyet_var and saglikli:
+    print("Araba kullanabilirsin")
+elif yas < 18:
+    print("Yaşın yetmiyor")
+elif not ehliyet_var:
+    print("Ehliyetin yok")
+else:
+    print("Sağlık raporu gerekli")
+```
+
+## Tek Satırlık If (Ternary)
+
+Basit koşullar için kısa yazım:
+
+```python
+# Normal
+if yas >= 18:
+    durum = "yetiskin"
+else:
+    durum = "cocuk"
+
+# Ternary (tek satır)
+durum = "yetiskin" if yas >= 18 else "cocuk"
+```
+
+## Pratik Örnekler
+
+**Örnek 1: Sayı tek/çift**
+```python
+sayi = 7
+if sayi % 2 == 0:
+    print("Çift sayı")
+else:
+    print("Tek sayı")
+```
+
+**Örnek 2: En büyük sayıyı bul**
+```python
+a, b, c = 5, 12, 8
+
+if a >= b and a >= c:
+    en_buyuk = a
+elif b >= a and b >= c:
+    en_buyuk = b
+else:
+    en_buyuk = c
+```
+
+**Örnek 3: Şifre doğrulama**
+```python
+kullanici_sifre = input("Şifre: ")
+dogru_sifre = "python123"
+
+if kullanici_sifre == dogru_sifre:
+    print("Giriş başarılı")
+elif kullanici_sifre == "":
+    print("Şifre boş olamaz")
+else:
+    print("Yanlış şifre")
+```
+
+**Örnek 4: Hipotenüs hesabı (koşullu validasyon)**
+```python
+def hipotenus(a, b):
+    a, b = abs(a), abs(b)
+    
+    if a == 0 and b == 0:
+        return 0  # Üçgen oluşmaz
+    
+    import math
+    return math.sqrt(a * a + b * b)
+```
+
+**Örnek 5: Not sistemi**
+```python
+notu = 75
+
+if notu >= 90:
+    derece = "A"
+elif notu >= 80:
+    derece = "B"
+elif notu >= 70:
+    derece = "C"
+elif notu >= 60:
+    derece = "D"
+else:
+    derece = "F"
+```
+
+## Sık Yapılan Hatalar
+
+1. **`=` ile `==` karıştırmak**: `if x = 5` SyntaxError.
+2. **Girinti unutmak**: `if kosul:` altındaki kod aynı seviyede olmalı.
+3. **elif yerine if**: `if` yeni bir kontrol başlatır, `elif` zincirin parçasıdır.
+4. **Truthy karışıklığı**: `if liste:` ile listenin **dolu** olup olmadığını kontrol edersin, `if len(liste) > 0:` değil.
+5. **Negatif öncelik**: `not (a and b)` ile `not a and b` farklıdır!
+
+```python
+# Farklı anlamlar
+not (a and b)   # a AND b'nin değili
+not a and b     # (a değil) AND b
+```
+
+## Özet Tablo
+
+| Yapı | Kullanım |
+|------|----------|
+| `if` | Tek koşul |
+| `if-else` | İki durum (doğru/yanlış) |
+| `if-elif-else` | Çoklu koşul |
+| `and`, `or`, `not` | Koşulları birleştir |
+| Ternary | Tek satır atama |
+| Nested if | Koşul içinde koşul |
+
+If-else, programlamanın **kalbi**dir. Algoritma tasarımının %80'i doğru koşul yazmaya dayanır.
+""",
+        "faq": [
+            {"question": "Python'da 'else if' yerine 'elif' mi yazılır?", "answer": "Evet. Python'da 'else if' kısaltması olarak `elif` kullanılır: `if ... elif ... else ...`."},
+            {"question": "if ile tek satırda yazılabilir mi?", "answer": "Evet, ternary (üçlü) operatör ile: `sonuc = 'yetiskin' if yas >= 18 else 'cocuk'`."},
+            {"question": "Birden fazla koşulu nasıl birleştiririm?", "answer": "`and` (her ikisi de doğru), `or` (en az biri doğru), `not` (tersi) operatörleriyle. Örn: `if yas >= 18 and ehliyet:`."},
+            {"question": "Boş liste if bloğuna girer mi?", "answer": "Hayır. Boş liste `[]`, boş string `\"\"`, `0`, `None` Falsy değerlerdir ve `if` bloğuna girmez. `if liste:` liste doluysa çalışır."},
+            {"question": "Switch-case var mı Python'da?", "answer": "Klasik switch-case yoktur. Python 3.10+ ile `match-case` yapısı geldi. Daha eski sürümlerde if-elif-else zinciri kullanılır."},
+        ],
+    },
 }
 
 
