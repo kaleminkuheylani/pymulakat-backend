@@ -502,22 +502,22 @@ async def get_me(request: Request):
         try:
             result = sb_admin.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
             profile = result.data
-        except Exception:
-            pass
+        except Exception as e:
+            logging.warning("me.profile.fetch_failed user=%s err=%s", user_id, e)
 
         total_attempts = success_count = fail_count = points = avg_time_ms = 0
         try:
             attempts = sb_admin.table("interview_attempts").select(
                 "passed_tests, total_tests, success, execution_time_ms"
-            ).eq("user_id", user_id).execute().data or []
+            ).eq("id", user_id).execute().data or []
             total_attempts = len(attempts)
             success_count = sum(1 for a in attempts if a.get("success"))
             fail_count = total_attempts - success_count
             points = sum(a.get("passed_tests", 0) * 10 for a in attempts if a.get("success"))
             if total_attempts > 0:
                 avg_time_ms = sum(a.get("execution_time_ms", 0) for a in attempts) / total_attempts
-        except Exception:
-            pass
+        except Exception as e:
+            logging.warning("me.attempts.fetch_failed user=%s err=%s", user_id, e)
 
         return {
             "id": user_id,
