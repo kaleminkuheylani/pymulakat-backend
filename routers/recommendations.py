@@ -13,8 +13,22 @@
 from fastapi import APIRouter, Request, HTTPException, Depends, Query
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+import re
+import unicodedata
 from dependencies import get_current_user
 from supabase_client import get_supabase_admin
+
+
+def _slugify_fallback(text: str) -> str:
+    """DB'de slug yoksa anında title'dan üret. Türkçe karakter desteği."""
+    if not text:
+        return ""
+    # Türkçe lower-case + ascii'ye normalize et
+    tr_map = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
+    s = text.translate(tr_map).lower()
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+    s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+    return s[:80] or ""
 
 router = APIRouter(prefix="/api/v2/recommendations", tags=["recommendations"])
 
@@ -169,13 +183,15 @@ async def get_flow(
         # Kategori bonus: zayıf kategoriye daha düşük ağırlık
         if qd["category"] in user_ctx.get("weak_categories", []):
             personal += W_TUTORIAL_BRIDGE
+        # Slug DB'de yoksa title'dan anında üret — frontend tıklaması boşa gitmesin
+        question_slug = getattr(q, "slug", None) or _slugify_fallback(q.title)
         scored.append({
             "type": "question",
             "id": q.id,
             "title": q.title,
             "category": q.category,
             "level": q.level,
-            "slug": getattr(q, "slug", None),
+            "slug": question_slug,
             "score": personal,
             "reason": _explain_personal(q.category, q.level, user_ctx),
             "created_at": qd["created_at"],
