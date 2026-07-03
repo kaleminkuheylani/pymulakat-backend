@@ -178,29 +178,49 @@ async def get_flow(
         views = p["view_count"] + p["attempt_count"]
         p["reason"] = f"🔥 {views} etkileşim" if views > 0 else "🔥 Popüler"
 
-    # ─── 4) Tavsiye Edilenler (next-level) ───
-    # Kullanıcının success_rate'ine göre bir üst seviyeden öner
+    # ─── 1) Öneriler (personalized) — şu anki seviyende, çözülmemiş benzer ───
+    # Sadece henüz çözülmemiş + success_rate uyumlu seviyede
     if user_ctx["success_rate"] >= 0.7:
-        target_level = "advanced"
+        current_level = "advanced"
     elif user_ctx["success_rate"] >= 0.3:
-        target_level = "intermediate"
+        current_level = "intermediate"
     else:
-        target_level = "beginner"
+        current_level = "beginner"
 
-    recommended = [
+    personal = [
         s for s in scored
-        if s["level"] == target_level and s["id"] not in user_ctx.get("solved_ids", [])
+        if s["id"] not in user_ctx.get("solved_ids", [])
+        and s["level"] == current_level
     ]
-    recommended = sorted(recommended, key=lambda x: x["score"], reverse=True)[:5]
-    for r in recommended:
-        r["section"] = "recommended"
-        r["reason"] = f"🎯 {target_level.capitalize()} seviye — başarı oranına göre sıradaki"
-
-    # ─── Öneriler (personalized, ayrı liste) ───
-    personal = sorted(scored, key=lambda x: x["score"], reverse=True)[:5]
+    personal = sorted(personal, key=lambda x: x["score"], reverse=True)[:5]
     for p in personal:
         p["section"] = "personal"
         # reason zaten var
+
+    # ─── 4) Tavsiye Edilenler (next-level) — bir üst seviye ───
+    level_order = ["beginner", "intermediate", "advanced"]
+    current_idx = level_order.index(current_level) if current_level in level_order else 0
+    target_idx = min(current_idx + 1, len(level_order) - 1)
+    target_level = level_order[target_idx]
+
+    recommended = [
+        s for s in scored
+        if s["level"] == target_level
+        and s["id"] not in user_ctx.get("solved_ids", [])
+    ]
+    # Beginner'dan başlıyorsa zaten target=intermediate ama henüz beginner'da → empty
+    # Bu durumda beginner'ın en iyilerini göster
+    if not recommended:
+        recommended = sorted(
+            [s for s in scored if s["id"] not in user_ctx.get("solved_ids", [])],
+            key=lambda x: x["score"], reverse=True
+        )[:5]
+        for r in recommended:
+            r["reason"] = "🌱 Mevcut seviyende gelişim için"
+    else:
+        recommended = sorted(recommended, key=lambda x: x["score"], reverse=True)[:5]
+        for r in recommended:
+            r["reason"] = f"🚀 Sıradaki seviye ({target_level}) — başarı oranın geçiş için yeterli"
 
     return {
         "sections": {
