@@ -1452,7 +1452,7 @@ def carpim_tablosu(n: int) -> list:
 **Gerçek hayat kullanımı:** Excel tabloları, oyun tahtaları (satranç, sudoku), piksel ızgaraları, sinema salonu koltuk seçimi.""",
         "complexity": "O(n²) zaman, O(n²) bellek",
         "related_concepts": ["iç içe döngü", "matris", "list comprehension", "2D array"],
-        "related_question_ids": [1, 2, 76],
+        "related_question_ids": [1, 2, 9, 12, 85, 86, 87, 88],
         "tutorial_slug": "python-degisken-nedir",
     },
     85: {
@@ -1491,7 +1491,7 @@ def hipotenus(a, b):
 **Alternatif:** `math.hypot(a, b)` aynı işi yapar ama edge case'leri (negatif sayılar) kendiniz handle etmeniz beklenir.""",
         "complexity": "O(1) zaman, O(1) bellek",
         "related_concepts": ["math.sqrt", "pisagor teoremi", "mutlak değer", "math.hypot"],
-        "related_question_ids": [1, 76, 78],
+        "related_question_ids": [1, 5, 7, 12, 84, 86, 88],
         "tutorial_slug": "python-if-else-kosullar",
     },
     86: {
@@ -1530,7 +1530,7 @@ def rakam_toplami(n):
 **İleri seviye:** Aynı toplamı tekrar tekrar uygularsan **digital root** bulursun. Örn: 12345 → 15 → 6 → 6 (1-9 arası tek rakam).""",
         "complexity": "O(log₁₀ n) zaman, O(1) bellek",
         "related_concepts": ["string conversion", "modulo", "while loop", "digital root"],
-        "related_question_ids": [74, 77, 78],
+        "related_question_ids": [1, 3, 6, 7, 84, 85, 87, 88],
         "tutorial_slug": "python-degisken-nedir",
     },
     87: {
@@ -1561,7 +1561,7 @@ def cumleyi_kelimeye_ayir(cumle):
 **İleri:** `re.split(r'\s+', cumle.strip())` — regex ile aynı iş, ama `split()` yeterli.""",
         "complexity": "O(n) zaman, O(n) bellek (n=cümle uzunluğu)",
         "related_concepts": ["str.split", "string parsing", "whitespace", "text processing"],
-        "related_question_ids": [76, 78, 1],
+        "related_question_ids": [1, 3, 6, 13, 14, 16, 86, 88],
         "tutorial_slug": "python-degisken-nedir",
     },
     88: {
@@ -1591,7 +1591,7 @@ def ilk_ve_son(s):
 **Tek karakterli edge case:** `"a"` → `"a-a"` (ilk ve son aynı). Negatif indeks bu yüzden güçlü — uzunluktan bağımsız.""",
         "complexity": "O(1) zaman, O(1) bellek",
         "related_concepts": ["string indexing", "negative index", "f-string", "edge case"],
-        "related_question_ids": [76, 77, 1],
+        "related_question_ids": [1, 3, 6, 13, 86, 87],
         "tutorial_slug": "python-degisken-nedir",
     },
 }

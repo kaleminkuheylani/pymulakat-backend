@@ -576,7 +576,7 @@ df.groupby('cat').apply(lambda g: pd.Series({
         "category": "python-basics",
         "difficulty": "beginner",
         "reading_time_minutes": 10,
-        "related_question_ids": [74, 76, 77, 78],
+        "related_question_ids": [1, 2, 3, 5, 6, 7, 9, 12, 84, 85, 86, 87, 88],
         "content_md": """# Python Değişken Nedir?
 
 Değişken, bir değeri sakladığın **isimlendirilmiş kutu**dur. Python'da her şey bir nesnedir ve değişken o nesneye referans (işaretçi) tutar.
@@ -751,7 +751,7 @@ Değişken, programlamanın **temel yapı taşı**dır. İyi isimlendirme alış
         "category": "python-basics",
         "difficulty": "beginner",
         "reading_time_minutes": 12,
-        "related_question_ids": [75, 76, 74],
+        "related_question_ids": [1, 2, 3, 4, 5, 7, 9, 12, 75, 84, 85, 86],
         "content_md": """# Python If-Else Koşulları
 
 Programlamada **karar verme** yapısıdır. "Eğer X doğruysa şunu yap, değilse bunu yap" mantığını kurar.
