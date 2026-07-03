@@ -16,27 +16,22 @@ from services.recommendation_engine import (
 router = APIRouter(prefix="/api/v2/recommendations", tags=["recommendations"])
 
 
-# ─── User Context builder (DB'den çek) ──────────────────
+# ─── User Context builder ─────────────────────────────
 async def _build_user_context(user_id: str) -> UserContext:
-    """Kullanıcının son 50 attempt'ten bağlam çıkar.
+    """Kullanıcının attempt'lerinden bağlam çıkar.
 
-    Spesifik reason üretmek için:
-    - solved_ids, attempted_ids
-    - top_categories, weak_categories
-    - success_rate, total_attempts
-    - recent_failed (son başarısız denemeler)
-    - no_hint_failed (ipucusuz başarısızlar)
+    Son çözdüğü soruları (id, title, category) çek — personal section reason'ları için.
     """
     sb = get_supabase_admin()
-    ctx = UserContext(is_authenticated=True, user_id=user_id) if False else UserContext(is_authenticated=True)
-    ctx.is_authenticated = True
+    ctx = UserContext(is_authenticated=True)
+
     try:
         attempts_res = (
             sb.table("interview_attempts")
-            .select("question_id, success, hints_used, passed_tests, total_tests, created_at")
+            .select("question_id, success, passed_tests, total_tests, created_at")
             .eq("user_id", user_id)
             .order("created_at", desc=True)
-            .limit(50)
+            .limit(100)
             .execute()
         )
         attempts = attempts_res.data or []
@@ -46,55 +41,48 @@ async def _build_user_context(user_id: str) -> UserContext:
         ctx.solved_ids = list({a["question_id"] for a in attempts if a.get("success")})
         ctx.attempted_ids = list({a["question_id"] for a in attempts})
         ctx.total_attempts = len(attempts)
+        ctx.success_rate = sum(1 for a in attempts if a.get("success")) / max(len(attempts), 1)
 
-        # Kategori başarı oranı — question'ları join etmemiz lazım
-        # Ancak hızlı yol: attempts'te category yoksa questions tablosundan çek
+        # Kategori bilgisi — recent_solved için
         q_ids = list({a["question_id"] for a in attempts})
         try:
-            q_res = sb.table("interwiews").select("id, category").in_("id", q_ids).execute()
-            cat_map = {r["id"]: r.get("category") for r in (q_res.data or [])}
+            q_res = sb.table("interwiews").select("id, title, category").in_("id", q_ids).execute()
+            q_map = {r["id"]: r for r in (q_res.data or [])}
         except Exception:
-            cat_map = {}
+            q_map = {}
 
-        cat_stats: dict = {}
+        # solved_categories (unique)
+        solved_cats = []
+        for qid in ctx.solved_ids:
+            q = q_map.get(qid)
+            if q and q.get("category") and q["category"] not in solved_cats:
+                solved_cats.append(q["category"])
+        ctx.solved_categories = solved_cats
+
+        # recent_solved: son başarılı denemelerden, soru başlığı ile birlikte
+        recent_solved_seen = set()
         for a in attempts:
-            cat = cat_map.get(a["question_id"], "unknown")
-            cat_stats.setdefault(cat, {"passed": 0, "total": 0})
-            cat_stats[cat]["total"] += 1
             if a.get("success"):
-                cat_stats[cat]["passed"] += 1
-
-        cat_success_rate = {
-            cat: stats["passed"] / stats["total"]
-            for cat, stats in cat_stats.items()
-            if stats["total"] >= 2
-        }
-        sorted_cats = sorted(cat_success_rate.items(), key=lambda x: -x[1])
-        ctx.top_categories = [c for c, _ in sorted_cats[:3]]
-        ctx.weak_categories = [c for c, r in cat_success_rate.items() if 0 < r < 0.5]
-        ctx.success_rate = sum(s["passed"] for s in cat_stats.values()) / max(len(attempts), 1)
-
-        # Son başarısız denemeler (spesifik reason için)
-        # Title lazım — join
-        try:
-            recent_fail_qids = [a["question_id"] for a in attempts[:10] if not a.get("success")][:5]
-            if recent_fail_qids:
-                rf_res = sb.table("interwiews").select("id, title").in_("id", recent_fail_qids).execute()
-                ctx.recent_failed = [(r["id"], r.get("title", "")) for r in (rf_res.data or [])]
-                # İpuçusuz başarısızlar
-                ctx.no_hint_failed = [
-                    a["question_id"] for a in attempts
-                    if not a.get("success") and (a.get("hints_used", 0) or 0) == 0
-                ][:5]
-        except Exception:
-            pass
+                qid = a["question_id"]
+                if qid in recent_solved_seen:
+                    continue
+                recent_solved_seen.add(qid)
+                q = q_map.get(qid)
+                if q:
+                    ctx.recent_solved.append((
+                        qid,
+                        q.get("title") or "",
+                        q.get("category") or "",
+                    ))
+                if len(ctx.recent_solved) >= 10:
+                    break
 
     except Exception:
         pass
     return ctx
 
 
-# ─── Tüm soruları DB'den çek (QuestionLite listesi) ─────
+# ─── Tüm soruları DB'den çek ─────────────────────────
 def _fetch_all_questions() -> list:
     """interwiews tablosundan tüm soruları QuestionLite listesine çevir."""
     sb = get_supabase_admin()
@@ -123,40 +111,25 @@ def _fetch_all_questions() -> list:
 # ─── Endpoint: Akış ────────────────────────────────────
 @router.get("/flow")
 async def get_flow(request: Request):
-    """Kişiselleştirilmiş akış — 4 section × max 2 item = 6-8 öneri.
+    """4 section'lı kişiselleştirilmiş akış.
 
-    Deterministik: aynı (user, DB state) → aynı sonuç.
-    Spesifik reason: kullanıcı attempt'lerine ve istatistiklere dayalı.
+    Sections:
+    - personal: Kullanıcının çözdüğü soruların kategorilerinden benzer sorular
+    - popular: attempt_count en yüksek 5 soru
+    - recent: created_at en yeni 5 soru
+    - next_level: başarı oranına göre bir üst seviye soruları
+
+    Deterministik: aynı (user, db_state) → aynı sonuç.
+    Misafir: personal section beginner sorularla dolar.
     """
     user_ctx = UserContext(is_authenticated=False)
     try:
         user = await get_current_user(request)
         user_ctx = await _build_user_context(user["id"])
     except HTTPException:
-        pass  # Misafir akışı — anonim bağlam
+        pass
 
     questions = _fetch_all_questions()
-    if not questions:
-        # DB boşsa fallback hardcoded data'dan çek
-        try:
-            from data.QUESTIONS import QUESTIONS as ALL_QUESTIONS
-            questions = [
-                QuestionLite(
-                    id=q.id,
-                    title=q.title,
-                    category=q.category,
-                    level=q.level,
-                    slug=getattr(q, "slug", "") or "",
-                    function_name=getattr(q, "function_name", "") or "",
-                    view_count=0,
-                    attempt_count=0,
-                    created_at="",
-                )
-                for q in ALL_QUESTIONS
-            ]
-        except Exception:
-            questions = []
-
     sections, ctx_dict = build_flow(questions, user_ctx)
 
     return {
@@ -165,7 +138,7 @@ async def get_flow(request: Request):
     }
 
 
-# ─── Endpoint: Topluluk (formlar) ─────────────────────
+# ─── Endpoint: Topluluk ────────────────────────────────
 @router.get("/community")
 async def get_community(
     limit: int = Query(15, le=50),
@@ -210,7 +183,7 @@ def _explain_form(reply_count: int, created_at: str) -> str:
     return "💬 Topluluk"
 
 
-# ─── Eski endpoint (geriye uyumlu) ────────────────────
+# ─── Eski endpoint (geriye uyumlu) ───────────────────
 @router.get("")
 async def get_recommendations_compat(request: Request, limit: int = 10):
     """Geriye uyumluluk — düz liste (tüm section'lar birleşik)."""
@@ -218,8 +191,8 @@ async def get_recommendations_compat(request: Request, limit: int = 10):
     all_items = []
     for section in flow["sections"].values():
         all_items.extend(section)
-    # Score DESC, tie-break ID ASC
-    all_items.sort(key=lambda x: (-x.get("score", 0), x.get("id", 0)))
+    # ID ASC tie-break
+    all_items.sort(key=lambda x: (x.get("section", ""), x.get("id", 0)))
     return {
         "data": all_items[:limit],
         "context": flow["context"],
