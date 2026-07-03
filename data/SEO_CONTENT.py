@@ -1597,13 +1597,196 @@ def ilk_ve_son(s):
 }
 
 
+# ═══ BASIC_SORULAR: yaklaşım/açıklama yazma, sadece temiz çözüm ═══
+# 📌 Kural: Eger soru sadece degisken, kosul, döngü veya basit string
+# islemleri içeriyorsa → açıklama metni yazma, sadece çözüm göster.
+# Algoritmik sorular (O(n²)+, DP, graph, vb) → yaklaşım gerekli.
+BASIC_CATEGORIES = {"python-basics", "strings"}
+ALGORITHMIC_KEYWORDS = ["İki Pointer", "Two Pointers", "Sliding Window", "DP",
+                       "Dynamic Programming", "Greedy", "Recursive", "DFS", "BFS",
+                       "Backtracking", "Binary Search", "Hash Map", "Trie",
+                       "Prefix Sum", "Memoization"]
+
+
+def _is_basic_question(q) -> bool:
+    """Soru basit mi? Yaklaşım/açıklama gerekmiyorsa True."""
+    # 📌 Kural: Beginner + (python-basics veya strings) → basit
+    # Beginner + list-dict veya pandas → orta (basic'e dönüşebilir)
+    # Intermediate veya algorithms veya O(n²)+ → algoritmik (yaklaşım gerekli)
+    seo = SEO_DATA.get(q.id, {})
+
+    # Algorithms kategorisi her zaman algoritmik
+    if q.category == "algorithms":
+        return False
+    # Intermediate/advanced seviye her zaman algoritmik
+    if q.level in ("intermediate", "advanced"):
+        return False
+    # Beginner + python-basics veya strings → basit
+    if q.level == "beginner" and q.category in BASIC_CATEGORIES:
+        return True
+    # Beginner + diğer kategoriler (list-dict, pandas) → orta (yaklaşım kısa)
+    # Yine de basit sayalım
+    return True
+
+
+def _build_minimal_explanation(q) -> str:
+    """Basit sorular için sadece temiz çözüm — yaklaşım/açıklama yok."""
+    starter = q.starter_code or ""
+    # Function adını çıkar
+    import re
+    m = re.search(r'def\s+(\w+)\s*\(([^)]*)\)', starter)
+    fn_name = m.group(1) if m else q.title.lower().replace(' ', '_')
+    params = m.group(2) if m else ""
+
+    # Basit, net çözümler (algoritma göstermeden)
+    solutions = {
+        1: '''```python
+import re
+
+def is_palindrome(text: str) -> bool:
+    cleaned = re.sub(r'[^a-z0-9]', '', text.lower())
+    return cleaned == cleaned[::-1]
+```
+
+Örnekler:
+- `is_palindrome("radar")` → `True`
+- `is_palindrome("Python")` → `False`
+- `is_palindrome("A man, a plan, a canal: Panama")` → `True`''',
+        3: '''```python
+def longest_word(text: str) -> str:
+    return max(text.split(), key=len)
+```
+
+Örnekler:
+- `longest_word("I love Python programming")` → `"programming"`
+- `longest_word("a bb ccc")` → `"ccc"`''',
+        6: '''```python
+from collections import Counter
+
+def char_count(text: str) -> dict:
+    return dict(Counter(text))
+```
+
+Örnekler:
+- `char_count("hello")` → `{"h": 1, "e": 1, "l": 2, "o": 1}`
+- `char_count("aaa")` → `{"a": 3}`''',
+        8: '''```python
+def duzlestir(items):
+    sonuc = []
+    for item in items:
+        if isinstance(item, list):
+            sonuc.extend(duzlestir(item))
+        else:
+            sonuc.append(item)
+    return sonuc
+```
+
+Örnekler:
+- `duzlestir([1, [2, 3], [4, [5, 6]]])` → `[1, 2, 3, 4, 5, 6]`
+- `duzlestir([1, 2, 3])` → `[1, 2, 3]`''',
+        16: '''```python
+def parantez_dengesi(text: str) -> bool:
+    acilan = "([{"
+    kapanan = ")]}"
+    eslesme = {")": "(", "]": "[", "}": "{"}
+    yigin = []
+    for ch in text:
+        if ch in acilan:
+            yigin.append(ch)
+        elif ch in kapanan:
+            if not yigin or yigin.pop() != eslesme[ch]:
+                return False
+    return len(yigin) == 0
+```
+
+Örnekler:
+- `parantez_dengesi("()[]{}")` → `True`
+- `parantez_dengesi("([)]")` → `False`
+- `parantez_dengesi("{[]()}")` → `True`''',
+        17: '''```python
+import re
+
+def slug_olusturucu(text: str) -> str:
+    s = text.lower()
+    # Türkçe karakter dönüşümü
+    tr = str.maketrans("çğıöşü", "cgiosu")
+    s = s.translate(tr)
+    # Alfanumerik olmayanları tire yap
+    s = re.sub(r'[^a-z0-9]+', '-', s)
+    return s.strip('-')
+```
+
+Örnekler:
+- `slug_olusturucu("Merhaba Dünya!")` → `"merhaba-dunya"`
+- `slug_olusturucu("Türkçe Karakterler Şİ")` → `"turkce-karakterler-si"`''',
+        22: '''```python
+import string
+
+def is_pangram(text: str) -> bool:
+    harfler = set(c.lower() for c in text if c.isalpha())
+    return harfler >= set(string.ascii_lowercase)
+```
+
+Örnekler:
+- `is_pangram("The quick brown fox jumps over the lazy dog")` → `True`
+- `is_pangram("Hello World")` → `False`''',
+        24: '''```python
+def cumle_basligi(text: str) -> str:
+    return '. '.join(s.capitalize() for s in text.split('. '))
+```
+
+Örnekler:
+- `cumle_basligi("merhaba. bugün güzel.")` → `"Merhaba. Bugün güzel."`
+- `cumle_basligi("python. java. go.")` → `"Python. Java. Go."`''',
+    }
+
+    # Default minimal çözüm (soru için stemplate)
+    if q.id in solutions:
+        return solutions[q.id]
+
+    # Genel minimal fallback — sadece starter code goster, kafa karıştırma
+    fn_line = starter.strip().split(chr(10))[0] if starter else f'def {fn_name}(...):'
+    return f'''{q.category} kategorisinde temel bir pratik.
+
+```python
+{fn_line}
+    # Cozumunu buraya yaz
+    pass
+```
+
+**Yaklaşım gerekmez** — dogrudan fonksiyonu yazip test edebilirsin.'''
+
+
+def _build_algorithmic_explanation(q) -> str:
+    """Algoritmik sorular için kısa, kafa karıştırmayan açıklama."""
+    starter = q.starter_code or ""
+    import re
+    m = re.search(r'def\s+(\w+)\s*\(([^)]*)\)', starter)
+    fn_name = m.group(1) if m else q.title.lower().replace(' ', '_')
+
+    seo = SEO_DATA.get(q.id, {})
+    complexity = seo.get("complexity", "O(n)")
+    concepts = seo.get("related_concepts", [])
+
+    # Sadece "yaklaşım ipucu" + kısa temiz çözüm — uzatma yok
+    return f'''Bu soru **{complexity}** karmaşıklıkta çözülebilir.
+
+**Anahtar Kavram:** {", ".join(concepts[:3]) if concepts else "algoritma"}
+
+Test senaryolarını geçecek bir çözüm yaz, sonra iyileştir.'''
+
+
 def apply_seo_content():
     """Tüm sorulara SEO içeriklerini uygula."""
     applied = 0
     for q in QUESTIONS:
         seo = SEO_DATA.get(q.id)
         if seo:
-            q.explanation = seo.get("explanation", "")
+            # 📌 BASIC sorularsa: explanation'ı sadeleştir (yaklaşım/açıklama yok)
+            if _is_basic_question(q):
+                q.explanation = _build_minimal_explanation(q)
+            else:
+                q.explanation = seo.get("explanation", "")
             q.complexity = seo.get("complexity", "O(n)")
             q.related_concepts = seo.get("related_concepts", [])
             q.related_question_ids = seo.get("related_question_ids", [])
@@ -1613,7 +1796,11 @@ def apply_seo_content():
     # Default değer ata (eksik sorular için)
     for q in QUESTIONS:
         if not q.explanation:
-            q.explanation = f"{q.title} sorusu, {q.category} kategorisinde Python mülakat pratiği içindir."
+            if _is_basic_question(q):
+                q.explanation = _build_minimal_explanation(q)
+            else:
+                # Algoritmik sorular için kısa ipucu — uzatma yok
+                q.explanation = _build_algorithmic_explanation(q)
         if not q.complexity:
             q.complexity = "O(n)"
         if not q.related_concepts:
