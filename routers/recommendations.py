@@ -136,16 +136,33 @@ async def get_flow(
     except Exception:
         pass
 
+    # 📌 Bug fix: created_at'e guvenme (DB default NOW() eski sorular icin yanlis).
+    # Bunun yerine question.id kullan: buyuk id = yeni.
+    # Yine de DB created_at varsa onu tercih et (gercek tarih).
+    max_id = max((q.id for q in ALL_QUESTIONS), default=88)
+
+    def _effective_date(qid: int, db_created: str) -> float:
+        """Soru icin etkili tarih: DB tarihi veya id-bazli fallback."""
+        if db_created:
+            try:
+                return datetime.fromisoformat(db_created.replace("Z", "")).timestamp()
+            except Exception:
+                pass
+        # ID bazli: max_id=88 ise 1=eski, 88=yeni
+        # 1 gun = 86400 saniye; id 88 = bugun, id 1 = 87 gun once
+        return (max_id - qid) * 86400  # kucuk sayi = yeni
+
     # ─── 1) Öneriler (personalized) ───
     scored = []
     for q in ALL_QUESTIONS:
+        qd_db = db_stats.get(q.id) or {}
         qd = {
             "id": q.id,
             "category": q.category,
             "level": q.level,
-            "created_at": (db_stats.get(q.id) or {}).get("created_at", ""),
-            "view_count": (db_stats.get(q.id) or {}).get("view_count", 0) or 0,
-            "attempt_count": (db_stats.get(q.id) or {}).get("attempt_count", 0) or 0,
+            "created_at": qd_db.get("created_at", ""),
+            "view_count": qd_db.get("view_count", 0) or 0,
+            "attempt_count": qd_db.get("attempt_count", 0) or 0,
         }
         personal = _personal_score(qd, user_ctx)
         # Kategori bonus: zayıf kategoriye daha düşük ağırlık
@@ -166,17 +183,37 @@ async def get_flow(
         })
 
     # ─── 2) Son Eklenenler (freshness) ───
-    recent = sorted(scored, key=lambda x: x["created_at"], reverse=True)[:5]
+    # Buyuk ID = yeni. DB created_at bos/None ise ID-bazli kullan.
+    recent = sorted(
+        scored,
+        key=lambda x: _effective_date(x["id"], x["created_at"]),
+        reverse=True,
+    )[:5]
     for r in recent:
         r["section"] = "recent"
-        r["reason"] = f"🆕 {_days_since(r['created_at']):.0f} gün önce eklendi" if r["created_at"] else "🆕 Yeni"
+        days = _days_since(r["created_at"]) if r["created_at"] else (max_id - r["id"])
+        r["reason"] = f"🆕 #{r['id']} — yakın zamanda" if days < 30 else f"🆕 #{r['id']}"
 
     # ─── 3) En Çok Gösterilenler (popularity) ───
-    popularity = sorted(scored, key=lambda x: x["view_count"] + x["attempt_count"] * 2, reverse=True)[:5]
-    for p in popularity:
-        p["section"] = "popular"
-        views = p["view_count"] + p["attempt_count"]
-        p["reason"] = f"🔥 {views} etkileşim" if views > 0 else "🔥 Popüler"
+    # view_count + attempt_count 0 ise "popüler" anlamsız, bunun yerine
+    # ID-bazli bir "klasikler" sıralaması yap (düşük ID = eski ama popüler temel sorular)
+    pop_with_views = [s for s in scored if s["view_count"] + s["attempt_count"] > 0]
+    if pop_with_views:
+        popularity = sorted(
+            pop_with_views,
+            key=lambda x: x["view_count"] + x["attempt_count"] * 2,
+            reverse=True,
+        )[:5]
+        for p in popularity:
+            p["section"] = "popular"
+            v = p["view_count"] + p["attempt_count"]
+            p["reason"] = f"🔥 {v} etkileşim"
+    else:
+        # Henuz view yoksa: klasik temel sorular (ID 1-15, en cok tercih edilenler)
+        popularity = [s for s in scored if 1 <= s["id"] <= 15][:5]
+        for p in popularity:
+            p["section"] = "popular"
+            p["reason"] = "🔥 Klasik — mülakatlarda sıkça çıkıyor"
 
     # ─── 1) Öneriler (personalized) — şu anki seviyende, çözülmemiş benzer ───
     # Sadece henüz çözülmemiş + success_rate uyumlu seviyede
@@ -197,6 +234,11 @@ async def get_flow(
         p["section"] = "personal"
         # reason zaten var
 
+    # Eğer hiç öneri yoksa (henüz soru çözülmemiş veya level'de yoksa)
+    # → ilk 5'i fallback olarak göster
+    if not personal:
+        personal = sorted(scored, key=lambda x: x["score"], reverse=True)[:5]
+
     # ─── 4) Tavsiye Edilenler (next-level) — bir üst seviye ───
     level_order = ["beginner", "intermediate", "advanced"]
     current_idx = level_order.index(current_level) if current_level in level_order else 0
@@ -208,9 +250,8 @@ async def get_flow(
         if s["level"] == target_level
         and s["id"] not in user_ctx.get("solved_ids", [])
     ]
-    # Beginner'dan başlıyorsa zaten target=intermediate ama henüz beginner'da → empty
-    # Bu durumda beginner'ın en iyilerini göster
     if not recommended:
+        # Beginner'daysan henuz intermediate yoksa → mevcut seviyede en iyileri
         recommended = sorted(
             [s for s in scored if s["id"] not in user_ctx.get("solved_ids", [])],
             key=lambda x: x["score"], reverse=True
