@@ -71,7 +71,7 @@ async def list_forms(
     offset: int = 0,
 ):
     """Form listesi. Public — login olmadan da görünür."""
-    from dependencies import get_supabase_admin
+    from supabase_client import get_supabase_admin
 
     try:
         sb = get_supabase_admin()
@@ -96,7 +96,7 @@ async def list_forms(
 @router.get("/{form_id}")
 async def get_form(form_id: int):
     """Tek form detayı + tüm yanıtlar. Public."""
-    from dependencies import get_supabase_admin
+    from supabase_client import get_supabase_admin
 
     try:
         sb = get_supabase_admin()
@@ -126,7 +126,7 @@ async def create_form(payload: FormCreate, request: Request):
     if payload.category not in CATEGORIES:
         raise HTTPException(400, f"Geçersiz kategori: {payload.category}")
 
-    from dependencies import get_supabase_admin
+    from supabase_client import get_supabase_admin
 
     try:
         sb = get_supabase_admin()
@@ -156,7 +156,7 @@ async def reply_form(form_id: int, payload: FormReplyCreate, request: Request):
     """Forma yanıt ver. Login gerekli."""
     user = await get_current_user(request)
 
-    from dependencies import get_supabase_admin
+    from supabase_client import get_supabase_admin
 
     try:
         sb = get_supabase_admin()

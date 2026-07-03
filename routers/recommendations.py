@@ -13,7 +13,8 @@
 from fastapi import APIRouter, Request, HTTPException, Depends, Query
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from dependencies import get_current_user, get_supabase_admin
+from dependencies import get_current_user
+from supabase_client import get_supabase_admin
 
 router = APIRouter(prefix="/api/v2/recommendations", tags=["recommendations"])
 
