@@ -1008,8 +1008,8 @@ async def _get_from_db():
         if not supabase:
             return None
         # service role ile bypass RLS
-        from supabase_client import get_service_role
-        sb = get_service_role()
+        from supabase_client import get_supabase_admin
+        sb = get_supabase_admin()
         res = sb.table("tutorials").select("*").execute()
         return res.data if res.data else None
     except Exception as e:
@@ -1043,7 +1043,8 @@ async def get_tutorial(slug: str):
     """Slug ile tek tutorial getir."""
     # Önce DB
     try:
-        supabase = get_service_role()
+        from supabase_client import get_supabase_admin
+        supabase = get_supabase_admin()
         res = supabase.table("tutorials").select("*").eq("slug", slug).execute()
         if res.data and len(res.data) > 0:
             return {"data": res.data[0], "source": "db"}
