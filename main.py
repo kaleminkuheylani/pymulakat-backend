@@ -81,6 +81,8 @@ categories_v2 = try_include("routers.categories", "categories (v2)")
 tutorials_v2 = try_include("routers.tutorials", "tutorials (v2)")
 admin_module = try_include("routers.admin", "admin (migration)")
 account_v2 = try_include("routers.account", "account (KVKK delete)")
+forms_v2 = try_include("routers.forms", "forms (user posts)")
+recommendations_v2 = try_include("routers.recommendations", "recommendations (deterministic)")
 # 📌 Mail koçu endpointleri kaldirildi (KVKK uyumu).
 # Sadece database tablolarinda varsa email gerekiyor, mail gonderimi YOK.
 
