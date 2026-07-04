@@ -509,7 +509,7 @@ async def get_me(request: Request):
         try:
             attempts = sb_admin.table("interview_attempts").select(
                 "passed_tests, total_tests, success, execution_time_ms"
-            ).eq("id", user_id).execute().data or []
+            ).eq("user_id", user_id).execute().data or []
             total_attempts = len(attempts)
             success_count = sum(1 for a in attempts if a.get("success"))
             fail_count = total_attempts - success_count
