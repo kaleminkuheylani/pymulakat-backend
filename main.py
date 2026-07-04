@@ -83,6 +83,7 @@ admin_module = try_include("routers.admin", "admin (migration)")
 account_v2 = try_include("routers.account", "account (KVKK delete)")
 forms_v2 = try_include("routers.forms", "forms (user posts)")
 recommendations_v2 = try_include("routers.recommendations", "recommendations (deterministic)")
+play_count_v2 = try_include("routers.play_count", "play count (user activity)")
 # 📌 Mail koçu endpointleri kaldirildi (KVKK uyumu).
 # Sadece database tablolarinda varsa email gerekiyor, mail gonderimi YOK.
 
