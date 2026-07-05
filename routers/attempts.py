@@ -21,6 +21,9 @@ class AttemptOut(BaseModel):
     user_id: str
     question_id: int
     question_title: Optional[str] = None
+    question_slug: Optional[str] = None
+    question_category: Optional[str] = None
+    is_orphaned: bool = False  # Eski interviews'tan gelen, yeni questions tablosunda olmayan
     category: Optional[str] = None
     passed_tests: int
     total_tests: int
@@ -145,12 +148,28 @@ async def list_my_attempts(
         items = []
         for r in rows:
             q = get_question(r.get("question_id"))
+            qid = r.get("question_id")
+            # Orphans (DB'den gelmedi, QUESTIONS-v3'te yok) → placeholder
+            if q:
+                title = q.title
+                category = q.category
+                slug = getattr(q, "slug", None) or None
+                is_orphaned = False
+            else:
+                title = f"Silinmis soru (ID: {qid})"
+                category = None
+                slug = None
+                is_orphaned = True
+
             items.append({
                 "id": str(r.get("id", "")),
                 "user_id": r.get("user_id", user_id),
-                "question_id": r.get("question_id"),
-                "question_title": q.title if q else f"Soru #{r.get('question_id')}",
-                "category": q.category if q else None,
+                "question_id": qid,
+                "question_title": title,
+                "question_slug": slug,
+                "question_category": category,
+                "is_orphaned": is_orphaned,
+                "category": category,
                 "passed_tests": r.get("passed_tests", 0),
                 "total_tests": r.get("total_tests", 0),
                 "success": r.get("success", False),
