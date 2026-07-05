@@ -1,18 +1,39 @@
 import logging
-from fastapi import FastAPI
+import time
+import json
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 import sys
 import os
 import importlib
 
-# ─── Logging config ────────────────────────────────────
-# Production'da sadece WARNING+ görünür (user data sızıntısı önlenir).
-# Debug için LOG_LEVEL=INFO veya DEBUG env verilebilir.
+# ─── Logging config (JSON line output for Vercel log aggregation) ──
+class JsonFormatter(logging.Formatter):
+    """JSON line output — Vercel log streaming ile uyumlu."""
+    def format(self, record):
+        payload = {
+            "ts": int(record.created * 1000),
+            "level": record.levelname,
+            "name": record.name,
+            "msg": record.getMessage(),
+        }
+        if record.exc_info:
+            payload["exc"] = self.formatException(record.exc_info)
+        return json.dumps(payload, ensure_ascii=False)
+
+_handler = logging.StreamHandler(sys.stderr)
+if os.getenv("LOG_FORMAT", "json") == "plain":
+    _handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+else:
+    _handler.setFormatter(JsonFormatter())
+
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "WARNING").upper(),
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    stream=sys.stderr,
+    handlers=[_handler],
+    force=True,
 )
+
+logger = logging.getLogger("pymulakat")
 
 # ─── Python path ────────────────────────────────────────
 backend_dir = os.path.dirname(os.path.abspath(__file__))
@@ -33,23 +54,41 @@ except Exception as e:
 # ─── App oluştur ────────────────────────────────────────
 app = FastAPI(title="PythonMulakat API", version="2.4")
 
+@app.middleware("http")
+async def add_request_timing(request: Request, call_next):
+    """Request süresi + slow request warning (response header X-Response-Time-ms)."""
+    t0 = time.time()
+    response: Response = await call_next(request)
+    dur_ms = int((time.time() - t0) * 1000)
+    response.headers["X-Response-Time-ms"] = str(dur_ms)
+    if dur_ms > 2000:
+        logger.warning(f"slow request {request.url.path} {dur_ms}ms")
+    return response
+
+
+# ─── CORS — env-driven explicit allow-list (wildcard yok) ────────────
+_default_origins = ",".join([
+    "https://www.pythonmulakat.com",
+    "https://pythonmulakat.com",
+    "https://pymulakat-frontend.vercel.app",
+    "https://pymulakat-backend.vercel.app",
+    "http://localhost:3000",
+])
+_ALLOWED_ORIGINS = [
+    o.strip() for o in os.getenv("ALLOWED_ORIGINS", _default_origins).split(",") if o.strip()
+]
+_VERCEL_REGEX = os.getenv("ALLOW_VERCEL_PREVIEW", "1") == "1"
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://www.pythonmulakat.com",
-        "https://pythonmulakat.com",
-        "https://pymulakat.vercel.app",
-        "https://pymulakat-frontend.vercel.app",
-        "https://pymulakat-backend-production.up.railway.app",
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-    ],
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app" if _VERCEL_REGEX else None,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # limited methods
     allow_headers=["*"],
+    max_age=600,  # 10 min cache for OPTIONS preflight
 )
+logger.info(f"CORS allowed origins: {_ALLOWED_ORIGINS}")
 
 
 # ─── Router'ları güvenli yükle + include et ──────────────
@@ -90,21 +129,51 @@ play_count_v2 = try_include("routers.play_count", "play count (user activity)")
 
 @app.get("/health")
 def health():
-    return {
-        "status": "ok",
+    """Production-grade health check: DB connectivity + module status.
+
+    200 = everything OK
+    503 = DB unreachable (load balancer should mark unhealthy)
+    """
+    from fastapi.responses import JSONResponse
+
+    loaded = {
+        "auth": auth_module is not None,
+        "attempts_v1": attempts_v1 is not None,
+        "questions_v2": questions_v2 is not None,
+        "categories_v2": categories_v2 is not None,
+        "tutorials_v2": tutorials_v2 is not None,
+        "admin": admin_module is not None,
+        "account_v2": account_v2 is not None,
+    }
+
+    # DB connectivity check
+    db_ok = False
+    db_error = None
+    try:
+        from supabase_client import get_supabase
+        sb = get_supabase()
+        # Lightweight query
+        sb.table("questions").select("id").limit(1).execute()
+        db_ok = True
+    except Exception as e:
+        db_error = str(e)[:200]
+
+    payload = {
+        "status": "ok" if db_ok else "degraded",
         "version": "2.5",
-        "loaded": {
-            "auth": auth_module is not None,
-            "attempts_v1": attempts_v1 is not None,
-            "questions_v2": questions_v2 is not None,
-            "categories_v2": categories_v2 is not None,
-            "tutorials_v2": tutorials_v2 is not None,
-            "admin": admin_module is not None,
-            "account_v2": account_v2 is not None,
-            # coach endpointleri kaldirildi
+        "loaded": loaded,
+        "db": {
+            "ok": db_ok,
+            "error": db_error,
         },
         "total_routes": len(app.routes),
     }
+
+    status_code = 200 if db_ok else 503
+    if not db_ok:
+        logger.warning(f"health check degraded: db_error={db_error}")
+
+    return JSONResponse(payload, status_code=status_code)
 
 
 @app.get("/")

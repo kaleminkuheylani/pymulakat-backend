@@ -8,6 +8,7 @@
 # OAuth (Google/GitHub) Supabase üzerinden → /auth/callback?type=oauth → frontend
 
 from fastapi import APIRouter, HTTPException, Request
+from services.rate_limiter import AUTH_REGISTER, AUTH_LOGIN
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from supabase_client import get_supabase_admin
@@ -286,8 +287,14 @@ def _build_auth_response(sb_session, profile: Optional[Dict] = None) -> AuthResp
 
 
 @router.post("/register", response_model=MessageResponse)
-async def register(payload: RegisterPayload):
+async def register(request: Request, payload: RegisterPayload):
     """Yeni kullanıcı oluştur + 6-haneli kod gönder."""
+    # Rate limit: 3 register/saat/IP
+    ip = request.client.host if request.client else "unknown"
+    allowed, remaining = AUTH_REGISTER.is_allowed(ip)
+    if not allowed:
+        raise HTTPException(429, "Çok fazla kayıt denemesi. Lütfen 1 saat sonra tekrar deneyin.")
+
     try:
         if not payload.privacy_policy_consent:
             raise HTTPException(400, "Gizlilik politikası kabul edilmedi")
@@ -426,7 +433,12 @@ async def resend_code(payload: VerifyPayload):
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(payload: LoginPayload):
+async def login(request: Request, payload: LoginPayload):
+    # Rate limit: 5 login/dakika/IP
+    ip = request.client.host if request.client else "unknown"
+    allowed, remaining = AUTH_LOGIN.is_allowed(ip)
+    if not allowed:
+        raise HTTPException(429, "Çok fazla giriş denemesi. Lütfen 1 dakika sonra tekrar deneyin.")
     try:
         sb_admin = get_supabase_admin()
 
