@@ -8,6 +8,16 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 from supabase import Client
 from question_loader import filter_questions, get_question
+
+def slugify_title_local(text: str) -> str:
+    """Basit slugify (lib.questionMeta yoksa fallback)."""
+    import re, unicodedata
+    s = text.lower()
+    tr_map = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
+    s = s.translate(tr_map)
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+    s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+    return s[:80] or "question"
 from dependencies import get_current_user
 from supabase_client import get_supabase
 
@@ -92,6 +102,12 @@ def _q_get(q, key, default=None):
 
 def _to_question_out(q, include_starter=False):
     test_cases = _q_get(q, "test_cases", []) or []
+    # Slug fallback: QUESTIONS.py'de slug None ise title'dan slugify et
+    _slug = _q_get(q, "slug")
+    if not _slug:
+        _slug = slugify_title_local(_q_get(q, "title", "") or "")
+    else:
+        _slug = str(_slug)
     if not isinstance(test_cases, list):
         test_cases = []
     starter_code = _q_get(q, "starter_code") if include_starter else None
@@ -118,7 +134,7 @@ def _to_question_out(q, include_starter=False):
         related_concepts=_q_get(q, "related_concepts", []) or [],
         related_question_ids=_q_get(q, "related_question_ids", []) or [],
         tutorial_slug=_q_get(q, "tutorial_slug"),
-        slug=_q_get(q, "slug"),
+        slug=_slug,
         meta_title=_q_get(q, "meta_title"),
         meta_description=_q_get(q, "meta_description"),
         meta_keywords=_q_get(q, "meta_keywords", []) or [],
@@ -277,3 +293,66 @@ def get_question_progress(
     except Exception as e:
         logger.warning("progress.fetch.failed user=%s q=%s: %s", user.get("id") if user else None, question_id, e)
         return ProgressResponse(data={"question_id": question_id, "best_attempt": None, "total_attempts": 0})
+
+
+# ═══════════════════════════════════════════════════════════════
+# ─── SLUG-BASED — GET /api/v2/questions/by-slug/{category}/{slug}
+# ═══════════════════════════════════════════════════════════════
+# Frontend'in kullandığı canonical endpoint. DB-first + QUESTIONS.py fallback.
+
+@router.get("/by-slug/{category}/{slug}", response_model=QuestionOut, responses={404: {"description": "Soru bulunamadı"}})
+def get_question_by_slug_endpoint(category: str, slug: str, include_starter: bool = Query(True)):
+    """
+    Slug-based soru getir.
+    - DB'de varsa oradan (production canonical)
+    - Yoksa QUESTIONS.py fallback
+    """
+    from question_loader import get_question_by_slug
+    q = get_question_by_slug(slug, category=category)
+    if not q:
+        raise HTTPException(404, f"{category}/{slug} bulunamadı")
+    return _to_question_out(q, include_starter=include_starter)
+
+
+@router.get("/by-slug/{category}/{slug}/tests", response_model=QuestionTestsResponse)
+def get_question_tests_by_slug(category: str, slug: str):
+    """Slug-based test case'leri getir."""
+    from question_loader import get_question_by_slug
+    q = get_question_by_slug(slug, category=category)
+    if not q:
+        raise HTTPException(404, f"{category}/{slug} bulunamadı")
+
+    starter_code = _q_get(q, "starter_code", "") or ""
+    test_cases_raw = _q_get(q, "test_cases", []) or []
+
+    safe_tests: List[Dict[str, Any]] = []
+    if isinstance(test_cases_raw, list):
+        for tc in test_cases_raw:
+            if isinstance(tc, dict):
+                safe_tests.append(tc)
+            else:
+                safe_tests.append(dict(tc) if hasattr(tc, "__dict__") else {"input": None, "expected": None})
+
+    return QuestionTestsResponse(
+        question_id=q.id,
+        function_name=_q_get(q, "function_name") or _extract_function_name(starter_code),
+        starter_code=starter_code,
+        test_cases=safe_tests,
+        total=len(safe_tests),
+    )
+
+
+@router.get("/slug-list", response_model=AllQuestionsResponse)
+def list_questions_slugs(
+    category: Optional[str] = Query(None),
+    level: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    include_starter: bool = Query(False),
+):
+    """Tüm soruları slug'lı döndür (canonical URL oluşturmak için)."""
+    all_filtered = filter_questions(category=category, level=level, search=search)
+    items = all_filtered[:500]
+    return AllQuestionsResponse(
+        data=[_to_question_out(q, include_starter=include_starter) for q in items],
+        total=len(items),
+    )

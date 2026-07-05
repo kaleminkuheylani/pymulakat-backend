@@ -1,36 +1,84 @@
 # backend/question_loader.py
-# Güncellenmiş — kategori opsiyonel kontrol, tag desteği eklendi
+# DB-first + QUESTIONS.py fallback mimarisi
+#
+# Akış:
+#   1. load_questions() → Supabase 'questions' tablosunu dene
+#   2. DB'de soru varsa ve hata yoksa → DB'den dön
+#   3. DB boş/hata → QUESTIONS.py fallback
+#
+# Frontend aynı Question dataclass'ını alır, API contract değişmez.
 
+import os
 from typing import Optional, List, Dict, Any
 from data.QUESTIONS import QUESTIONS, Question
 
 
-def load_questions() -> List[Question]:
-    """Supabase'den veya fallback olarak statik QUESTIONS'tan yükler."""
+# ═══════════════════════════════════════════════════════════════
+# Kategori meta (DB'den gelirse de fallback olarak kullanılır)
+# ═══════════════════════════════════════════════════════════════
+CATEGORY_META = {
+    "python-basics": {"label": "Python Temelleri", "description": "Değişkenler, döngüler, koşullar, fonksiyonlar.", "icon": "🐍"},
+    "strings": {"label": "String İşlemleri", "description": "Metin işleme, slicing, formatlama.", "icon": "🔤"},
+    "list-dict": {"label": "Liste & Sözlük", "description": "Veri yapıları.", "icon": "📋"},
+    "pandas": {"label": "Pandas", "description": "Veri analizi.", "icon": "🐼"},
+    "algorithms": {"label": "Algoritmalar", "description": "Sıralama, arama, DP.", "icon": "🧮"},
+    "oop": {"label": "Python OOP", "description": "Class, inheritance.", "icon": "🧱"},
+    "data-types": {"label": "Veri Tipleri", "description": "list, dict, tuple, set.", "icon": "📦"},
+    "simple-apps": {"label": "Basit Uygulamalar", "description": "Küçük projeler.", "icon": "🛠️"},
+    "beyin-firtinasi": {"label": "Beyin Fırtınası", "description": "Algoritmik düşünme.", "icon": "💡"},
+    "sqlite3": {"label": "SQLite3", "description": "Veritabanı temelleri.", "icon": "🗄️"},
+    "numpy": {"label": "NumPy", "description": "Array operasyonları.", "icon": "🔢"},
+    "sklearn": {"label": "Scikit-learn", "description": "ML pipeline.", "icon": "🤖"},
+    "scipy": {"label": "SciPy", "description": "İstatistik.", "icon": "📐"},
+    "matplotlib": {"label": "Matplotlib", "description": "Grafik oluşturma.", "icon": "📊"},
+    "seaborn": {"label": "Seaborn", "description": "İstatistiksel görselleştirme.", "icon": "🌊"},
+    "statsmodels": {"label": "Statsmodels", "description": "ARIMA, regresyon.", "icon": "📈"},
+    "nltk": {"label": "NLTK", "description": "Doğal dil işleme.", "icon": "📝"},
+    "dask": {"label": "Dask", "description": "Paralel hesaplama.", "icon": "⚡"},
+    "pytorch": {"label": "PyTorch", "description": "Tensor işlemleri.", "icon": "🔥"},
+}
+
+
+def _db_row_to_question(row: dict) -> Question:
+    """Supabase questions row -> Question dataclass."""
+    return Question(
+        id=row.get("source_id") or row["id"],
+        title=row["title"],
+        category=row["category"],
+        level=row.get("level", "beginner"),
+        description=row.get("description", ""),
+        starter_code=row.get("starter_code"),
+        test_cases=row.get("test_cases", []) or [],
+        hints=row.get("hints", []) or [],
+        slug=row.get("slug"),
+        related_question_ids=row.get("related_question_ids", []) or [],
+        explanation=row.get("explanation"),
+        complexity=row.get("complexity"),
+        tags=row.get("tags", []) or [],
+    )
+
+
+def _load_from_db() -> Optional[List[Question]]:
+    """Supabase 'questions' tablosundan yükle. Hata durumunda None döndür."""
     try:
         from supabase_client import get_supabase
         supabase = get_supabase()
-        response = supabase.table("interwiews").select("*").execute()
-        if response.data:
-            loaded = []
-            for q_dict in response.data:
-                loaded.append(
-                    Question(
-                        id=q_dict["id"],
-                        title=q_dict["title"],
-                        category=q_dict["category"],
-                        level=q_dict["level"],
-                        description=q_dict["description"],
-                        starter_code=q_dict["starter_code"],
-                        test_cases=q_dict["test_cases"],
-                        hints=q_dict.get("hints", []),
-                        slug=q_dict.get("slug"),
-                        related_question_ids=q_dict.get("related_question_ids", []) or [],
-                    )
-                )
-            return sorted(loaded, key=lambda x: x.id)
+        # Pagination: supabase default 1000 limit, biz 500 yeterli
+        response = supabase.table("questions").select("*").eq("is_published", True).execute()
+        if response.data and len(response.data) > 0:
+            questions = [_db_row_to_question(row) for row in response.data]
+            return sorted(questions, key=lambda x: x.id)
+        return None  # DB boş, fallback'e düş
     except Exception as e:
-        print(f"⚠️ Supabase'den sorular yüklenirken hata: {e}")
+        print(f"⚠️ DB'den soru yüklenemedi, QUESTIONS.py fallback kullanılacak: {e}")
+        return None
+
+
+def load_questions() -> List[Question]:
+    """DB-first, fallback olarak QUESTIONS.py."""
+    db_loaded = _load_from_db()
+    if db_loaded is not None:
+        return db_loaded
     return QUESTIONS
 
 
@@ -45,6 +93,7 @@ def to_public_dict(q: Any) -> Dict:
         "starter_code": getattr(q, "starter_code", None),
         "hints": getattr(q, "hints", []),
         "tags": getattr(q, "tags", []) or [],
+        "slug": getattr(q, "slug", None),
     }
 
 
@@ -57,9 +106,9 @@ def filter_questions(
     """
     Soruları filtrele:
     - category: kategori slug
-    - level: beginner / intermediate / advanced (veya TR: başlangıç / orta / ileri)
+    - level: beginner / intermediate / advanced
     - search: başlık + açıklamada arama
-    - tag: etiket (varsa)
+    - tag: etiket
     """
     questions = load_questions()
     filtered = questions
@@ -69,7 +118,6 @@ def filter_questions(
 
     if level:
         lvl = level.lower().strip()
-        # Hem İngilizce hem Türkçe level'ları kabul et
         LEVEL_ALIASES = {
             "başlangıç": ["başlangıç", "beginner", "easy"],
             "beginner": ["beginner", "easy", "başlangıç"],
@@ -101,11 +149,18 @@ def filter_questions(
 
 def get_question(question_id: int, category: Optional[str] = None) -> Optional[Any]:
     """
-    ID'ye göre tek Question getirir. Kategori opsiyonel kontrol.
-    - category=None → sadece ID'ye göre ara
-    - category=str → ID + kategori eşleşmesi zorunlu
+    ID veya slug'a göre tek Question getirir.
+    Önce DB'de slug ile ara, sonra source_id ile, sonra QUESTIONS.py.
     """
     questions = load_questions()
+
+    # 1. Slug ile ara (DB-only, slug unique)
+    slug_match = next((q for q in questions if getattr(q, "slug", None) == str(question_id)), None)
+    if slug_match:
+        if category is None or getattr(slug_match, "category", None) == category:
+            return slug_match
+
+    # 2. ID ile ara (legacy + DB source_id)
     for q in questions:
         if q.id != question_id:
             continue
@@ -115,30 +170,19 @@ def get_question(question_id: int, category: Optional[str] = None) -> Optional[A
     return None
 
 
-def get_categories() -> List[Dict]:
-    """QUESTIONS'tan unique kategorileri metadata ile döndür."""
+def get_question_by_slug(slug: str, category: Optional[str] = None) -> Optional[Any]:
+    """Slug ile soru getir (DB-first)."""
     questions = load_questions()
-    META = {
-        "python-basics": {"label": "Python Temelleri", "description": "Değişkenler, döngüler, koşullar, fonksiyonlar.", "icon": "🐍"},
-        "strings": {"label": "String İşlemleri", "description": "Metin işleme, slicing, formatlama.", "icon": "🔤"},
-        "list-dict": {"label": "Liste & Sözlük", "description": "Veri yapıları.", "icon": "📋"},
-        "pandas": {"label": "Pandas", "description": "Veri analizi.", "icon": "🐼"},
-        "algorithms": {"label": "Algoritmalar", "description": "Sıralama, arama, DP.", "icon": "🧮"},
-        "oop": {"label": "Python OOP", "description": "Class, inheritance.", "icon": "🧱"},
-        "data-types": {"label": "Veri Tipleri", "description": "list, dict, tuple, set.", "icon": "📦"},
-        "simple-apps": {"label": "Basit Uygulamalar", "description": "Küçük projeler.", "icon": "🛠️"},
-        "beyin-firtinasi": {"label": "Beyin Fırtınası", "description": "Algoritmik düşünme.", "icon": "💡"},
-        "sqlite3": {"label": "SQLite3", "description": "Veritabanı temelleri.", "icon": "🗄️"},
-        "numpy": {"label": "NumPy", "description": "Array operasyonları.", "icon": "🔢"},
-        "sklearn": {"label": "Scikit-learn", "description": "ML pipeline.", "icon": "🤖"},
-        "scipy": {"label": "SciPy", "description": "İstatistik.", "icon": "📐"},
-        "matplotlib": {"label": "Matplotlib", "description": "Grafik oluşturma.", "icon": "📊"},
-        "seaborn": {"label": "Seaborn", "description": "İstatistiksel görselleştirme.", "icon": "🌊"},
-        "statsmodels": {"label": "Statsmodels", "description": "ARIMA, regresyon.", "icon": "📈"},
-        "nltk": {"label": "NLTK", "description": "Doğal dil işleme.", "icon": "📝"},
-        "dask": {"label": "Dask", "description": "Paralel hesaplama.", "icon": "⚡"},
-        "pytorch": {"label": "PyTorch", "description": "Tensor işlemleri.", "icon": "🔥"},
-    }
+    for q in questions:
+        if getattr(q, "slug", None) == slug:
+            if category is None or getattr(q, "category", None) == category:
+                return q
+    return None
+
+
+def get_categories() -> List[Dict]:
+    """Kategorileri metadata ile döndür."""
+    questions = load_questions()
 
     unique_slugs = []
     for q in questions:
@@ -148,8 +192,7 @@ def get_categories() -> List[Dict]:
 
     result = []
     for slug in unique_slugs:
-        meta = META.get(slug, {})
-        # Soru sayısını hesapla
+        meta = CATEGORY_META.get(slug, {})
         count = len([q for q in questions if getattr(q, "category", None) == slug])
         result.append({
             "slug": slug,
