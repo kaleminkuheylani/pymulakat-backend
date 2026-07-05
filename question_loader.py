@@ -55,9 +55,14 @@ CATEGORY_META = {
 
 
 def _db_row_to_question(row: dict) -> Question:
-    """Supabase questions row -> Question dataclass."""
+    """Supabase questions row -> Question dataclass.
+
+    id olarak once legacy_id (eski interviews.id ile uyumlu), yoksa yeni row id kullan.
+    Bu sayede interview_attempts.question_id (legacy_id) direkt DB'den cozulur.
+    """
+    question_id = row.get("legacy_id") or row["id"]
     return Question(
-        id=row.get("source_id") or row["id"],
+        id=question_id,
         title=row["title"],
         category=row["category"],
         level=row.get("level", "beginner"),
@@ -74,7 +79,11 @@ def _db_row_to_question(row: dict) -> Question:
 
 
 def _load_from_db() -> Optional[List[Question]]:
-    """Supabase 'questions' tablosundan yükle. Hata durumunda None döndür."""
+    """Supabase 'questions' tablosundan yükle. Hata durumunda None döndür.
+
+    Dönen Question.id = legacy_id (eski interviews.id) ki interview_attempts
+    foreign key reference'ı otomatik çalışsın.
+    """
     try:
         from supabase_client import get_supabase
         supabase = get_supabase()
@@ -85,7 +94,7 @@ def _load_from_db() -> Optional[List[Question]]:
             return sorted(questions, key=lambda x: x.id)
         return None  # DB boş, fallback'e düş
     except Exception as e:
-        print(f"⚠️ DB'den soru yüklenemedi, QUESTIONS.py fallback kullanılacak: {e}")
+        pass  # silently fallback
         return None
 
 
