@@ -1,0 +1,40 @@
+# .dockerignore — production image'a gereksiz dosyaları alma
+.git
+.gitignore
+__pycache__
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.venv
+venv
+env
+*.lock
+.uv.lock
+
+# Docs (production'da gerekmez)
+README.md
+SUPABASE_SETUP.md
+
+# Test
+test.py
+test-token.py
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# Backup files
+*.bak
+*.py.bak
+*_v1.py.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scripts backup (sadece migration scriptleri kalsin)
+backup_*.json
