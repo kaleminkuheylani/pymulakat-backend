@@ -32,11 +32,12 @@ except Exception as _e:
 # Kategori meta (DB'den gelirse de fallback olarak kullanılır)
 # ═══════════════════════════════════════════════════════════════
 CATEGORY_META = {
-    "python-basics": {"label": "Python Temelleri", "description": "Değişkenler, döngüler, koşullar, fonksiyonlar.", "icon": "🐍"},
-    "strings": {"label": "String İşlemleri", "description": "Metin işleme, slicing, formatlama.", "icon": "🔤"},
-    "list-dict": {"label": "Liste & Sözlük", "description": "Veri yapıları.", "icon": "📋"},
+    "python-basics": {"label": "Python Temelleri", "description": "Değişkenler, döngüler, koşullar, fonksiyonlar, string islemleri.", "icon": "🐍"},
+    "strings": {"label": "String İşlemleri", "description": "(deprecated — python-basics altinda)", "icon": "🔤"},
+    "data-structures": {"label": "Veri Yapıları", "description": "List, dict, set, tuple, frozenset, deque, heapq, generators. Mulakat prensibi: veri yapisini kullanici secer!", "icon": "🗂️"},
+    "list-dict": {"label": "Liste & Sözlük", "description": "Temel liste ve sözlük uygulamaları.", "icon": "📋"},
     "pandas": {"label": "Pandas", "description": "Veri analizi.", "icon": "🐼"},
-    "algorithms": {"label": "Algoritmalar", "description": "Sıralama, arama, DP.", "icon": "🧮"},
+    "algorithms": {"label": "Algoritmalar", "description": "Sıralama, arama, DP, iki işaretçi.", "icon": "🧮"},
     "oop": {"label": "Python OOP", "description": "Class, inheritance.", "icon": "🧱"},
     "data-types": {"label": "Veri Tipleri", "description": "list, dict, tuple, set.", "icon": "📦"},
     "simple-apps": {"label": "Basit Uygulamalar", "description": "Küçük projeler.", "icon": "🛠️"},
