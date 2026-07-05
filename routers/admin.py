@@ -920,65 +920,43 @@ class ScheduleResponse(BaseModel):
     last_result: dict = {}
 
 
-@router.get("/schedule/generation", response_model=ScheduleResponse)
-async def get_schedule_endpoint():
-    """Aktif schedule'i getir."""
-    from services.question_scheduler import get_schedule
-    schedule = get_schedule()
-    return ScheduleResponse(ok=True, schedule=schedule)
+@router.get("/schedule/generation")
+async def get_schedule_endpoint_removed():
+    """AI generation schedule artik kullanilmiyor.
+
+    Sorular QUESTIONS-v3.py + seed_questions.py ile yonetilir.
+    Bu endpoint geriye uyumluluk icin 410 Gone donduruyor.
+    """
+    return {"ok": False, "removed": True, "reason": "AI question generation kaldirildi. seed_questions.py kullanin."}
 
 
-@router.post("/schedule/generation", response_model=ScheduleResponse)
-async def update_schedule_endpoint(payload: ScheduleUpdate):
-    """Schedule'i guncelle. interval_days / n_questions / target_per_type ayarlanabilir."""
-    from services.question_scheduler import update_schedule, compute_next_run
-
-    updates = {
-        "enabled": payload.enabled,
-        "interval_days": payload.interval_days,
-        "n_questions": payload.n_questions,
-        "target_per_type": payload.target_per_type,
-        "dry_run": payload.dry_run,
-        "next_run_at": compute_next_run(payload.interval_days),
-    }
-    schedule = update_schedule(updates)
-    return ScheduleResponse(ok=True, schedule=schedule)
+@router.post("/schedule/generation")
+async def update_schedule_endpoint_removed(payload=None):
+    """Stub — AI generation kaldirildi."""
+    return {"ok": False, "removed": True}
 
 
-@router.post("/schedule/generation/run-now", response_model=ScheduleResponse)
-async def run_schedule_now():
-    """Schedule'i simdi calistir (next_run_at'i beklemeden)."""
-    from services.question_scheduler import run_scheduled_generation, get_schedule
-    result = run_scheduled_generation()
-    return ScheduleResponse(ok=result.get("ok", True), schedule=get_schedule(), last_result=result)
+@router.post("/schedule/generation/run-now")
+async def run_schedule_now_removed():
+    """Stub — AI generation kaldirildi."""
+    return {"ok": False, "removed": True}
 
 
-# ═══════════════════════════════════════════════════════════
-# Cron Endpoint — Railway / external cron icin
-# Shared secret ile korunur (CRON_SECRET env variable)
-# ═══════════════════════════════════════════════════════════
+@router.post("/generate/questions")
+async def generate_questions_endpoint_removed(req=None):
+    """Stub — AI question generation kaldirildi.
+
+    Sorular questions/questions-v3.py ile source-controlled.
+    Yeni soru eklemek icin QUESTIONS-v3.py'i duzenleyin ve
+    `python3 scripts/seed_questions.py` calistirin.
+    """
+    return {"ok": False, "removed": True, "reason": "AI generation endpoint'i kaldirildi. QUESTIONS-v3.py + seed_questions.py kullanin."}
+
 
 @router.post("/cron/run-question-generation")
-async def cron_run_question_generation(request: Request):
-    """Cron job tarafindan cagrilir. Shared secret ile korunur.
-
-    Cron ornegi (her Pazartesi 09:00):
-      curl -X POST https://api.com/admin/cron/run-question-generation \\
-        -H "X-Cron-Secret: $CRON_SECRET"
-    """
-    # Shared secret kontrol
-    expected = os.getenv("CRON_SECRET", "")
-    provided = request.headers.get("X-Cron-Secret", "")
-    if not expected or provided != expected:
-        # Development'ta CRON_SECRET yoksa skip
-        if not expected:
-            logger.warning("CRON_SECRET env tanimli degil, endpoint korumasiz")
-        else:
-            raise HTTPException(401, "Unauthorized")
-
-    from services.question_scheduler import run_scheduled_generation
-    result = run_scheduled_generation()
-    return result
+async def cron_run_question_generation_removed(request: Request):
+    """Stub — cron AI generation kaldirildi. 410 Gone."""
+    return {"ok": False, "removed": True}
 
 
 # ═══════════════════════════════════════════════════════════
