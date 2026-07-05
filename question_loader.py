@@ -12,6 +12,21 @@ import os
 from typing import Optional, List, Dict, Any
 from data.QUESTIONS import QUESTIONS, Question
 
+# v3 fallback (daha zengin: SEO_CONTENT zenginlestirilmis 70 soru)
+# Dynamic import: QUESTIONS-v3.py dosya adi dash (-) iceriyor
+import importlib.util as _importlib_util
+import os as _os
+QUESTIONS_V3 = QUESTIONS  # Fallback degisken
+try:
+    _v3_path = _os.path.join(_os.path.dirname(__file__), "data", "QUESTIONS-v3.py")
+    if _os.path.exists(_v3_path):
+        _spec = _importlib_util.spec_from_file_location("data_questions_v3_dynamic", _v3_path)
+        _v3_mod = _importlib_util.module_from_spec(_spec)
+        _spec.loader.exec_module(_v3_mod)
+        QUESTIONS_V3 = _v3_mod.QUESTIONS
+except Exception as _e:
+    print(f"⚠️ QUESTIONS-v3 fallback yuklenemedi: {_e}")
+
 
 # ═══════════════════════════════════════════════════════════════
 # Kategori meta (DB'den gelirse de fallback olarak kullanılır)
@@ -75,11 +90,11 @@ def _load_from_db() -> Optional[List[Question]]:
 
 
 def load_questions() -> List[Question]:
-    """DB-first, fallback olarak QUESTIONS.py."""
+    """DB-first, fallback olarak QUESTIONS-v3.py (zenginlestirilmis)."""
     db_loaded = _load_from_db()
     if db_loaded is not None:
         return db_loaded
-    return QUESTIONS
+    return QUESTIONS_V3
 
 
 def to_public_dict(q: Any) -> Dict:

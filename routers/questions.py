@@ -356,3 +356,81 @@ def list_questions_slugs(
         data=[_to_question_out(q, include_starter=include_starter) for q in items],
         total=len(items),
     )
+
+
+# ═══════════════════════════════════════════════════════════════
+# ─── DIFF — GET /api/v2/questions/diff-sources ────────────
+# ═══════════════════════════════════════════════════════════════
+# Admin/development debug — DB ile QUESTIONS-v3.py'yi karsilastir.
+# Frontend'in kaynak tutarliligini izlemesi icin.
+
+@router.get("/diff-sources")
+def diff_sources():
+    """DB vs QUESTIONS-v3.py karsilastirmasi (title-based).
+
+    Returns:
+        - in_db_only: DB'de olup QUESTIONS-v3'te yok
+        - in_v3_only: QUESTIONS-v3'te olup DB'de yok
+        - in_both: Eslesen basliklar
+        - field_mismatch: Eslesen basliklarda alan farklari
+    """
+    try:
+        from supabase_client import get_supabase_admin
+        sb = get_supabase_admin()
+        db_result = sb.table("questions").select("id, title, complexity, related_concepts, tags, explanation").execute()
+        db_by_title = {r.get("title"): r for r in (db_result.data or []) if r.get("title")}
+    except Exception as e:
+        return {"error": f"DB erisim hatasi: {e}"}
+
+    try:
+        # QUESTIONS-v3.py dosya ismi dash iceriyor, import olarak load et
+        import importlib.util
+        import os as _os
+        _v3_path = _os.path.join(_os.path.dirname(__file__), "..", "data", "QUESTIONS-v3.py")
+        if not _os.path.exists(_v3_path):
+            # Alternatif: data dizininden
+            _v3_path = "data/QUESTIONS-v3.py"
+        _spec = importlib.util.spec_from_file_location("_q_v3_temp", _v3_path)
+        _mod = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_mod)
+        QUESTIONS_V3_LOCAL = _mod.QUESTIONS
+        v3_by_title = {q.title: q for q in QUESTIONS_V3_LOCAL}
+    except Exception as e:
+        return {"error": f"QUESTIONS-v3 import hatasi: {e}"}
+
+    db_titles = set(db_by_title.keys())
+    v3_titles = set(v3_by_title.keys())
+
+    in_db_only_titles = sorted(db_titles - v3_titles)
+    in_v3_only_titles = sorted(v3_titles - db_titles)
+    in_both_titles = sorted(db_titles & v3_titles)
+
+    # Alan farklari (title bazinda) — complexity, tags
+    field_mismatches = []
+    for title in in_both_titles[:10]:
+        db_row = db_by_title[title]
+        v3_q = v3_by_title[title]
+
+        diffs = {}
+        if (db_row.get("complexity") or "") != (getattr(v3_q, "complexity", "") or ""):
+            diffs["complexity"] = {"db": db_row.get("complexity"), "v3": getattr(v3_q, "complexity", None)}
+        if sorted(db_row.get("tags") or []) != sorted(getattr(v3_q, "tags", None) or []):
+            diffs["tags"] = {"db": sorted(db_row.get("tags") or []), "v3": sorted(getattr(v3_q, "tags", None) or [])}
+        if sorted(db_row.get("related_concepts") or []) != sorted(getattr(v3_q, "related_concepts", None) or []):
+            diffs["related_concepts"] = {"db": sorted(db_row.get("related_concepts") or []), "v3": sorted(getattr(v3_q, "related_concepts", None) or [])}
+
+        if diffs:
+            field_mismatches.append({
+                "title": title,
+                "diffs": diffs,
+            })
+
+    return {
+        "db_count": len(db_titles),
+        "v3_count": len(v3_titles),
+        "in_both_count": len(in_both_titles),
+        "in_db_only_titles": in_db_only_titles[:20],
+        "in_v3_only_titles": in_v3_only_titles[:20],
+        "field_mismatches": field_mismatches,
+        "sync_status": "ESIT" if (not in_db_only_titles and not in_v3_only_titles and not field_mismatches) else "FARK VAR",
+    }

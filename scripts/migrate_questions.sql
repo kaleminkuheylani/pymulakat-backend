@@ -48,8 +48,13 @@ CREATE INDEX IF NOT EXISTS idx_questions_level ON public.questions(level) WHERE 
 CREATE INDEX IF NOT EXISTS idx_questions_published ON public.questions(is_published, created_at DESC);
 
 -- Tam metin arama için (ileride)
-CREATE INDEX IF NOT EXISTS idx_questions_title_trgm ON public.questions USING gin (title gin_trgm_ops);
--- (pg_trgm extension gerekli; yoksa skip)
+-- pg_trgm extension gerekli, yoksa skip
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') THEN
+    CREATE INDEX IF NOT EXISTS idx_questions_title_trgm ON public.questions USING gin (title gin_trgm_ops);
+  END IF;
+END $$;
 
 -- updated_at otomatik güncelleme
 CREATE OR REPLACE FUNCTION public.set_updated_at()
