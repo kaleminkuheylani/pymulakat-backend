@@ -144,26 +144,6 @@ kaç tahminin tam doğru, kaç tahminin ±5 içinde, kaç tahminin uzak olduğun
         ],
     ),
 
-    Question(
-        id=6,
-        title='Karakter Sayacı',
-        category='python-basics',
-        level='beginner',
-        description="""Bir metindeki her karakterin kaç kez geçtiğini döndür.
-Boşlukları sayma. Büyük/küçük harf duyarlı olmasın.""",
-        starter_code="""def char_count(text: str) -> dict:
-    # Boşluk hariç her karakterin frekansını döndür
-    pass""",
-        test_cases=[
-            {'input': 'Hello World', 'expected': {'h': 1, 'e': 1, 'l': 3, 'o': 2, 'w': 1, 'r': 1, 'd': 1}},
-            {'input': 'aabbcc', 'expected': {'a': 2, 'b': 2, 'c': 2}},
-        ],
-        hints=[
-            '💡 İpucu 1: text.lower() ile metni küçük harfe çevir.',
-            "💡 İpucu 2: Her karakter için boşluk kontrolü: if c != ' '",
-            '💡 İpucu 3: dict.get(c, 0) + 1 ile sayacı artır ya da collections.Counter kullan.',
-        ],
-    ),
 
     Question(
         id=7,
@@ -338,31 +318,6 @@ Büyük/küçük harf korunmalı, diğer karakterler değişmemeli.""",
         ],
     ),
 
-    Question(
-        id=15,
-        title='Sayı Heceleme',
-        category='python-basics',
-        level='beginner',
-        description="""0-999 arası bir sayıyı Türkçe olarak hecelere yaz.
-Örnek: 42 → 'kırk iki', 100 → 'yüz'""",
-        starter_code="""def number_to_words(n: int) -> str:
-    ones = ['','bir','iki','üç','dört','beş','altı','yedi','sekiz','dokuz']
-    tens = ['','on','yirmi','otuz','kırk','elli','altmış','yetmiş','seksen','doksan']
-    # Buraya kodunu yaz
-    pass""",
-        test_cases=[
-            {'input': 0, 'expected': 'sıfır'},
-            {'input': 15, 'expected': 'on beş'},
-            {'input': 42, 'expected': 'kırk iki'},
-            {'input': 100, 'expected': 'yüz'},
-            {'input': 256, 'expected': 'iki yüz elli altı'},
-        ],
-        hints=[
-            "💡 İpucu 1: n == 0 ise 'sıfır' döndür.",
-            "💡 İpucu 2: Yüzler basamağı: n // 100 → 'X yüz', onlar: (n % 100) // 10, birler: n % 10",
-            "💡 İpucu 3: Parçaları bir listeye ekle, boşlukla birleştir: ' '.join(parts)",
-        ],
-    ),
 
     Question(
         id=16,
@@ -387,26 +342,6 @@ Büyük/küçük harf korunmalı, diğer karakterler değişmemeli.""",
         ],
     ),
 
-    Question(
-        id=17,
-        title='Slug Oluşturucu',
-        category='strings',
-        level='beginner',
-        description="""Bir başlığı URL-dostu slug'a çevir.
-Küçük harf, boşlukları tire ile değiştir, özel karakterleri kaldır.""",
-        starter_code="""def create_slug(title: str) -> str:
-    # "Merhaba Dünya! Python öğreniyorum" → "merhaba-dunya-python-ogreniyorum"
-    pass""",
-        test_cases=[
-            {'input': 'Merhaba Dünya', 'expected': 'merhaba-dunya'},
-            {'input': 'Python 3.11 Neler Getirdi?', 'expected': 'python-311-neler-getirdi'},
-        ],
-        hints=[
-            '💡 İpucu 1: .lower() ile küçük harfe çevir.',
-            "💡 İpucu 2: Türkçe karakterleri değiştir: 'ş'→'s', 'ğ'→'g', vb.",
-            "💡 İpucu 3: Harf/rakam olmayanları kaldır, boşlukları '-' yap.",
-        ],
-    ),
 
     Question(
         id=18,
@@ -517,48 +452,6 @@ Büyük/küçük harf duyarlı olmasın.""",
         ],
     ),
 
-    Question(
-        id=23,
-        title='Kelime Sayısı (Gelişmiş)',
-        category='strings',
-        level='beginner',
-        description="""Bir metinde her satırdaki kelime sayısını döndür.
-Boş satırları sıfır olarak say.""",
-        starter_code="""def word_count_per_line(text: str) -> list:
-    # Satır satır böl, her satırdaki kelime sayısını döndür
-    pass""",
-        test_cases=[
-            {'input': 'Merhaba dünya\nPython öğreniyorum\n', 'expected': [2, 2, 0]},
-            {'input': 'bir\n\nüç', 'expected': [1, 0, 1]},
-        ],
-        hints=[
-            "💡 İpucu 1: text.split('\\n') ile satırlara böl.",
-            '💡 İpucu 2: Her satır için len(line.split()) kelime sayısını verir.',
-            '💡 İpucu 3: List comprehension: [len(line.split()) for line in lines]',
-        ],
-    ),
-
-    Question(
-        id=24,
-        title='Cümle Başlığı',
-        category='strings',
-        level='beginner',
-        description="""Her kelimenin ilk harfini büyük yap (Title Case),
-ama bağlaçları ('ve','ile','ya','ya da') küçük bırak.""",
-        starter_code="""def smart_title(sentence: str) -> str:
-    exceptions = {'ve','ile','ya','veya','de','da'}
-    # İlk kelime her zaman büyük, diğerleri kural dahilinde
-    pass""",
-        test_cases=[
-            {'input': 'python ve django ile web geliştirme', 'expected': 'Python ve Django ile Web Geliştirme'},
-            {'input': 'merhaba dünya', 'expected': 'Merhaba Dünya'},
-        ],
-        hints=[
-            '💡 İpucu 1: Kelimelere ayır, ilk kelimeyi her zaman büyük yap.',
-            '💡 İpucu 2: Diğer kelimeler için: exceptions setinde varsa küçük, yoksa .capitalize()',
-            "💡 İpucu 3: ' '.join(result_words) ile birleştir.",
-        ],
-    ),
 
     Question(
         id=25,
@@ -1205,675 +1098,6 @@ Yol yoksa -1 döndür.""",
             '💡 İpucu 3: 4 yön: [(-1,0),(1,0),(0,-1),(0,1)]; sınır ve duvar kontrolü yap.',
         ],
     ),
-
-    Question(
-        id=51,
-        title='💖 Emoji Envanteri: Sosyal Medya Duygu Analizi',
-        category='strings',
-        level='intermediate',
-        description="""Sosyal medya platformumuzdaki gönderilerin genel duygu tonunu anlamak için hızlı bir analiz aracına ihtiyacımız var! 📊 Göreviniz, verilen bir metin içindeki belirli pozitif, negatif ve nötr emojileri sayarak bir 'duygu envanteri' oluşturmaktır. Fonksiyonunuz, metni taramalı ve her kategoriye ait emojilerin toplam sayısını içeren bir sözlük döndürmelidir. 🕵️‍♀️ Bu, içerik yöneticilerimizin etkileşimi daha iyi anlamasına yardımcı olacak! 
-
-**Emoji Kategorileri (Örnekler):**
-- **Pozitif:** 😂, 👍, ❤️, ✨, 🥳
-- **Negatif:** 😠, 👎, 😔, 💔, 😭
-- **Nötr:** 💡, 📍, 📚, ⏰, 🤔
-
-**Örnek Kullanım:**
-Input: "Harika bir gün! ✨ Çok eğlendim 😂👍 ama biraz da düşündürücü 🤔"
-Output: {"pozitif": 3, "negatif": 0, "nötr": 1}""",
-        starter_code="""def emoji_analizcisi(metin: str) -> dict:
-    # Bu alan, pozitif, negatif ve nötr emojileri tanımladığınız yer olacak.
-    pozitif_emojiler = ['😂', '👍', '❤️', '✨', '🥳']
-    negatif_emojiler = ['😠', '👎', '😔', '💔', '😭']
-    notr_emojiler = ['💡', '📍', '📚', '⏰', '🤔']
-
-    # Başlangıçta sayaçları sıfırlayın
-    sayaclar = {
-        "pozitif": 0,
-        "negatif": 0,
-        "nötr": 0
-    }
-
-    # Metin üzerinde karakter karakter gezinerek emojileri sayın.
-    pass""",
-        test_cases=[
-            {'input': 'Harika bir gün! ✨ Çok eğlendim 😂👍', 'expected': {'pozitif': 3, 'negatif': 0, 'nötr': 0}},
-            {'input': 'Çok üzgünüm 😔 neden böyle oldu ki 💔😭', 'expected': {'pozitif': 0, 'negatif': 3, 'nötr': 0}},
-            {'input': 'Ders çalışıyorum 📚 yeni bir fikir💡 çıktı ama henüz emin değilim 🤔', 'expected': {'pozitif': 0, 'negatif': 0, 'nötr': 3}},
-            {'input': 'Bugün hava güzel.☕️ Kahve içtim. Hava karardı.', 'expected': {'pozitif': 0, 'negatif': 0, 'nötr': 0}},
-            {'input': 'Karışık duygular: 😂😔👍💔📚💡', 'expected': {'pozitif': 2, 'negatif': 2, 'nötr': 2}},
-            {'input': '', 'expected': {'pozitif': 0, 'negatif': 0, 'nötr': 0}},
-            {'input': 'Sadece bir metin parçasıdır, emoji yok.', 'expected': {'pozitif': 0, 'negatif': 0, 'nötr': 0}},
-            {'input': '🥳✨🥳✨ Bu bir parti! 🎉', 'expected': {'pozitif': 4, 'negatif': 0, 'nötr': 0}},
-            {'input': 'Her şey çok kötü 😭😠👎', 'expected': {'pozitif': 0, 'negatif': 3, 'nötr': 0}},
-        ],
-        hints=[
-            "💡 İpucu 1: Fonksiyonun başında, pozitif, negatif ve nötr emojileri ayrı Python listeleri (veya setleri) olarak tanımlayın. Örneğin: `pozitif_emojiler = ['😂', '👍', '❤️']`",
-            '💡 İpucu 2: Sonuçları tutmak için `{"pozitif": 0, "negatif": 0, "nötr": 0}` şeklinde bir sözlük (dictionary) oluşturarak başlayın.',
-            "💡 İpucu 3: Gelen `metin` parametresi üzerinde bir `for` döngüsü kullanarak her bir karakteri (emoji dahil) tek tek kontrol edin. Python'da emojiler de tek karakter gibi işlenir.",
-            '💡 İpucu 4: Her karakteri kontrol ederken, `if karakter in pozitif_emojiler:` gibi koşullu ifadeler kullanarak karakterin hangi emoji kategorisine ait olduğunu belirleyin ve ilgili sayacı artırın.',
-        ],
-    ),
-
-    Question(
-        id=52,
-        title='🕵️\u200d♀️ Emoji Gizemleri: Gizli Mesajı Bul! 🔍',
-        category='strings',
-        level='beginner',
-        description="""Sosyal medyada arkadaşlarınla emoji dolu mesajlar paylaşıyorsun! 🥳 Bazı mesajlar ise özel bir gizem taşıyor. Belirli bir emoji deseniyle başlayan (⭐✨🌟) ve yine belirli bir emoji deseniyle biten (🌟✨⭐) mesajlar içinde gizli bir anahtar kelime saklı. Senin görevin, verilen bir mesajın bu gizemli formatta olup olmadığını kontrol etmek ve eğer öyleyse, o gizli anahtar kelimeyi bulup çıkarmak! 🤫
-
-**Örnek Kullanım:**
-
-Girdi: `⭐✨🌟PythonHarika🌟✨⭐`
-Çıktı: `PythonHarika`
-
-Girdi: `Merhaba dünya! 👋`
-Çıktı: `None`
-
-Girdi: `⭐✨🌟🌟✨⭐`
-Çıktı: `''` (boş string)""",
-        starter_code="""def gizli_mesaji_bul(mesaj: str) -> str | None:
-    # Mesajın belirli emoji desenleriyle başlayıp bitmediğini kontrol et.
-    # Eğer öyleyse, bu desenleri mesajdan çıkararak gizli anahtar kelimeyi bul.
-    pass""",
-        test_cases=[
-            {'input': '⭐✨🌟PythonHarika🌟✨⭐', 'expected': 'PythonHarika'},
-            {'input': '⭐✨🌟KodlamakEglenceli🌟✨⭐', 'expected': 'KodlamakEglenceli'},
-            {'input': '⭐✨🌟🌟✨⭐', 'expected': ''},
-            {'input': 'Merhaba dünya! 👋', 'expected': None},
-            {'input': '🚀✨🌟Merhaba🌟✨⭐', 'expected': None},
-            {'input': '⭐✨🌟Merhaba🌟✨🚀', 'expected': None},
-            {'input': 'Sadece normal bir mesaj.', 'expected': None},
-            {'input': 'Bu mesajda ⭐✨🌟gizli🌟✨⭐ var ama format hatalı.', 'expected': None},
-            {'input': '⭐✨Merhaba🌟✨⭐', 'expected': None},
-            {'input': '⭐✨🌟Kısa🌟✨⭐', 'expected': 'Kısa'},
-            {'input': '⭐✨🌟Biraz uzunca bir gizemli mesaj🌟✨⭐', 'expected': 'Biraz uzunca bir gizemli mesaj'},
-        ],
-        hints=[
-            "💡 İpucu 1: Bir string'in belirli bir alt string ile başlayıp başlamadığını kontrol etmek için `.startswith()` metodunu kullanabilirsin.",
-            "💡 İpucu 2: Benzer şekilde, bir string'in belirli bir alt string ile bitip bitmediğini kontrol etmek için `.endswith()` metodunu kullanabilirsin.",
-            '💡 İpucu 3: Eğer mesaj gizli formata uyuyorsa, gizli anahtar kelimeyi bulmak için string dilimleme (slicing) kullanabilirsin. Başlangıç ve bitiş desenlerinin uzunluklarına dikkat et! Her iki desen de 3 emoji karakter uzunluğunda.',
-        ],
-    ),
-
-    Question(
-        id=53,
-        title='🚀 Sosyal Medya Post Kontrolcüsü: Trend ve Temiz Mi?',
-        category='strings',
-        level='intermediate',
-        description="""Bir sosyal medya platformunda içerik moderatörü olarak çalışıyorsun! 📝 Amacın, kullanıcıların gönderdiği mesajların belirli kriterlere uyup uymadığını kontrol etmek. Mesaj, en az bir trendy hashtag içermeli VE yasaklı kelimelerden veya emojilerden hiçbirini barındırmamalıdır. Fonksiyonunuz, bir mesajın bu iki koşulu da sağlıyorsa `True`, aksi takdirde `False` döndürmelidir. Unutmayın, hashtagler ve yasaklı kelimeler/emojiler için kontrol yaparken büyük/küçük harf veya emoji duyarlılığına dikkat edin (kelimeler küçük harf duyarsız, emojiler duyarlı kalmalı).""",
-        starter_code="""def post_kontrol_et(mesaj: str, trend_hashtagler: list[str], yasakli_kelimeler_ve_emojiler: list[str]) -> bool:
-    # Kullanıcının mesajını belirli kurallara göre kontrol eder.
-    # - En az bir trend hashtag içermeli.
-    # - Hiçbir yasaklı kelime/emoji içermemeli.
-    pass""",
-        test_cases=[
-            {'input': {'mesaj': 'Harika bir #Python projesi üzerinde çalışıyorum! #Gelişim', 'trend_hashtagler': ['#python', '#yapayzeka'], 'yasakli_kelimeler_ve_emojiler': ['yasaklı', 'spam']}, 'expected': True},
-            {'input': {'mesaj': 'Bu spam mesajı lütfen bildirin! #Önemli', 'trend_hashtagler': ['#önemli'], 'yasakli_kelimeler_ve_emojiler': ['spam', 'virüs']}, 'expected': False},
-            {'input': {'mesaj': 'Bugün hava çok güzel!', 'trend_hashtagler': ['#güneş', '#plaj'], 'yasakli_kelimeler_ve_emojiler': []}, 'expected': False},
-            {'input': {'mesaj': 'Sıkıcı bir gün 😠', 'trend_hashtagler': ['#mood'], 'yasakli_kelimeler_ve_emojiler': ['sıkıcı', '😠']}, 'expected': False},
-            {'input': {'mesaj': 'Yeni bir #PYTHON dersi! #öğren', 'trend_hashtagler': ['#python', '#ders'], 'yasakli_kelimeler_ve_emojiler': []}, 'expected': True},
-            {'input': {'mesaj': 'Bu bir YASAKLI kelimedir! #Uyarı', 'trend_hashtagler': ['#uyarı'], 'yasakli_kelimeler_ve_emojiler': ['yasaklı']}, 'expected': False},
-            {'input': {'mesaj': 'Her şey yolunda! #Mutlu', 'trend_hashtagler': [], 'yasakli_kelimeler_ve_emojiler': []}, 'expected': False},
-            {'input': {'mesaj': 'Süper bir gün! #Hava', 'trend_hashtagler': ['#hava'], 'yasakli_kelimeler_ve_emojiler': []}, 'expected': True},
-        ],
-        hints=[
-            '💡 İpucu 1: Mesajın tamamını küçük harfe çevirerek hem trendy hashtag hem de yasaklı kelime kontrollerini (emoji dışındaki) kolaylaştırabilirsiniz.',
-            '💡 İpucu 2: Trendy hashtag kontrolü için bir döngü kullanarak `any()` fonksiyonunu düşünebilirsiniz. En az bir tanesi mesajda varsa, ilk koşul sağlanmış demektir.',
-            '💡 İpucu 3: Yasaklı kelimeler/emojiler için de benzer bir döngü kurun. Eğer mesajda herhangi bir yasaklı kelime/emoji bulunursa, hemen `False` döndürebilirsiniz.',
-            "💡 İpucu 4: Python'daki `in` operatörü string içinde alt string aramak için çok kullanışlıdır.",
-        ],
-    ),
-
-    Question(
-        id=54,
-        title='🍽️ Emoji Sipariş Fiyatı Hesaplayıcı',
-        category='list-dict',
-        level='intermediate',
-        description="""Mahallenin en popüler kafesi, modern çağa ayak uydurarak sadece emojilerle sipariş alıyor! 📲 Bu sistemde, her bir yiyecek ve içecek emojisi belirli bir fiyata sahip. Görevin, müşterinin verdiği emoji dolu sipariş stringini (örn: '🍕🍔🍟🥤') analiz ederek toplam tutarı hesaplayan bir fonksiyon yazmak. Dikkatli ol, bazı emojiler listede olmayabilir, onların fiyatı 0'dır.""",
-        starter_code="""def hesapla_emoji_siparis_fiyati(siparis_stringi: str) -> float:
-    # Her bir emoji için fiyatları tutan bir sözlük tanımlayalım.
-    emoji_fiyatlari = {
-        "🍕": 15.00,
-        "🍔": 12.50,
-        "🍟": 7.00,
-        "🥤": 5.00,
-        "☕": 6.00,
-        "🍩": 8.50,
-        "🍦": 9.00,
-        "🥪": 10.00,
-        "🍰": 11.00,
-        "🍎": 4.00
-    }
-    # Toplam fiyatı hesaplamak için kodu buraya yazın.
-    pass""",
-        test_cases=[
-            {'input': '🍕🍔🥤', 'expected': 32.5},
-            {'input': '🍟🍟🥤', 'expected': 19.0},
-            {'input': '🍕✨🍔', 'expected': 27.5},
-            {'input': '☕🍩🍦', 'expected': 23.5},
-            {'input': '🍎🥪', 'expected': 14.0},
-            {'input': '', 'expected': 0.0},
-            {'input': '🌟😊', 'expected': 0.0},
-            {'input': '🍕🍕🍕🥤', 'expected': 50.0},
-        ],
-        hints=[
-            '💡 Sipariş stringi içindeki her bir emoji karakteri üzerinde döngü (loop) kurmayı düşünün.',
-            '💡 `emoji_fiyatlari` sözlüğünden her bir emojinin fiyatını alırken `.get(emoji, 0.0)` metodunu kullanarak, menüde olmayan emojiler için varsayılan bir değer (0.0) döndürebilirsiniz.',
-            '💡 Toplam fiyatı tutmak için döngüden önce bir değişken tanımlayın ve her emojinin fiyatını bu değişkene ekleyin.',
-        ],
-    ),
-
-    Question(
-        id=55,
-        title='Viral Potansiyel Skoru Hesapla 📈🚀',
-        category='strings',
-        level='intermediate',
-        description="""Sosyal medya yöneticisi olarak, platformunuzda hangi gönderilerin daha fazla etkileşim yaratabileceğini öngörmeniz gerekiyor. Bu görevde, kullanıcıların paylaştığı gönderi metinlerini analiz ederek 'Viral Potansiyel Skoru' hesaplayan bir fonksiyon yazmalısınız. Fonksiyonunuz, metindeki belirli trend kelimelerin ve pozitif emojilerin kullanımına göre bir skor döndürecektir. Her trend kelime +5 puan, her pozitif emoji +3 puan değerindedir. Kelime aramalarında küçük/büyük harf duyarlılığı olmamalıdır.""",
-        starter_code="""def hesapla_viral_skor(gonderi_metni: str, trend_kelimeler: list[str], pozitif_emojiler: list[str]) -> int:
-    # Gönderi metninin viral potansiyel skorunu hesaplayan kodunuzu buraya yazın.
-    pass""",
-        test_cases=[
-            {'input': {'gonderi_metni': 'Harika bir gün! #python çok eğlenceli 🚀🔥', 'trend_kelimeler': ['python', 'eğlenceli', 'kodlama'], 'pozitif_emojiler': ['🚀', '🔥', '✨']}, 'expected': 16},
-            {'input': {'gonderi_metni': 'Bu challenge gerçekten eğlenceli! Kodlama öğrenmek harika! 😊👍', 'trend_kelimeler': ['challenge', 'eğlenceli', 'kodlama', 'öğrenmek'], 'pozitif_emojiler': ['😊', '👍', '💡']}, 'expected': 26},
-            {'input': {'gonderi_metni': 'Sıradan bir metin. Hiçbir viral potansiyel yok.', 'trend_kelimeler': ['viral', 'popüler', 'challenge'], 'pozitif_emojiler': ['🎉', '🥳']}, 'expected': 0},
-            {'input': {'gonderi_metni': 'PyThOn çok iyi! EğLenceli! Ve bu bir CHALLENGE! 🎉', 'trend_kelimeler': ['python', 'eğlenceli', 'challenge'], 'pozitif_emojiler': ['🎉']}, 'expected': 18},
-            {'input': {'gonderi_metni': 'Bugün hava güzel. ☀️', 'trend_kelimeler': ['güneş', 'hava', 'güzel'], 'pozitif_emojiler': ['✨', '🌈']}, 'expected': 0},
-        ],
-        hints=[
-            '💡 İpucu 1: Metindeki kelimeleri karşılaştırırken küçük/büyük harf duyarlılığını ortadan kaldırmak için `lower()` metodunu kullanmayı unutmayın.',
-            '💡 İpucu 2: Gönderi metnini kelimelere ayırmak için `split()` veya düzenli ifadeler (regex) kullanabilirsiniz. Ancak basit bir `split()` metodu da iş görecektir, noktalama işaretlerini temizlemeyi düşünebilirsiniz.',
-            '💡 İpucu 3: Emojileri saymak için, her bir pozitif emojinin gönderi metninde kaç kez geçtiğini kontrol eden bir döngü yazabilirsiniz. `string.count()` metodu bu konuda size yardımcı olabilir.',
-        ],
-    ),
-
-    Question(
-        id=56,
-        title='😎 Ruh Hali Emoji Dedektörü',
-        category='strings',
-        level='intermediate',
-        description="""Merhaba sevgili geleceğin veri bilimcileri! 👩‍💻 Sosyal medya platformları, kullanıcılarının duygularını anlamak için sürekli yeni yollar arıyor. Bu görevde, bir kullanıcının paylaştığı metindeki emojilere bakarak genel ruh halini tespit eden bir Python fonksiyonu yazacaksın. ✨ Fonksiyonun, girdi olarak bir sosyal medya gönderisi (string) ve farklı ruh hallerini (örneğin, 'mutlu', 'üzgün') temsil eden emoji listelerini içeren bir sözlük (dict) alacak. Hangi ruh halinden daha fazla emoji varsa, o ruh halini döndürmelisin. Eğer bilinen bir emoji bulunamazsa veya birden fazla ruh hali eşit sayıda emoji içeriyorsa, 'belirsiz' döndürmelisin. 🤔
-
-Örnek Girdi ve Çıktılar:
-post = "Bugün hava harika! 😊☀️"
-mood_map = {"mutlu": ["😊", "😄"], "üzgün": ["😢", "😔"]}
-Çıktı: "mutlu"
-
-post = "Çok sıkıcı bir gün 😭",
-mood_map = {"mutlu": ["😊", "😄"], "üzgün": ["😢", "😔"]}
-Çıktı: "üzgün"
-
-post = "Sadece metin var."
-mood_map = {"mutlu": ["😊", "😄"], "üzgün": ["😢", "😔"]}
-Çıktı: "belirsiz""",
-        starter_code="""def emoji_ruh_hali_dedektoru(post: str, mood_map: dict) -> str:
-    # Her bir ruh hali için emoji sayılarını tutacak bir sayaç sözlüğü oluştur.
-    # Gönderideki her karakteri kontrol et.
-    # Eğer karakter bir emoji ise ve mood_map içinde tanımlıysa, ilgili ruh halinin sayacını artır.
-    # En yüksek sayaca sahip ruh halini bul.
-    # Beraberlik veya emoji olmaması durumlarını yönetmeyi unutma!
-    pass""",
-        test_cases=[
-            {'input': {'post': 'Bugün hava çok güzel! 😊😄', 'mood_map': {'mutlu': ['😊', '😄', '🥳', '✨'], 'üzgün': ['😢', '😭', '😔', '💔'], 'şaşkın': ['😮', '🤯', '😳']}}, 'expected': 'mutlu'},
-            {'input': {'post': 'Çok yorgunum ve üzgünüm 😔😢', 'mood_map': {'mutlu': ['😊', '😄', '🥳', '✨'], 'üzgün': ['😢', '😭', '😔', '💔'], 'şaşkın': ['😮', '🤯', '😳']}}, 'expected': 'üzgün'},
-            {'input': {'post': 'Şaşırtıcı bir haber aldım! 🤯😳 Ama yine de mutluyum 😊', 'mood_map': {'mutlu': ['😊', '😄', '🥳', '✨'], 'üzgün': ['😢', '😭', '😔', '💔'], 'şaşkın': ['😮', '🤯', '😳']}}, 'expected': 'şaşkın'},
-            {'input': {'post': 'Sadece metin var.', 'mood_map': {'mutlu': ['😊', '😄', '🥳', '✨'], 'üzgün': ['😢', '😭', '😔', '💔'], 'şaşkın': ['😮', '🤯', '😳']}}, 'expected': 'belirsiz'},
-            {'input': {'post': '🤔🤷\u200d♀️ Bu ne demek?', 'mood_map': {'mutlu': ['😊', '😄', '🥳', '✨'], 'üzgün': ['😢', '😭', '😔', '💔'], 'şaşkın': ['😮', '🤯', '😳']}}, 'expected': 'belirsiz'},
-            {'input': {'post': 'Mutluluk ve biraz hüzün 😊😔', 'mood_map': {'mutlu': ['😊', '😄', '🥳', '✨'], 'üzgün': ['😢', '😭', '😔', '💔'], 'şaşkın': ['😮', '🤯', '😳']}}, 'expected': 'belirsiz'},
-            {'input': {'post': '', 'mood_map': {'mutlu': ['😊', '😄', '🥳', '✨'], 'üzgün': ['😢', '😭', '😔', '💔'], 'şaşkın': ['😮', '🤯', '😳']}}, 'expected': 'belirsiz'},
-            {'input': {'post': 'Harika bir gün ✨✨✨', 'mood_map': {'mutlu': ['😊', '😄', '🥳', '✨'], 'üzgün': ['😢', '😭', '😔', '💔'], 'şaşkın': ['😮', '🤯', '😳']}}, 'expected': 'mutlu'},
-            {'input': {'post': 'Of be 💔', 'mood_map': {'mutlu': ['😊', '😄', '🥳', '✨'], 'üzgün': ['😢', '😭', '😔', '💔'], 'şaşkın': ['😮', '🤯', '😳']}}, 'expected': 'üzgün'},
-        ],
-        hints=[
-            '💡 İlk adım olarak, gönderideki her bir karakteri tek tek kontrol etmelisin. Bir döngü (for loop) kullanmak işini kolaylaştıracaktır. 🔁',
-            "💡 Her bir karakterin hangi ruh haline ait olduğunu bulmak için, 'mood_map' sözlüğünün değerlerini (emoji listeleri) kontrol etmelisin. Bir karakterin bu listelerden birinde olup olmadığını 'in' operatörü ile kontrol edebilirsin. 🧐",
-            "💡 Emojilerin sayılarını takip etmek için bir sayaç sözlüğü oluşturabilirsin. Örneğin, `emoji_sayilari = {'mutlu': 0, 'üzgün': 0}` gibi. Bulduğun her emoji için ilgili ruh halinin sayacını artır. ➕",
-            '💡 Tüm emojileri saydıktan sonra, hangi ruh halinin en yüksek sayaca sahip olduğunu bulman gerekecek. `max()` fonksiyonunu, `key` parametresiyle kullanarak sözlük değerlerine göre maksimum olanı bulabilirsin. Ama dikkat et, beraberlik durumunda ne yapacağını unutma! 🤯',
-            "💡 Eğer hiçbir emoji bulunamazsa veya en yüksek sayıya sahip birden fazla ruh hali varsa, 'belirsiz' döndürdüğünden emin olmalısın. Bu kontrolü, sonuçları değerlendirdikten sonra yapabilirsin. 😉",
-        ],
-    ),
-
-    Question(
-        id=57,
-        title='🌟 Sosyal Medya İçerik Avcısı: Trendleri Yakala!',
-        category='strings',
-        level='intermediate',
-        description="""Merhaba sevgili içerik avcıları! 🏹 Popüler bir sosyal medya platformunda görevlisiniz ve göreviniz, "viral" olabilecek gönderileri tespit etmek. Bir gönderinin viral potansiyeli taşıması için iki temel koşulu sağlaması gerekiyor:
-1. Gönderi metni, size verilen trend hashtag'lerden en az birini içermeli (büyük/küçük harf duyarsız olmalı!).
-2. Gönderi metninde, belirtilen minimum emoji sayısına eşit veya daha fazla emoji bulunmalı. Emojileri sayarken, Unicode karakter setindeki yaygın emoji aralıklarını (örn: U+1F600 - U+1F64F arası gülümsemeler, U+1F300 - U+1F5FF arası semboller vb.) dikkate almalısınız.
-Fonksiyonunuz, bir gönderinin bu kriterlere uyup uymadığını belirten `True` veya `False` döndürmelidir.
-
-Örnek Kullanım:
-analyze_social_post("Harika bir gün! #PythonChallenge 🚀", ["#pythonchallenge", "#coding"], 1)  çıktı: True
-analyze_social_post("Sadece biraz kod yazdım.", ["#javascript"], 0) çıktı: False
-analyze_social_post("Çok mutluyum! 😊", ["#mutluluk"], 2) çıktı: False""",
-        starter_code="""def analyze_social_post(post_text: str, trending_hashtags: list[str], min_emoji_count: int) -> bool:
-    # Gönderinin viral potansiyelini belirlemek için hashtag ve emoji kontrolü yapın.
-    pass""",
-        test_cases=[
-            {'input': {'post_text': 'Python öğrenmek çok eğlenceli! #PyDev #codingchallenge 🐍', 'trending_hashtags': ['#pydev', '#datascience'], 'min_emoji_count': 1}, 'expected': True},
-            {'input': {'post_text': 'Hafta sonu planları! Kahve keyfi ☕', 'trending_hashtags': ['#tatil', '#gezi'], 'min_emoji_count': 2}, 'expected': False},
-            {'input': {'post_text': 'Yeni bir başlangıç! 🚀', 'trending_hashtags': ['#yenibaşlangıç', '#motivasyon'], 'min_emoji_count': 1}, 'expected': True},
-            {'input': {'post_text': 'Bugün hava çok güzel.', 'trending_hashtags': ['#güneşli', '#keyif'], 'min_emoji_count': 0}, 'expected': False},
-            {'input': {'post_text': 'Harika bir gün! 😊🌞', 'trending_hashtags': [], 'min_emoji_count': 1}, 'expected': False},
-            {'input': {'post_text': 'Sadece metin var, emoji yok.', 'trending_hashtags': ['#metin', '#yok'], 'min_emoji_count': 1}, 'expected': False},
-            {'input': {'post_text': 'Büyük bir indirim! 🎉💸 Hemen tıkla!', 'trending_hashtags': ['#indirim', '#alışveriş'], 'min_emoji_count': 2}, 'expected': True},
-            {'input': {'post_text': 'Merhaba Dünya! 👋', 'trending_hashtags': ['#merhaba', '#dünya'], 'min_emoji_count': 0}, 'expected': True},
-            {'input': {'post_text': 'Emoji yok, hashtag var. #test', 'trending_hashtags': ['#test'], 'min_emoji_count': 1}, 'expected': False},
-            {'input': {'post_text': 'Çok güzel bir gün! ❤️', 'trending_hashtags': ['#hava', '#güzel'], 'min_emoji_count': 0}, 'expected': False},
-        ],
-        hints=[
-            "💡 İpucu 1: Hashtag kontrolü için, `trending_hashtags` listesindeki her bir hashtag'i `post_text` içinde arayabilirsiniz. Büyük/küçük harf duyarsız arama için hem gönderi metnini hem de hashtag'leri küçük harfe (`.lower()`) dönüştürmek iyi bir başlangıç olabilir.",
-            '💡 İpucu 2: Emoji sayımı için, gönderi metnindeki her karakteri tek tek kontrol etmeniz gerekecek. Bir karakterin emoji olup olmadığını basitçe anlamak için `ord(karakter)` fonksiyonunu kullanarak Unicode değerine bakabilir ve yaygın emoji aralıklarında olup olmadığını kontrol edebilirsiniz (örneğin, `0x1F600` ile `0x1F64F` arası gülümsemeler, `0x2600` ile `0x26FF` arası semboller gibi).',
-            "💡 İpucu 3: Her iki koşulun (en az bir trend hashtag ve minimum emoji sayısı) da sağlanması gerektiği için, bu iki kontrolü ayrı ayrı yapıp sonucunu `and` operatörüyle birleştirebilirsiniz. Unutmayın, herhangi bir trend hashtag'in bulunması yeterlidir.",
-        ],
-    ),
-
-    Question(
-        id=58,
-        title='🤩 Emoji Ruh Hali Analizi',
-        category='list-dict',
-        level='intermediate',
-        description="""Sen, popüler bir mesajlaşma uygulamasının geliştiricisisin ve kullanıcılar, uzun emoji dizilerinin genel ruh halini hızla anlamak istiyor. Amacın, verilen bir emoji dizisini analiz ederek 'Pozitif', 'Negatif', 'Nötr', 'Karışık Ruh Hali' veya 'Belirsiz' kategorilerinden hangisinin baskın olduğunu bulan bir Python fonksiyonu yazmaktır. Fonksiyon, her bir emoji türünü saymalı ve aşağıdaki kurallara göre dominant ruh halini belirlemelidir. Diğer emojiler göz ardı edilecektir.
-
-**Kategoriler ve Kurallar:**
-*   **Pozitif:** 👍, 😄, 😍, 🎉, 🚀
-*   **Negatif:** 👎, 😠, 😞, 😤, 😭
-*   **Nötr:** 😐, 🤔, 😴, 🤷, 💬
-*   Eğer pozitif, negatif veya nötr ruh hallerinden biri diğer ikisinden kesin olarak fazlaysa, o ruh hali döner.
-*   Eğer Pozitif ve Negatif sayıları eşit ve diğerlerinden (Nötr) fazlaysa: "Karışık Ruh Hali".
-*   Diğer tüm eşitlik durumlarında (örn: tümü eşit veya iki tanesi eşit ama üçüncüsü daha az değil): "Belirsiz".
-
-**Örnek Kullanım:**
-`emoji_ruh_hali("👍👍😠😄👎😐")`  çıktısı `Pozitif Ruh Hali` olmalı.
-`emoji_ruh_hali("👎👎😠😠")`  çıktısı `Negatif Ruh Hali` olmalı.
-`emoji_ruh_hali("👍👎😐")` çıktısı `Belirsiz` olmalı.""",
-        starter_code="""def emoji_ruh_hali(emoji_dizisi: str) -> str:
-    \"\"\"
-    Verilen emoji dizisinin baskın ruh halini analiz eder.
-    \"\"\"
-    # Emojileri kategorize etmek için başlangıç setleri veya sözlükler tanımlayın.
-    # Diziyi gezerek her kategori için sayım yapın.
-    # Sayımlara göre dominant ruh halini belirlemek için koşullu ifadeler kullanın.
-    pass""",
-        test_cases=[
-            {'input': '👍👍😠😄👎😐🚀', 'expected': 'Pozitif Ruh Hali'},
-            {'input': '👎👎😠😠👍🤔', 'expected': 'Negatif Ruh Hali'},
-            {'input': '😐🤔😴🤷👍👎', 'expected': 'Nötr Ruh Hali'},
-            {'input': '👍👎😄😠', 'expected': 'Karışık Ruh Hali'},
-            {'input': '👍👎😐', 'expected': 'Belirsiz'},
-            {'input': '👍😐🤔😄', 'expected': 'Belirsiz'},
-            {'input': 'abcxyz', 'expected': 'Belirsiz'},
-            {'input': '', 'expected': 'Belirsiz'},
-            {'input': '😍😍😍', 'expected': 'Pozitif Ruh Hali'},
-            {'input': '👍😄👎😠😐🤔', 'expected': 'Belirsiz'},
-        ],
-        hints=[
-            "💡 İpucu 1: Emojileri hızlıca kontrol etmek için her kategori için ayrı bir `set` kullanmak işinizi kolaylaştırır. Örneğin: `pozitif_emojiler = {'👍', '😄', ...}`.",
-            '💡 İpucu 2: Emoji dizisindeki her karakteri tek tek gezmek için bir `for` döngüsü kullanın ve `if/elif` koşullarıyla hangi kategoriye ait olduğunu kontrol ederek sayımlarınızı artırın.',
-            "💡 İpucu 3: Tüm sayımlar yapıldıktan sonra, sayımlarınızı karşılaştırmak için koşullu ifadeler (`if/elif/else`) kullanın. Eşitlik durumlarını ve 'Karışık Ruh Hali' kuralını dikkatlice ele almayı unutmayın.",
-        ],
-    ),
-
-    Question(
-        id=59,
-        title='👾 Sosyal Medya Yorum Sensörü!',
-        category='list-dict',
-        level='intermediate',
-        description="""Popüler bir sosyal medya platformu için yorum denetleme botu geliştiriyorsunuz. Kullanıcıların gönderdiği mesajlardaki belirli 'yasaklı' kelimeleri tespit edip, bunları gizlilik emojileriyle (örn: '🤫') değiştiren bir Python fonksiyonu yazmanız gerekiyor. Fonksiyonunuz, hem sansürlenmiş mesajı hem de hangi yasaklı kelimelerin (küçük harfe dönüştürülmüş halleriyle) kaç kez sansürlendiğini raporlayan bir sözlüğü içeren bir liste döndürmelidir. Kelime eşleştirmesi büyük/küçük harf duyarsız olmalı ve kelimelerin başındaki/sonundaki noktalama işaretleri dikkate alınmalıdır.""",
-        starter_code="""import string
-
-def yorum_sansurle(mesaj: str, yasakli_kelimeler: list[str], sansur_emoji: str = "🤫") -> list:
-    \"\"\"
-    Mesajdaki yasaklı kelimeleri sansür emojisiyle değiştirir ve sansürlenen kelimelerin sayısını raporlar.
-    Kelime eşleştirmesi büyük/küçük harf duyarsızdır ve noktalama işaretleri dikkate alınır.
-
-    Args:
-        mesaj (str): Sansürlenecek metin.
-        yasakli_kelimeler (list[str]): Sansürlenmesi gereken kelimelerin listesi.
-        sansur_emoji (str, optional): Yasaklı kelimelerin yerine kullanılacak emoji. Varsayılan '🤫'.
-
-    Returns:
-        list: [sansürlenmiş_mesaj: str, sansürlenen_kelimeler_sayısı: dict[str, int]]
-    \"\"\"
-    # İpuçları:
-    # 1. yasakli_kelimeler listesini küçük harfli bir kümeye (set) dönüştürerek hızlı arama yapabilirsiniz.
-    # 2. string.punctuation modülünü kullanarak kelimelerin başındaki/sonundaki noktalama işaretlerini ayırabilirsiniz.
-    # 3. Mesajı boşluklara göre ayırıp her kelimeyi ayrı ayrı işleyebilirsiniz.
-    # 4. Sansürlenen kelimelerin sayısını tutmak için bir sözlük kullanın.
-    pass""",
-        test_cases=[
-            {'input': {'mesaj': 'Merhaba bu yorumda küfür! var.', 'yasakli_kelimeler': ['küfür'], 'sansur_emoji': '🤫'}, 'expected': ['Merhaba bu yorumda 🤫! var.', {'küfür': 1}]},
-            {'input': {'mesaj': 'Bu mesajda hakaret ve tehdit kelimeleri bulunuyor. Tehdit edenlere yer yok.', 'yasakli_kelimeler': ['hakaret', 'tehdit'], 'sansur_emoji': '🚫'}, 'expected': ['Bu mesajda 🚫 ve 🚫 kelimeleri bulunuyor. 🚫 edenlere yer yok.', {'hakaret': 1, 'tehdit': 2}]},
-            {'input': {'mesaj': 'Harika bir gün! Her şey yolunda.', 'yasakli_kelimeler': ['kötü', 'çirkin'], 'sansur_emoji': '🤐'}, 'expected': ['Harika bir gün! Her şey yolunda.', {}]},
-            {'input': {'mesaj': 'Ah, ne korkunç bir kelime... O kelime, gerçekten korkunç.', 'yasakli_kelimeler': ['korkunç', 'kelime'], 'sansur_emoji': '🤐'}, 'expected': ['Ah, ne 🤐 bir 🤐... O 🤐, gerçekten 🤐.', {'korkunç': 2, 'kelime': 2}]},
-        ],
-        hints=[
-            "💡 İpucu 1: `yasakli_kelimeler` listesini hızlı arama için küçük harfli bir `set`'e dönüştürün. Mesajı boşluklara göre kelimelere ayırmak için `mesaj.split()` kullanın.",
-            '💡 İpucu 2: Her bir kelime için `string.punctuation` modülünü kullanarak başındaki/sonundaki noktalama işaretlerini ayırın. Kelimenin noktalama işaretsiz ve küçük harfli halini yasaklı kelimeler setinde arayın.',
-            '💡 İpucu 3: Eğer bir kelime yasaklıysa, sayacını güncelleyin ve orijinal noktalama işaretleriyle birlikte sansür emojisiyle değiştirin. Tüm kelimeleri işledikten sonra, sansürlenmiş mesajı ve sayım sözlüğünü içeren bir liste döndürün.',
-        ],
-    ),
-
-    Question(
-        id=60,
-        title='🔐 Emoji Şifresi Dedektörü',
-        category='strings',
-        level='intermediate',
-        description="""Merhaba, emoji meraklısı! 🚀 Bir sosyal medya platformunda, kullanıcıların "Emoji Şifreleri" oluşturması gerekiyor. Amacımız, verilen bir emoji şifresinin belirlenen kurallara uyup uymadığını kontrol eden bir Python fonksiyonu yazmak. Şifrelerin güvenli sayılması için şu kriterleri karşılaması gerekmekte:
-1. Şifre, belirlenen bir "anahtar emoji" ile başlamalıdır.
-2. Şifre, "zorunlu emojiler" listesinden en az birini içermelidir.
-3. Şifre, "yasaklı emojiler" listesindeki hiçbir emojiyi içermemelidir.
-4. Şifre, minimum uzunluğa sahip olmalıdır.
-Fonksiyonunuz, bir emoji şifresini ve kuralları (anahtar emoji, zorunlu emojiler, yasaklı emojiler, minimum uzunluk) parametre olarak alıp, şifre geçerliyse True, değilse False döndürmelidir.
-
-Örnek Girdi:
-`sifre = "🔑🌟🚀🎉"`
-`anahtar = "🔑"`
-`zorunlu = ["🚀", "🔥"]`
-`yasakli = ["💀", "👹"]`
-`min_uzunluk = 3`
-Örnek Çıktı:
-`True`
-
-Örnek Girdi:
-`sifre = "🚀🌟🎉"`
-`anahtar = "🔑"`
-`zorunlu = ["🚀", "🔥"]`
-`yasakli = ["💀", "👹"]`
-`min_uzunluk = 3`
-Örnek Çıktı:
-`False` (Çünkü anahtar emoji ile başlamıyor)""",
-        starter_code="""def emoji_sifre_gecerli_mi(sifre: str, anahtar_emoji: str, zorunlu_emojiler: list[str], yasakli_emojiler: list[str], min_uzunluk: int) -> bool:
-    # Bu fonksiyon, verilen emoji şifresinin belirlenen kurallara uyup uymadığını kontrol eder.
-    pass""",
-        test_cases=[
-            {'input': {'sifre': '🔑🌟🚀🎉', 'anahtar_emoji': '🔑', 'zorunlu_emojiler': ['🚀', '🔥'], 'yasakli_emojiler': ['💀', '👹'], 'min_uzunluk': 3}, 'expected': True},
-            {'input': {'sifre': '🚀🌟🎉', 'anahtar_emoji': '🔑', 'zorunlu_emojiler': ['🚀', '🔥'], 'yasakli_emojiler': ['💀', '👹'], 'min_uzunluk': 3}, 'expected': False},
-            {'input': {'sifre': '🔑✨🌈', 'anahtar_emoji': '🔑', 'zorunlu_emojiler': ['🚀', '🔥'], 'yasakli_emojiler': ['💀', '👹'], 'min_uzunluk': 3}, 'expected': False},
-            {'input': {'sifre': '🔑🌟🚀💀', 'anahtar_emoji': '🔑', 'zorunlu_emojiler': ['🚀', '🔥'], 'yasakli_emojiler': ['💀', '👹'], 'min_uzunluk': 3}, 'expected': False},
-            {'input': {'sifre': '🔑🚀', 'anahtar_emoji': '🔑', 'zorunlu_emojiler': ['🚀', '🔥'], 'yasakli_emojiler': ['💀', '👹'], 'min_uzunluk': 3}, 'expected': False},
-            {'input': {'sifre': '🔑😊👍', 'anahtar_emoji': '🔑', 'zorunlu_emojiler': ['👍', '👋'], 'yasakli_emojiler': [], 'min_uzunluk': 3}, 'expected': True},
-            {'input': {'sifre': '🔓✨🎉😎🔥', 'anahtar_emoji': '🔓', 'zorunlu_emojiler': ['✨', '🔥'], 'yasakli_emojiler': ['🚫', '💩', '🦠'], 'min_uzunluk': 5}, 'expected': True},
-            {'input': {'sifre': '🔑🌈🌟🚀💀', 'anahtar_emoji': '🔑', 'zorunlu_emojiler': ['🌈', '🌟', '🚀'], 'yasakli_emojiler': ['💀', '👹'], 'min_uzunluk': 4}, 'expected': False},
-            {'input': {'sifre': '🔑🌟🚀', 'anahtar_emoji': '🔑', 'zorunlu_emojiler': ['🚀'], 'yasakli_emojiler': [], 'min_uzunluk': 0}, 'expected': True},
-        ],
-        hints=[
-            "💡 İpucu 1: Bir string'in belirli bir substring ile başlayıp başlamadığını kontrol etmek için `.startswith()` metodunu kullanabilirsiniz.",
-            "💡 İpucu 2: String'in uzunluğunu kontrol etmek için `len()` fonksiyonunu kullanın.",
-            '💡 İpucu 3: Bir listenin içindeki her bir zorunlu emojinin şifrede olup olmadığını kontrol etmek için bir döngü veya `any()` fonksiyonunu kullanabilirsiniz. `any(emoji in sifre for emoji in zorunlu_emojiler)` yapısı işinize yarayabilir.',
-            '💡 İpucu 4: Yasaklı emojiler için de benzer şekilde bir döngü veya `any()` fonksiyonunu kullanabilirsiniz. Ancak bu durumda, herhangi bir yasaklı emoji bulunursa `False` döndürmeniz gerekir. Yani `not any(emoji in sifre for emoji in yasakli_emojiler)` ifadesi işinizi görecektir.',
-        ],
-    ),
-
-    Question(
-        id=61,
-        title='🚀 Sosyal Medya Gönderisi Hype Yaratıcısı',
-        category='strings',
-        level='intermediate',
-        description="""Merhaba sevgili sosyal medya guruları! Bir gönderi hazırladınız ama biraz daha 'hype' katmak istiyorsunuz, öyle değil mi? Bu soruda, size verilen bir gönderi metnindeki 'sıkıcı' kelimeleri daha havalı hashtag'ler veya dikkat çekici emojilerle değiştiren bir fonksiyon yazmanızı bekliyoruz. Amacımız, gönderinizi daha etkileşimli ve dikkat çekici hale getirmek! Fonksiyonunuz, metni kelime kelime işlerken, büyük/küçük harf fark etmeksizin eşleştirme yapmalı ve varsa sondaki noktalama işaretlerini korumalıdır.""",
-        starter_code="""import string
-
-def optimize_social_post(post_text: str, replacements: dict) -> str:
-    \"\"\"
-    Verilen sosyal medya gönderi metnindeki 'sıkıcı' kelimeleri, 
-    'hype' yaratacak hashtagler veya emojilerle değiştirir.
-    Kelimeler büyük/küçük harf fark etmeksizin eşleştirilir ve 
-    varsa sondaki noktalama işaretleri korunur.
-    \"\"\"
-    # Metni boşluklara göre kelimelere ayırın.
-    # Her kelimeyi döngüde işlerken, varsa sondaki noktalama işaretini (örn. nokta, virgül) ayırın.
-    # Kelimenin küçük harf versiyonunu 'replacements' sözlüğünde kontrol edin.
-    # Eğer kelime bulunursa, sözlükteki karşılığı olan değeri ve orijinal noktalama işaretini birleştirin.
-    # Bulunmazsa, kelimeyi ve noktalama işaretini orijinal haliyle koruyun.
-    # Tüm işlenmiş kelimeleri tekrar boşluklarla birleştirerek nihai metni oluşturun.
-    pass""",
-        test_cases=[
-            {'input': {'post_text': 'Bugün hava çok güzeldi. Harika bir gün geçirdim.', 'replacements': {'güzeldi': '#Harika', 'harika': '✨', 'çok': 'süper'}}, 'expected': 'Bugün hava süper #Harika. ✨ bir gün geçirdim.'},
-            {'input': {'post_text': 'Bu film gerçekten harikaydı! Mükemmel bir deneyimdi.', 'replacements': {'harikaydı': '🎬', 'mükemmel': '🤩'}}, 'expected': 'Bu film gerçekten 🎬! 🤩 bir deneyimdi.'},
-            {'input': {'post_text': 'Yemekler pek iyi değildi. Kötü bir tecrübe oldu.', 'replacements': {'iyi': '🤤', 'kötü': '👎'}}, 'expected': 'Yemekler pek 🤤 değildi. 👎 bir tecrübe oldu.'},
-            {'input': {'post_text': 'Yarın iş var, hadi bakalım.', 'replacements': {'iş': '#Work', 'hadi': '🚀'}}, 'expected': 'Yarın #Work var, 🚀 bakalım.'},
-            {'input': {'post_text': 'Büyük bir indirim var! Kaçırma fırsatını.', 'replacements': {'büyük': 'MEGA', 'fırsatını': '🔥'}}, 'expected': 'MEGA bir indirim var! Kaçırma 🔥.'},
-            {'input': {'post_text': 'Bu çok güzel bir gün. Neşe dolu!', 'replacements': {'çok': 'oldukça', 'güzel': 'muhteşem', 'neşe': 'mutluluk'}}, 'expected': 'Bu oldukça muhteşem bir gün. mutluluk dolu!'},
-            {'input': {'post_text': 'Python harika bir dil. Öğrenmesi eğlenceli.', 'replacements': {'harika': '✨', 'eğlenceli': '🚀'}}, 'expected': 'Python ✨ bir dil. Öğrenmesi 🚀.'},
-            {'input': {'post_text': 'Merhaba dünya, nasılsın?', 'replacements': {}}, 'expected': 'Merhaba dünya, nasılsın?'},
-        ],
-        hints=[
-            "💡 Metni boşluklara göre 'split()' ederek kelimelere ayırmak ilk adımınız olmalı.",
-            "💡 Her kelimenin sonundaki noktalama işaretlerini (virgül, nokta, ünlem vb.) ayırt etmek için 'string.punctuation' modülünden faydalanabilirsiniz. Örneğin, 'word.rstrip(string.punctuation)' ile kelimenin noktalama işaretsiz halini alabilir, ve geri kalan kısmı noktalama işareti olarak saklayabilirsiniz.",
-            "💡 Kelimeyi 'replacements' sözlüğünde ararken büyük/küçük harf duyarsızlığı için '.lower()' metodunu kullanmayı unutmayın.",
-            "💡 İşlenmiş kelimelerinizi bir listeye ekleyip, son olarak tüm kelimeleri tekrar ' '.join() ile birleştirerek sonuç metnini oluşturmalısınız.",
-        ],
-    ),
-
-    Question(
-        id=62,
-        title='✨ Sosyal Medya Şifresi: Yıldız Tayfası Mesajlarını Çöz!',
-        category='strings',
-        level='intermediate',
-        description="""Gizemli 'Yıldız Tayfası' fan kulübü, sosyal medyada özel bir dil kullanıyor! Bu dil, belirli anahtar kelimeler ve 'güç emojileri' içeriyor. Senin görevin, verilen bir sosyal medya yorumunun bir 'Yıldız Tayfası' mesajı olup olmadığını tespit etmek ve içindeki anahtar kelimeler ile güç emojilerini bulup bir liste olarak dönmek. Bir yorumun geçerli bir 'Yıldız Tayfası' mesajı sayılması için **hem en az bir anahtar kelime hem de en az bir güç emojisi** içermesi gereklidir. Aksi halde, boş bir liste dönmelisin. Bulunan öğelerin sırası önemli değil ve her öğe listede sadece bir kez bulunmalıdır.""",
-        starter_code="""def decode_fan_message(comment: str) -> list[str]:
-    secret_keywords = ["galaksi", "yıldız", "tayfa", "parlak", "ışık"]
-    power_emojis = ["✨", "🚀", "🌟", "💫", "🌠"]
-    
-    # İpucu: Hem anahtar kelime hem de güç emojisi içeren bir mesajın geçerli olduğunu unutma!
-    # Çözümlediğin kelime ve emojileri bir liste içinde sakla.
-    pass""",
-        test_cases=[
-            {'input': 'Bugün tayfa olarak galaksiye 🚀 doğru yeni bir ışık saçtık! ✨', 'expected': ['tayfa', 'galaksi', 'ışık', '🚀', '✨']},
-            {'input': 'Yıldızlar çok parlak 🌟 görünüyor.', 'expected': ['yıldız', 'parlak', '🌟']},
-            {'input': 'Bu sadece bir galaksi denemesi.', 'expected': []},
-            {'input': 'Ne kadar da güzel bir gün! ✨🚀', 'expected': []},
-            {'input': 'Merhaba dünya!', 'expected': []},
-            {'input': '', 'expected': []},
-            {'input': 'Tayfa, bu ışık galaksiye doğru ilerliyor! 🚀 Işık!', 'expected': ['tayfa', 'ışık', 'galaksi', '🚀']},
-            {'input': 'Bizim tayfa ✨ her zaman parlak ✨ bir ışık saçar!', 'expected': ['tayfa', 'parlak', 'ışık', '✨']},
-        ],
-        hints=[
-            '💡 İpucu 1: İlk olarak, yorum (comment) içinde `secret_keywords` listesindeki her bir anahtar kelimenin olup olmadığını kontrol edin. Aynı şekilde `power_emojis` listesindeki emojileri de kontrol edin.',
-            '💡 İpucu 2: Yorumda en az bir anahtar kelime ve en az bir güç emojisi bulunup bulunmadığını takip etmek için iki ayrı boolean değişken (örneğin `found_keyword = False`, `found_emoji = False`) kullanabilirsiniz.',
-            '💡 İpucu 3: Eğer her iki koşul (anahtar kelime ve emoji bulunması) da sağlanıyorsa, o zaman yorumda bulunan tüm anahtar kelimeleri ve güç emojilerini bir liste halinde toplamaya başlayın.',
-            '💡 İpucu 4: Bulunan öğeleri bir listede toplarken, tekrar eden öğeleri engellemek için listeye eklemeden önce öğenin listede olup olmadığını kontrol edebilirsiniz (`if item not in found_items:`).',
-        ],
-    ),
-
-    Question(
-        id=63,
-        title='✨ Trend Hashtag Temizleyici',
-        category='strings',
-        level='intermediate',
-        description="""TrendSpotter adlı yeni bir sosyal medya analiz platformunda çalışıyorsunuz. Göreviniz, ham trend konularından (genellikle emoji, sayı ve özel karakterlerle dolu) temiz, anlamlı kelimeleri çıkarmak ve gerçek trendleri belirlemek. Bir hashtag string'ini alacak ve aşağıdaki kurallara göre temizleyerek sadece geçerli kelimelerin bir listesini döndürecek bir fonksiyon yazın:
-1. Tüm karakterleri küçük harfe dönüştürün.
-2. Sayıları (0-9) ve yaygın özel karakterleri (`!@#$%^&*()_+-=[]{};:'"\|,./<>?`) boşlukla değiştirin.
-3. Emojileri ve diğer alfabetik olmayan karakterleri de boşlukla değiştirin.
-4. Oluşan string'i boşluklara göre ayırın ve boş kalan kelimeleri (örneğin art arda gelen boşluklardan oluşan) sonuç listesinden çıkarın.""",
-        starter_code="""def clean_hashtag_trends(raw_hashtag: str) -> list[str]:
-    # Hashtag'i temizleyerek anlamlı kelimeler listesi döndürür.
-    pass""",
-        test_cases=[
-            {'input': 'Python🔥Kodlama🤓Haftası!', 'expected': ['python', 'kodlama', 'haftası']},
-            {'input': '#LearnPython2023 🚀', 'expected': ['learnpython']},
-            {'input': '🎉Data_Science-Projesi?!!', 'expected': ['data', 'science', 'projesi']},
-            {'input': '   Süper  Proje  Bugün!!!  ', 'expected': ['süper', 'proje', 'bugün']},
-            {'input': '123Merhaba Dünya!123', 'expected': ['merhaba', 'dünya']},
-            {'input': 'SadeceEmojiler🤯🤔😵', 'expected': ['sadeceemojiler']},
-            {'input': '', 'expected': []},
-            {'input': '      ', 'expected': []},
-            {'input': 'PyThOn Is FuN 🐍', 'expected': ['python', 'is', 'fun']},
-        ],
-        hints=[
-            "💡 İpucu 1: İlk olarak, string'i küçük harfe çevirerek başlayın.",
-            "💡 İpucu 2: İkinci adımda, boş bir string oluşturun. Gelen string'deki her karakteri bir döngü ile gezin. Eğer karakter bir harfse (`char.isalpha()` metodu ile kontrol edilebilir) veya boşluksa, oluşturduğunuz string'e ekleyin. Aksi takdirde (sayı, özel karakter, emoji vb.), bir boşluk karakteri ekleyin.",
-            "💡 İpucu 3: Oluşan yeni string'i `split()` metodunu kullanarak boşluklara göre ayırın. Birden fazla boşluktan kaynaklanan sorunları `split()` metodu genellikle kendiliğinden halleder.",
-            "💡 İpucu 4: Son olarak, liste anlama (list comprehension) veya bir döngü kullanarak, oluşan listedeki boş string'leri (`''`) filtreleyin.",
-        ],
-    ),
-
-    Question(
-        id=64,
-        title='🚀 Viral Başlık Avcısı: Etkileşim Skoru Hesaplayıcı',
-        category='strings',
-        level='intermediate',
-        description="""Sosyal medyada içerik üreten bir fenomen olduğunu hayal et! Paylaşımlarının daha fazla etkileşim alması için başlıklarını optimize etmen gerekiyor. Bu görevde, sana verilen bir başlığın 'viral potansiyelini' bir skor ile ölçeceksin. Başlıkta geçen belirli anahtar kelimeler ve emojiler puan kazandırırken, aşırı ünlem işaretleri puan kaybettirecek, soru işaretleri ise ekstra puan kazandıracak. Amaç, verilen başlığı analiz ederek toplam 'etkileşim skorunu' hesaplayan bir Python fonksiyonu yazmak.""",
-        starter_code="""def viral_baslik_skoru(baslik: str) -> int:
-    # Anahtar kelimelerin ve emojilerin puanlarını birer sözlükte tut
-    anahtar_kelime_puanlari = {
-        "viral": 10, "şok": 8, "inanılmaz": 7, "asla": 5, "bunu izle": 6,
-        "nasıl yapılır": 4, "görmeden geçme": 9, "hemen öğren": 5
-    }
-    emoji_puanlari = {
-        "🎉": 5, "🔥": 6, "🤯": 8, "😱": 7, "😂": 3, "✨": 4
-    }
-    
-    toplam_skor = 0
-    baslik_kucuk = baslik.lower()
-    
-    # Anahtar kelimeler için puanları hesapla
-    for kelime, puan in anahtar_kelime_puanlari.items():
-        if kelime in baslik_kucuk:
-            toplam_skor += puan
-            
-    # Emojiler için puanları hesapla
-    # İpucu: Her bir emoji karakterini başlıkta arayabilirsin
-    
-    # Ünlem ve soru işaretleri için bonus/ceza puanlarını hesapla
-    # İpucu: string.count() metodunu kullanabilirsin.
-    # Ünlem işareti: İlk 3 ünlemden sonraki her ünlem -2 puan.
-    # Soru işareti: Her soru işareti +3 puan.
-    
-    return toplam_skor""",
-        test_cases=[
-            {'input': 'Bu inanılmaz haberi görmeden geçme! 🔥😱🤯', 'expected': 37},
-            {'input': 'Python öğrenmek nasıl yapılır? Hemen öğren 🎉', 'expected': 17},
-            {'input': 'Sıradan bir gün...', 'expected': 0},
-            {'input': 'Şok!!! Bunu izle ve asla inanamayacaksın!!!!', 'expected': 11},
-            {'input': 'Yeni nesil teknolojiler: Nasıl kullanılır?', 'expected': 7},
-            {'input': '🎉 Viral bir gelişme ✨', 'expected': 19},
-            {'input': 'Bu ne şimdi????', 'expected': 12},
-            {'input': 'Deneme metni', 'expected': 0},
-        ],
-        hints=[
-            '💡 İlk olarak, başlığı küçük harfe çevirerek anahtar kelime kontrollerini kolaylaştırabilirsin.',
-            '💡 `anahtar_kelime_puanlari` ve `emoji_puanlari` sözlükleri üzerinde döngü (for loop) kullanarak her bir kelime veya emoji için başlıkta arama yap.',
-            "💡 Bir stringin belirli bir alt dizeyi veya karakteri içerip içermediğini kontrol etmek için `in` operatörünü kullanabilirsin (örneğin: `if 'kelime' in baslik:`).",
-            "💡 Ünlem ve soru işaretlerinin sayısını bulmak için `baslik.count('!')` ve `baslik.count('?')` metodlarını kullanabilirsin. Unutma, ünlem cezasını ilk 3 ünlemden sonraki fazlalıklar için uygula.",
-        ],
-    ),
-
-    Question(
-        id=65,
-        title='🕵️ Emoji Gizemini Çöz: Gizli Mesaj Dekoderi',
-        category='strings',
-        level='intermediate',
-        description=""""Emoji Enigma" adında gizli bir topluluk, mesajlarını emojilerle şifreler. Her emoji belirli bir harfi temsil eder ve kelimeler `#` sembolüyle ayrılır. Senin görevin, verilen şifreli bir mesajı ve emoji-harf eşleştirmesini kullanarak mesajı deşifre eden bir Python fonksiyonu yazmak. Şifreli mesajdaki her `#` sembolü bir boşluk karakterine dönüştürülmelidir. Haritada bulunmayan emojiler `?` karakteriyle temsil edilmelidir.
-
-Örnek Kullanım:
-Girdi:
-`encoded_message`: "🍎🐍🐍🍎#🍋🍎🌴🍎"
-`emoji_map`: `{'🍎': 'A', '🐍': 'S', '🍋': 'L', '🌴': 'P'}`
-Çıktı: "ASSA LAPA""",
-        starter_code="""def decode_emoji_message(encoded_message: str, emoji_map: dict) -> str:
-    # Şifreli mesajı emoji haritasını kullanarak deşifre eden kodu buraya yazın.
-    pass""",
-        test_cases=[
-            {'input': {'encoded_message': '🚀🐍🐍🚀#🌕🌎🌎🌕', 'emoji_map': {'🚀': 'R', '🐍': 'S', '🌕': 'M', '🌎': 'O'}}, 'expected': 'RSSR MOOM'},
-            {'input': {'encoded_message': '🍎🐍🔥🍎#🍋🍎🌴🍎', 'emoji_map': {'🍎': 'A', '🐍': 'S', '🍋': 'L', '🌴': 'P'}}, 'expected': 'AS?A LAPA'},
-            {'input': {'encoded_message': '', 'emoji_map': {'🍎': 'A'}}, 'expected': ''},
-            {'input': {'encoded_message': '🚀🐍##🌕🌎', 'emoji_map': {'🚀': 'R', '🐍': 'S', '🌕': 'M', '🌎': 'O'}}, 'expected': 'RS  MO'},
-            {'input': {'encoded_message': '#✨👋🌳🌳👋##🌞🌍#', 'emoji_map': {'✨': 'H', '👋': 'E', '🌳': 'L', '🌞': 'W', '🌍': 'R'}}, 'expected': ' HELL  WER '},
-            {'input': {'encoded_message': '⭐', 'emoji_map': {'⭐': 'S'}}, 'expected': 'S'},
-            {'input': {'encoded_message': '❌', 'emoji_map': {'⭐': 'S'}}, 'expected': '?'},
-        ],
-        hints=[
-            '💡 İpucu 1: Sonuç stringini oluşturmak için boş bir liste (örneğin `decoded_chars = []`) kullanabilir, ardından `str.join()` ile birleştirebilirsiniz.',
-            '💡 İpucu 2: Şifreli mesajdaki her karakteri (emoji veya `#`) tek tek kontrol etmek için bir `for` döngüsü kullanın.',
-            '💡 İpucu 3: Eğer karakter `#` ise, `decoded_chars` listesine bir boşluk karakteri ekleyin.',
-            "💡 İpucu 4: Eğer karakter bir emoji ise, `emoji_map` sözlüğünde karşılığını arayın. `dict.get(emoji, '?')` metodunu kullanarak, haritada olmayan emojiler için `?` karakterini otomatik olarak ekleyebilirsiniz.",
-            '💡 İpucu 5: `decoded_chars` listesindeki tüm karakterleri `"".join(decoded_chars)` ile birleştirerek son mesajı oluşturun.',
-        ],
-    ),
-
-    Question(
-        id=66,
-        title='✨ Pozitif Yorum Filtresi',
-        category='strings',
-        level='intermediate',
-        description="""Sosyal medya fenomenleri, yorum bölümlerini daha pozitif hale getirmek için senin yardımına ihtiyaç duyuyor! Amacın, verilen bir yorum metnindeki "negatif" kelimeleri sihirli bir `✨` emojisiyle değiştiren bir Python fonksiyonu yazmak. Fonksiyon, büyük/küçük harf ayrımı yapmamalıdır. Yani "Kötü", "kötü" veya "KÖTÜ" kelimeleri aynı şekilde değiştirilmelidir. Kelimenin geçtiği her yeri (büyük/küçük harf fark etmeksizin) emoji ile değiştir.""",
-        starter_code="""import re
-
-def pozitif_yorum_filtresi(yorum: str, yasakli_kelimeler: list[str]) -> str:
-    # Yorumu döngü içinde yasaklı kelimelerle kontrol et ve değiştir.
-    pass""",
-        test_cases=[
-            {'input': {'yorum': 'Bu çok kötü bir yorum!', 'yasakli_kelimeler': ['kötü']}, 'expected': 'Bu çok ✨ bir yorum!'},
-            {'input': {'yorum': 'Berbat, iğrenç bir durum bu.', 'yasakli_kelimeler': ['berbat', 'iğrenç']}, 'expected': '✨, ✨ bir durum bu.'},
-            {'input': {'yorum': 'Bu KÖTÜ bir gün, kötü düşüncelerim var.', 'yasakli_kelimeler': ['kötü']}, 'expected': 'Bu ✨ bir gün, ✨ düşüncelerim var.'},
-            {'input': {'yorum': 'Her şey harika, çok güzel!', 'yasakli_kelimeler': ['kötü', 'berbat']}, 'expected': 'Her şey harika, çok güzel!'},
-            {'input': {'yorum': 'Kötü bir başlangıç ama iyi bitti. Çok kötü!', 'yasakli_kelimeler': ['kötü']}, 'expected': '✨ bir başlangıç ama iyi bitti. Çok ✨!'},
-            {'input': {'yorum': 'Bu yorum gerçekten saçma ve berbat.', 'yasakli_kelimeler': ['saçma', 'berbat']}, 'expected': 'Bu yorum gerçekten ✨ ve ✨.'},
-            {'input': {'yorum': 'Hiçbir şey yok', 'yasakli_kelimeler': []}, 'expected': 'Hiçbir şey yok'},
-            {'input': {'yorum': 'Kötülük yapanlar kötü', 'yasakli_kelimeler': ['kötü']}, 'expected': '✨lük yapanlar ✨'},
-        ],
-        hints=[
-            "💡 İpucu 1: Python'daki `re` (regular expression) modülünü incelemek, bu tür metin değiştirme işlemleri için çok güçlü araçlar sunar.",
-            '💡 İpucu 2: `re.sub()` fonksiyonu, bir metin içindeki belirli bir deseni (pattern) başka bir şeyle değiştirmek için kullanılır. Bu fonksiyona dikkat et!',
-            '💡 İpucu 3: `re.sub()` kullanırken, büyük/küçük harf duyarlılığını kapatmak için `flags=re.IGNORECASE` parametresini kullanmalısın.',
-            '💡 İpucu 4: Yasaklı kelimeler listesindeki her kelime için ayrı ayrı değiştirme işlemi yapman gerekecek. Bunu bir `for` döngüsü içinde düşünebilirsin.',
-        ],
-    ),
-
-    Question(
-        id=67,
-        title='✨ Tweet Mood Enhancer',
-        category='strings',
-        level='intermediate',
-        description="""Popüler bir sosyal medya platformu için tweetleri daha canlı ve etkileşimli hale getiren bir araç geliştireceksin. Görevin, bir kullanıcının girdiği metni (tweeti) ve belirli anahtar kelimelere karşılık gelen emojileri içeren bir sözlüğü alarak, metindeki her kelimeyi kontrol etmek ve eğer kelime (büyük/küçük harf fark etmeksizin) sözlükteki bir anahtar kelimeyle tam eşleşiyorsa, o kelimeyi karşılık gelen emoji ile değiştirmektir. Metindeki noktalama işaretlerini (virgül, nokta, ünlem vb.) kelimelerden ayırıp, emojiye dönüştürdükten sonra geri eklemeye dikkat etmelisin. Amacımız, basit ama akıllıca bir emoji entegrasyonu sağlamak!""",
-        starter_code="""def tweet_mood_enhancer(tweet_metni: str, emoji_haritasi: dict) -> str:
-    # Metindeki kelimeleri noktalama işaretlerinden ayır, 
-    # büyük/küçük harf duyarlılığı olmadan emoji_haritasi'nda ara ve değiştir.
-    # Sonra kelimeleri ve noktalama işaretlerini tekrar birleştir.
-    pass""",
-        test_cases=[
-            {'input': {'tweet_metni': 'Bugün hava çok güzel, mutlu hissediyorum!', 'emoji_haritasi': {'güzel': '☀️', 'mutlu': '😊'}}, 'expected': 'Bugün hava çok ☀️, 😊 hissediyorum!'},
-            {'input': {'tweet_metni': 'Hava harika. MUTLU bir gün!', 'emoji_haritasi': {'harika': '🌈', 'mutlu': '😄', 'hava': '☁️'}}, 'expected': '☁️ 🌈. 😄 bir gün!'},
-            {'input': {'tweet_metni': 'Sıradan bir gün.', 'emoji_haritasi': {'yorgun': '😴'}}, 'expected': 'Sıradan bir gün.'},
-            {'input': {'tweet_metni': 'Hava güzel, çok güzel.', 'emoji_haritasi': {'güzel': '🌷'}}, 'expected': 'Hava 🌷, çok 🌷.'},
-            {'input': {'tweet_metni': 'Merhaba Dünya! Python öğrenmek harika.', 'emoji_haritasi': {'merhaba': '👋', 'dünya': '🌍', 'harika': '✨'}}, 'expected': '👋 🌍! Python öğrenmek ✨.'},
-        ],
-        hints=[
-            '💡 İpucu 1: `str.split()` metodunu kullanarak metni kelimelere ayırabilirsiniz. Ancak kelimelerdeki noktalama işaretlerini de dikkate almanız gerekecek.',
-            "💡 İpucu 2: Her kelimeyi kontrol etmeden önce, sonundaki noktalama işaretlerini (varsa) ayırın ve kelimenin kendisini küçük harfe dönüştürerek `emoji_haritasi` içinde arayın. Örneğin, 'güzel,' kelimesinden virgülü ayırıp 'güzel'i arayın.",
-            '💡 İpucu 3: Bir kelimeyi emoji ile değiştirdikten sonra, ayırdığınız orijinal noktalama işaretini tekrar emojiye eklemeyi unutmayın. Son olarak, işlenmiş kelimeleri tekrar birleştirmek için `str.join()` metodunu kullanın.',
-        ],
-    ),
-
-
-    Question(
-        id=69,
-        title='İki Sıralı Listeyi Birleştir (Merge)',
-        category='algorithms',
-        level='intermediate',
-        description="""İki sıralı liste veriliyor (her ikisi de artan düzende).
-Bu iki listeyi tek bir sıralı liste halinde birleştir.
-Orijinal listeleri değiştirme, yeni bir liste döndür.\n⚠️ sorted() veya .sort() KULLANMA.
-Mülakatta O(n+m) çözüm beklenir.""",
-        starter_code="""def merge_sorted_lists(list1: list, list2: list) -> list:
-    # İki sıralı listeyi birleştir, sonuç sıralı olsun
-    # O(n+m) zaman karmaşıklığı hedefle
-    pass""",
-        test_cases=[
-            {'input': {'list1': [1, 3, 5, 7], 'list2': [2, 4, 6, 8]}, 'expected': [1, 2, 3, 4, 5, 6, 7, 8]},
-            {'input': {'list1': [1, 2, 3], 'list2': [4, 5, 6]}, 'expected': [1, 2, 3, 4, 5, 6]},
-            {'input': {'list1': [], 'list2': [1, 2, 3]}, 'expected': [1, 2, 3]},
-            {'input': {'list1': [1, 1, 1], 'list2': [1, 1]}, 'expected': [1, 1, 1, 1, 1]},
-        ],
-        hints=[
-            '💡 İpucu 1: İki işaretçi (pointer) kullan — biri list1, biri list2 için.',
-            '💡 İpucu 2: Her adımda hangisi küçükse onu sonuca ekle ve o işaretçiyi ilerlet.',
-            '💡 İpucu 3: Biri bitince kalanları olduğu gibi sonuca extend et.',
-        ],
-    ),
-
     Question(
         id=70,
         title='En Yakın Rakam Toplamı',
@@ -1986,158 +1210,262 @@ Boş alt dizgi sayılmaz.\nÖrnek: 'abc' → 'a','b','c','ab','bc','abc' → 6
     # Kullanici: ic ice dongu pratiği, ipucu YOK
     # NOT: Frontend QUESTION_META 74-83 ID'lerini kullanıyor, 84+ uygun
     # ════════════════════════════════════════════════════════════════
+
+
     Question(
         id=84,
-        title='Çarpım Tablosu Matrisi',
-        category='python-basics',
-        level='beginner',
-        description="""n sayısı veriliyor (1 <= n <= 10).
-İç içe döngü kullanarak n x n çarpım tablosunu liste içinde liste olarak döndür.
-Matris[i][j] = (i+1) * (j+1) olmalı.\nÖrnek: n=3 → [[1,2,3],[2,4,6],[3,6,9]]
-Örnek: n=1 → [[1]]
-Örnek: n=4 → [[1,2,3,4],[2,4,6,8],[3,6,9,12],[4,8,12,16]]""",
-        starter_code="""def carpim_tablosu(n: int) -> list:
-    # n x n çarpım tablosu matrisi oluştur
-    # ic ice dongu kullanmalisin
+        title="Cift Sayilari Filtrele ve Karelerini Topla",
+        category="python-basics",
+        level="beginner",
+        description="""Bir sayi listesi var. Listedeki SADECE cift sayilarin karelerini al ve topla.
+Tek sayilar yok sayilir (sadece ciftler).
+Ornek: [2, 3, 4, 5, 6] -> 4+16+36 = 56""",
+        starter_code="""def sum_of_even_squares(nums: list) -> int:
+    # Listedeki cift sayilarin kareleri toplami
     pass""",
         test_cases=[
-            {'input': 3, 'expected': [[1, 2, 3], [2, 4, 6], [3, 6, 9]]},
-            {'input': 1, 'expected': [[1]]},
-            {'input': 4, 'expected': [[1, 2, 3, 4], [2, 4, 6, 8], [3, 6, 9, 12], [4, 8, 12, 16]]},
-            {'input': 5, 'expected': [[1, 2, 3, 4, 5], [2, 4, 6, 8, 10], [3, 6, 9, 12, 15], [4, 8, 12, 16, 20], [5, 10, 15, 20, 25]]},
-            {'input': 2, 'expected': [[1, 2], [2, 4]]},
+            {'input': [2, 3, 4, 5, 6], 'expected': 56},
+            {'input': [1, 3, 5, 7], 'expected': 0},
+            {'input': [10], 'expected': 100},
+            {'input': [], 'expected': 0},
         ],
-        # İPUCU YOK — kullanıcı isteği
-        hints=[],
+        hints=[
+            "💡 Ipucu 1: x % 2 == 0 ile cift sayilari filtrele.",
+            "💡 Ipucu 2: sum() icinde generator expression kullan.",
+            "💡 Ipucu 3: sum(x*x for x in nums if x % 2 == 0) tek satirda coz.",
+        ],
     ),
 
-    # ════════════════════════════════════════════════════════════════
-    # 75: Hipotenüs Hesaplama (koşullar)
-    # Kullanici: kural ver, ipucu YOK
-    # Pisagor teoremi: a² + b² = c² → c = sqrt(a² + b²)
-    # ════════════════════════════════════════════════════════════════
     Question(
         id=85,
-        title='Hipotenüs Hesaplama',
-        category='python-basics',
-        level='beginner',
-        description="""Bir dik üçgenin iki dik kenar uzunluğu (a, b) veriliyor.
-Pisagor teoremine göre hipotenüsü (c) hesapla ve döndür.
-c = √(a² + b²)\nÖrnek: hipotenus(3, 4) → 5.0
-Örnek: hipotenus(5, 12) → 13.0
-Örnek: hipotenus(8, 15) → 17.0
-Örnek: hipotenus(1, 1) → 1.4142135623730951
-Örnek: hipotenus(0, 5) → 5.0
-
-⚠️ Kurallar:
-1. Sonuç her zaman float olmalı
-2. math.sqrt() kullan
-3. Negatif sayı gelirse mutlak değerini al (|a| ve |b| kullan)""",
-        starter_code="""def hipotenus(a: float, b: float) -> float:
-    # Pisagor teoremi: c = sqrt(a^2 + b^2)
-    # Negatif sayılarda mutlak değer kullan
+        title="Iki String Arasindaki Ortak Karakterler",
+        category="python-basics",
+        level="beginner",
+        description="""Iki string veriliyor. Her iki stringde de GECEN (kucuk harf duyarsiz) benzersiz
+karakterleri alfabetik sirada dondur.
+Ornek: "Merhaba" ve "Araba" -> ['a', 'r'] (sirali)""",
+        starter_code="""def common_chars(a: str, b: str) -> list:
+    # Iki stringde ortak olan benzersiz karakterler (kucuk harf), alfabetik sirali
     pass""",
         test_cases=[
-            {'input': {'a': 3, 'b': 4}, 'expected': 5.0},
-            {'input': {'a': 5, 'b': 12}, 'expected': 13.0},
-            {'input': {'a': 8, 'b': 15}, 'expected': 17.0},
-            {'input': {'a': 1, 'b': 1}, 'expected': 1.4142135623730951},
-            {'input': {'a': 0, 'b': 5}, 'expected': 5.0},
-            {'input': {'a': -3, 'b': -4}, 'expected': 5.0},
-            {'input': {'a': 7, 'b': 24}, 'expected': 25.0},
+            {'input': ['Merhaba', 'Araba'], 'expected': ['a', 'r']},
+            {'input': ['Python', 'Java'], 'expected': ['a']},
+            {'input': ['abc', 'def'], 'expected': []},
+            {'input': ['AAA', 'aaa'], 'expected': ['a']},
         ],
-        # İPUCU YOK — kullanıcı isteği
-        hints=[],
+        hints=[
+            "💡 Ipucu 1: set(a.lower()) & set(b.lower()) -> kesisim.",
+            "💡 Ipucu 2: sorted() ile alfabetik siraya koy.",
+            "💡 Ipucu 3: list(sorted(set(a.lower()) & set(b.lower()))) tek satir.",
+        ],
     ),
 
-    # ════════════════════════════════════════════════════════════════
-    # 76: Sayıların Sihri (string işlemleri)
-    # "Verilen rakamdaki sayıların sihri" gibi basit
-    # ════════════════════════════════════════════════════════════════
     Question(
         id=86,
-        title='Sayıların Sihri — Rakamları Topla',
-        category='strings',
-        level='beginner',
-        description="""Bir sayının tüm rakamlarının toplamını bul.
-Sayıyı string'e çevirip her karakteri int yapabilirsin.\nÖrnek: 12345 → 1+2+3+4+5 = 15
-Örnek: 999 → 27
-Örnek: 1000 → 1
-Örnek: 0 → 0
-Örnek: 7 → 7""",
-        starter_code="""def rakam_toplami(n: int) -> int:
-    # Sayinin tum rakamlarini topla
+        title="Listedeki En Sik Tekrar Eden Eleman",
+        category="python-basics",
+        level="beginner",
+        description="""Bir liste var. En sik gecen elemani dondur.
+Birden fazla esit siklik varsa en kucuk sayiyi veya alfabetik ilk olani dondur.
+Ornek: [1, 3, 2, 3, 4, 1, 1] -> 1 (4 kez)
+Ornek: ['a', 'b', 'a', 'c'] -> 'a' (2 kez, alfabetik ilk)""",
+        starter_code="""def most_frequent(items: list) -> object:
+    # En sik gecen eleman
     pass""",
         test_cases=[
-            {'input': 12345, 'expected': 15},
-            {'input': 999, 'expected': 27},
-            {'input': 1000, 'expected': 1},
-            {'input': 0, 'expected': 0},
-            {'input': 7, 'expected': 7},
-            {'input': 123456789, 'expected': 45},
+            {'input': [1, 3, 2, 3, 4, 1, 1], 'expected': 1},
+            {'input': ['a', 'b', 'a', 'c'], 'expected': 'a'},
+            {'input': [5, 5, 3, 3, 1], 'expected': 3},
+            {'input': [1], 'expected': 1},
         ],
-        # İPUCU YOK — kullanıcı isteği
-        hints=[],
+        hints=[
+            "💡 Ipucu 1: from collections import Counter -> Counter(items).most_common().",
+            "💡 Ipucu 2: max_count = max(c.values()) -> en yuksek frekans.",
+            "💡 Ipucu 3: candidates = [k for k,v in c.items() if v == max_count]; min(candidates) ile coz.",
+        ],
     ),
 
-    # ════════════════════════════════════════════════════════════════
-    # 77: Tersine Çevir (basit string)
-    # ════════════════════════════════════════════════════════════════
     Question(
         id=87,
-        title='Cümleyi Kelimelere Ayır',
-        category='strings',
-        level='beginner',
-        description="""Bir cümleyi kelimelerine ayır ve liste olarak döndür.
-Boşluklarla ayrılmış kelimeler.
-Birden fazla boşluk varsa yine de doğru ayrılmalı.
-Baştaki ve sondaki boşluklar yok sayılır.\nÖrnek: 'merhaba dünya' → ['merhaba', 'dünya']
-Örnek: '  ali   veli  ' → ['ali', 'veli']
-Örnek: 'tek' → ['tek']
-Örnek: '' → []""",
-        starter_code="""def cumleyi_kelimeye_ayir(cumle: str) -> list:
-    # Cümleyi kelimelerine ayır (bosluklari temizle)
+        title="Donen Dizi Kontrolu",
+        category="python-basics",
+        level="beginner",
+        description="""Bir liste veriliyor. Liste dondurulmus (rotated) sirali mi kontrol et.
+Donduerme: sirali bir diziyi herhangi bir noktadan kesip sona ekle. [3,4,5,1,2] sirali [1,2,3,4,5]'in
+rotasyonudur (3 kesildi).
+Tek elemanli liste her zaman True. Bos liste True.
+Iki kez ayni eleman art arda olursa False (sirali degil).""",
+        starter_code="""def is_rotated_sorted(nums: list) -> bool:
+    # Liste dondurulerek sirali mi?
     pass""",
         test_cases=[
-            {'input': 'merhaba dünya', 'expected': ['merhaba', 'dünya']},
-            {'input': '  ali   veli  ', 'expected': ['ali', 'veli']},
-            {'input': 'tek', 'expected': ['tek']},
-            {'input': '', 'expected': []},
-            {'input': 'Python mülakat hazırlık', 'expected': ['Python', 'mülakat', 'hazırlık']},
-            {'input': 'a b c d', 'expected': ['a', 'b', 'c', 'd']},
+            {'input': [3, 4, 5, 1, 2], 'expected': True},
+            {'input': [1, 2, 3, 4, 5], 'expected': True},
+            {'input': [2, 1, 3], 'expected': False},
+            {'input': [1], 'expected': True},
+            {'input': [], 'expected': True},
+            {'input': [2, 2, 2, 2, 1, 2], 'expected': False},
         ],
-        # İPUCU YOK — kullanıcı isteği
-        hints=[],
+        hints=[
+            "💡 Ipucu 1: Sirali dizide en fazla 1 i var ki nums[i] > nums[i+1] olur (rotasyon noktasi).",
+            "💡 Ipucu 2: count = sum(1 for i in range(n) if nums[i] > nums[(i+1)%n]).",
+            "💡 Ipucu 3: count == 0 (zaten sirali) veya count == 1 (rotasyon) -> True.",
+        ],
     ),
 
-    # ════════════════════════════════════════════════════════════════
-    # 78: İlk ve Son Karakter (basit string)
-    # ════════════════════════════════════════════════════════════════
     Question(
         id=88,
-        title='İlk ve Son Karakteri Birleştir',
-        category='strings',
-        level='beginner',
-        description="""Bir string'in ilk ve son karakterini alıp aralarına '-' koyarak
-birleştirilmiş yeni bir string döndür.\nÖrnek: 'merhaba' → 'm-a'
-Örnek: 'a' → 'a-a'  (tek karakter, hem ilk hem son aynı)
-Örnek: 'xy' → 'x-y'
-Örnek: 'Python' → 'P-n'
-Örnek: '' → ''""",
-        starter_code="""def ilk_ve_son(s: str) -> str:
-    # İlk ve son karakteri '-' ile birlestir
+        title="Sayilari Toplami Hedefe Esit Olan Ciftler",
+        category="algorithms",
+        level="intermediate",
+        description="""Bir liste ve bir hedef sayi var. Listedeki hangi iki sayinin toplami hedefe esit?
+Tum benzersiz ciftleri (kucuk, buyuk) sirali liste olarak dondur.
+Ayni eleman iki kez kullanilamaz.
+Hic cift yoksa bos liste dondur.
+Ornek: nums=[2,7,11,15], target=9 -> [[2,7]]""",
+        starter_code="""def two_sum_pairs(nums: list, target: int) -> list:
+    # Toplami target'a esit olan benzersiz ciftler
     pass""",
         test_cases=[
-            {'input': 'merhaba', 'expected': 'm-a'},
-            {'input': 'a', 'expected': 'a-a'},
-            {'input': 'xy', 'expected': 'x-y'},
-            {'input': 'Python', 'expected': 'P-n'},
-            {'input': '', 'expected': ''},
-            {'input': 'ABC', 'expected': 'A-C'},
-            {'input': '12345', 'expected': '1-5'},
+            {'input': ([2, 7, 11, 15], 9), 'expected': [[2, 7]]},
+            {'input': ([1, 5, 3, 7, 9], 12), 'expected': [[3, 9], [5, 7]]},
+            {'input': ([1, 2, 3], 10), 'expected': []},
+            {'input': ([3, 3], 6), 'expected': [[3, 3]]},
+            {'input': ([-1, -2, -3, 4, 5], 2), 'expected': [[-3, 5], [-1, 3]]},
         ],
-        # İPUCU YOK — kullanıcı isteği
-        hints=[],
+        hints=[
+            "💡 Ipucu 1: Set kullan: seen = set(). Her num icin target-num sette mi kontrol et.",
+            "💡 Ipucu 2: pair = sorted([num, target-num]); result.add(tuple(pair)).",
+            "💡 Ipucu 3: set() ile tekrarlari otomatik onle, sorted() ile sirala.",
+        ],
+    ),
+
+    Question(
+        id=89,
+        title="Rotasyon Adimini Bul",
+        category="algorithms",
+        level="intermediate",
+        description="""Bir liste veriliyor. Bu liste sirali bir dizinin rotasyonu.
+Rotasyon adimini bul (kac kez sola donduruldu).
+[3,4,5,1,2] sirali [1,2,3,4,5]'in 3 sola rotasyonu -> 3 dondur.
+Zaten sirali ise 0.
+[1,2,3,4,5] -> 0
+[5,1,2,3,4] -> 1 (sola)
+Not: Rotasyon adimi 0 ile len(nums)-1 arasinda.""",
+        starter_code="""def rotation_count(nums: list) -> int:
+    # Sirali dizinin kac adim sola donduruldugunu bul
+    pass""",
+        test_cases=[
+            {'input': [3, 4, 5, 1, 2], 'expected': 3},
+            {'input': [1, 2, 3, 4, 5], 'expected': 0},
+            {'input': [5, 1, 2, 3, 4], 'expected': 1},
+            {'input': [2, 3, 4, 5, 1], 'expected': 4},
+            {'input': [1], 'expected': 0},
+        ],
+        hints=[
+            "💡 Ipucu 1: Minimum elemanin indexini bul.",
+            "💡 Ipucu 2: min_idx = nums.index(min(nums)).",
+            "💡 Ipucu 3: return min_idx (0 = zaten sirali, min_idx = kac adim sola).",
+        ],
+    ),
+
+    Question(
+        id=90,
+        title="String'i Tersine Cevir (Kelime Bazli)",
+        category="strings",
+        level="intermediate",
+        description="""Bir cumle var. Kelime sirasini tersine cevir, kelime icindeki harfler ayni kalsin.
+Ornek: 'Merhaba dunya nasilsin' -> 'nasilsin dunya Merhaba'
+Fazla bosluklari tek bosluga indir.""",
+        starter_code="""def reverse_words(s: str) -> str:
+    # Cumleyi kelime bazli tersine cevir
+    pass""",
+        test_cases=[
+            {'input': 'Merhaba dunya nasilsin', 'expected': 'nasilsin dunya Merhaba'},
+            {'input': 'Python   harika  bir dil', 'expected': 'dil bir harika Python'},
+            {'input': 'tek', 'expected': 'tek'},
+            {'input': '', 'expected': ''},
+            {'input': '  bosluklu   cumle  ', 'expected': 'cumle bosluklu'},
+        ],
+        hints=[
+            "💡 Ipucu 1: s.split() -> bosluklari otomatik normalize eder.",
+            "💡 Ipucu 2: words[::-1] ile kelime listesini tersine cevir.",
+            '💡 Ipucu 3: " ".join(words[::-1]) ile birlestir.',
+        ],
+    ),
+
+    Question(
+        id=91,
+        title="Liste Icinde Yinelenenleri Kaldir (Sirayi Koru)",
+        category="python-basics",
+        level="beginner",
+        description="""Bir liste var. Listedeki tekrarlari kaldir, ilk gorunme sirasini koru.
+Ornek: [1, 3, 2, 3, 4, 1, 5] -> [1, 3, 2, 4, 5] (3 ve 1 tekrari atlanir)""",
+        starter_code="""def remove_duplicates(items: list) -> list:
+    # Yinelenenleri kaldir, ilk gorunme sirasini koru
+    pass""",
+        test_cases=[
+            {'input': [1, 3, 2, 3, 4, 1, 5], 'expected': [1, 3, 2, 4, 5]},
+            {'input': ['a', 'b', 'a', 'c', 'b'], 'expected': ['a', 'b', 'c']},
+            {'input': [1, 2, 3], 'expected': [1, 2, 3]},
+            {'input': [], 'expected': []},
+            {'input': [1, 1, 1], 'expected': [1]},
+        ],
+        hints=[
+            "💡 Ipucu 1: seen = set() ile takip et.",
+            "💡 Ipucu 2: if x not in seen: result.append(x); seen.add(x).",
+            "💡 Ipucu 3: dict.fromkeys(items) ile tek satirda coz (Python 3.7+ dict sira korur).",
+        ],
+    ),
+
+    Question(
+        id=92,
+        title="Matris Cevirme (Transpose Etme)",
+        category="python-basics",
+        level="beginner",
+        description="""Bir 2D matris var. Satirlari sutun, sutunlari satir yap.
+Ornek: [[1,2,3], [4,5,6]] -> [[1,4], [2,5], [3,6]]
+Dikdortgen matrisler icin calissin (tum satirlar ayni uzunlukta).""",
+        starter_code="""def transpose(matrix: list) -> list:
+    # 2D matrisi transpoze et
+    pass""",
+        test_cases=[
+            {'input': [[1, 2, 3], [4, 5, 6]], 'expected': [[1, 4], [2, 5], [3, 6]]},
+            {'input': [[1, 2], [3, 4], [5, 6]], 'expected': [[1, 3, 5], [2, 4, 6]]},
+            {'input': [[1]], 'expected': [[1]]},
+            {'input': [[1, 2, 3]], 'expected': [[1], [2], [3]]},
+        ],
+        hints=[
+            "💡 Ipucu 1: zip(*matrix) ile transpoze et (Pythonic).",
+            "💡 Ipucu 2: list(zip(*matrix)) tuple listesi doner, list(map(list, ...)) ile liste listesi yap.",
+            "💡 Ipucu 3: Manuel: [[matrix[r][c] for r in range(len(matrix))] for c in range(len(matrix[0]))].",
+        ],
+    ),
+
+    Question(
+        id=93,
+        title="Ilk Tekrar Etmeyen Karakter",
+        category="strings",
+        level="intermediate",
+        description="""Bir string veriliyor. Ilk kez tekrarlanMAYAN (unique) karakteri bul.
+Yoksa bos string dondur.
+Ornek: 'swiss' -> 'w' (s ve i tekrar eder, w sadece 1 kez)
+Ornek: 'aabbcc' -> '' (hepsi tekrar)""",
+        starter_code="""def first_unique_char(s: str) -> str:
+    # Ilk tekrar etmeyen karakter
+    pass""",
+        test_cases=[
+            {'input': 'swiss', 'expected': 'w'},
+            {'input': 'aabbcc', 'expected': ''},
+            {'input': 'programming', 'expected': 'p'},
+            {'input': 'aabb', 'expected': ''},
+            {'input': 'z', 'expected': 'z'},
+        ],
+        hints=[
+            "💡 Ipucu 1: from collections import Counter -> c = Counter(s).",
+            "💡 Ipucu 2: for ch in s: if c[ch] == 1: return ch.",
+            "💡 Ipucu 3: Bos string icin '' dondur (return ch if any(c[ch]==1 for ch in s) else '').",
+        ],
     ),
 
 ]
