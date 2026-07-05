@@ -1468,5 +1468,268 @@ Ornek: 'aabbcc' -> '' (hepsi tekrar)""",
         ],
     ),
 
+    Question(
+        id=94,
+        title="Sirali Dizide Ilk ve Son Occurrence",
+        category="algorithms",
+        level="intermediate",
+        description="""Sirali bir dizide target degerin ILK ve SON indeksini bul.
+Yoksa [-1, -1] dondur.
+find_first = lower bound, find_last = upper bound.
+Ornek: nums=[5,7,7,8,8,10], target=8 -> [3, 4]
+Ornek: nums=[5,7,7,8,8,10], target=6 -> [-1, -1]""",
+        starter_code="""def search_range(nums: list, target: int) -> list:
+    # Sirali dizide target'in ilk ve son indeksini bul
+    # O(log n) zaman karmasikligi hedefle
+    pass""",
+        test_cases=[
+            {'input': ([5, 7, 7, 8, 8, 10], 8), 'expected': [3, 4]},
+            {'input': ([5, 7, 7, 8, 8, 10], 6), 'expected': [-1, -1]},
+            {'input': ([], 0), 'expected': [-1, -1]},
+            {'input': ([1], 1), 'expected': [0, 0]},
+            {'input': ([1, 2, 3, 4, 5], 3), 'expected': [2, 2]},
+        ],
+        hints=[
+            "💡 Ipucu 1: Iki binary search: biri lower bound, biri upper bound.",
+            "💡 Ipucu 2: nums[mid] < target -> sol = mid + 1; degilse sag = mid.",
+            "💡 Ipucu 3: Ilk occurrence icin >= target, son occurrence icin > target kullan.",
+        ],
+    ),
+
+    Question(
+        id=95,
+        title="Dondurulmus Sirali Dizide Arama",
+        category="algorithms",
+        level="intermediate",
+        description="""Dondurulmus (rotated) sirali bir dizide target degerini ara.
+Dizi ornek: [4,5,6,7,0,1,2], target=0 -> 4 (indeks).
+Yoksa -1 dondur.
+O(log n) zaman karmasikligi hedefle (duz linear arama degil).""",
+        starter_code="""def search_rotated(nums: list, target: int) -> int:
+    # Dondurulmus sirali dizide target'i bul
+    pass""",
+        test_cases=[
+            {'input': ([4, 5, 6, 7, 0, 1, 2], 0), 'expected': 4},
+            {'input': ([4, 5, 6, 7, 0, 1, 2], 3), 'expected': -1},
+            {'input': ([1], 0), 'expected': -1},
+            {'input': ([1, 3], 3), 'expected': 1},
+            {'input': ([5, 1, 3], 5), 'expected': 0},
+        ],
+        hints=[
+            "💡 Ipucu 1: Her adimda bir yari SORTED (sol veya sag).",
+            "💡 Ipucu 2: nums[low] <= nums[mid] ise sol yari sirali; kontrol et target sol aralikta mi.",
+            "💡 Ipucu 3: Aksi halde sag yari sirali; kontrol et target sag aralikta mi.",
+        ],
+    ),
+
+    Question(
+        id=96,
+        title="Dizide En Yuksek Dag (Peak Element)",
+        category="algorithms",
+        level="intermediate",
+        description="""Bir dizide peak element: nums[i-1] < nums[i] > nums[i+1].
+Sadece komusuna bakarak (O(log n)) peak bul.
+Birkac peak varsa herhangi birini dondur.
+Dizi sinirlarinda -sonsuz kabul edilir (ilk ve son elemanlar her zaman peak olabilir).""",
+        starter_code="""def find_peak(nums: list) -> int:
+    # Binary search ile peak element bul
+    pass""",
+        test_cases=[
+            {'input': [1, 2, 3, 1], 'expected': 2},
+            {'input': [1, 2, 1, 3, 5, 6, 4], 'expected': 5},
+            {'input': [1], 'expected': 0},
+            {'input': [1, 2], 'expected': 1},
+            {'input': [2, 1], 'expected': 0},
+        ],
+        hints=[
+            "💡 Ipucu 1: nums[mid] < nums[mid+1] ise peak sag tarafta.",
+            "💡 Ipucu 2: nums[mid] > nums[mid+1] ise peak sol tarafta (veya mid kendisi).",
+            "💡 Ipucu 3: low < high dongusu kullan, return low.",
+        ],
+    ),
+
+    Question(
+        id=97,
+        title="Iki Isaretci ile Palindrom Kontrolu",
+        category="algorithms",
+        level="intermediate",
+        description="""Bir string'in palindrom olup olmadigini iki isaretci ile kontrol et.
+Alfabetik olmayan karakterleri (bosluk, noktalama, buyuk/kucuk harf) yok say.
+Sadece alfanumerik karakterlere bak.
+O(n) zaman, O(1) ek alan.""",
+        starter_code="""def is_palindrome_two_pointer(s: str) -> bool:
+    # Iki isaretci ile palindrom kontrolu (alfanumerik only)
+    pass""",
+        test_cases=[
+            {'input': 'A man, a plan, a canal: Panama', 'expected': True},
+            {'input': 'race a car', 'expected': False},
+            {'input': ' ', 'expected': True},
+            {'input': 'No lemon, no melon', 'expected': True},
+            {'input': '12321', 'expected': True},
+        ],
+        hints=[
+            "💡 Ipucu 1: left=0, right=len(s)-1 ile basla, iki uca isaretci koy.",
+            "💡 Ipucu 2: Alfanumerik degilse skip et (s[left].isalnum()).",
+            "💡 Ipucu 3: s[left].lower() != s[right].lower() ise False dondur.",
+        ],
+    ),
+
+    Question(
+        id=98,
+        title="Sag ve Sol En Uzun Karaktersiz Alt Dizi",
+        category="strings",
+        level="intermediate",
+        description="""Bir string var. En uzun benzersiz (tekrarsiz) karakter iceren alt dizinin uzunlugunu bul.
+O(n) zaman karmasikligi hedefle (sliding window).
+Ornek: 'abcabcbb' -> 3 ('abc')
+Ornek: 'bbbbb' -> 1 ('b')
+Ornek: 'pwwkew' -> 3 ('wke')""",
+        starter_code="""def length_of_longest_substring(s: str) -> int:
+    # En uzun tekrarsiz karakter alt dizisi
+    pass""",
+        test_cases=[
+            {'input': 'abcabcbb', 'expected': 3},
+            {'input': 'bbbbb', 'expected': 1},
+            {'input': 'pwwkew', 'expected': 3},
+            {'input': '', 'expected': 0},
+            {'input': 'abcdef', 'expected': 6},
+        ],
+        hints=[
+            "💡 Ipucu 1: Sliding window: left ve right isaretcileri, bir set ile tutulan karakterleri izle.",
+            "💡 Ipucu 2: s[right] sette varsa, left'ten baslayarak setten cikar, left++.",
+            "💡 Ipucu 3: Her adimda max(max_len, right - left + 1) guncelle.",
+        ],
+    ),
+
+    Question(
+        id=99,
+        title="Iki Isaretci Ile Ters Ciftleri Say",
+        category="algorithms",
+        level="intermediate",
+        description="""Bir dizide, dizideki elemanlarin toplami daha buyuk olan (ters) ciftleri say.
+Ornek: [2, 4, 1, 3, 5] -> (4,1), (4,3), (5,1), (5,3) = 4 cift.
+O(n log n) veya O(n) hedef.""",
+        starter_code="""def count_inversions(nums: list) -> int:
+    # Dizideki ters ciftlerin sayisi
+    pass""",
+        test_cases=[
+            {'input': [2, 4, 1, 3, 5], 'expected': 3},
+            {'input': [5, 4, 3, 2, 1], 'expected': 10},
+            {'input': [1, 2, 3, 4, 5], 'expected': 0},
+            {'input': [1], 'expected': 0},
+            {'input': [], 'expected': 0},
+        ],
+        hints=[
+            "💡 Ipucu 1: Merge sort yaklasimi - bol ve fethet.",
+            "💡 Ipucu 2: Sayaci merge sirasinda artir: sol[i] > sag[j] ise count += len(sol) - i.",
+            "💡 Ipucu 3: Daha basit O(n^2): her cifti kontrol et (ama yavas).",
+        ],
+    ),
+
+    Question(
+        id=100,
+        title="En Sik K Eleman (Top K Frequent)",
+        category="algorithms",
+        level="intermediate",
+        description="""Bir dizide en sik gecen K elemani bul.
+Siralama onemli degil.
+Ornek: nums=[1,1,1,2,2,3], k=2 -> [1, 2]
+O(n log k) hedef.""",
+        starter_code="""def top_k_frequent(nums: list, k: int) -> list:
+    # En sik K eleman
+    pass""",
+        test_cases=[
+            {'input': ([1, 1, 1, 2, 2, 3], 2), 'expected': [1, 2]},
+            {'input': ([1], 1), 'expected': [1]},
+            {'input': ([1, 2, 3, 4, 5], 5), 'expected': [1, 2, 3, 4, 5]},
+            {'input': ([4, 4, 4, 5, 5, 6], 1), 'expected': [4]},
+        ],
+        hints=[
+            "💡 Ipucu 1: Counter ile frekanslari say.",
+            "💡 Ipucu 2: most_common(k) -> tek satirda coz (heap altyapili).",
+            "💡 Ipucu 3: Manuel heap: heappush/pop ile O(n log k).",
+        ],
+    ),
+
+    Question(
+        id=101,
+        title="Iki Dizi Kesisimi (Set Ile)",
+        category="algorithms",
+        level="beginner",
+        description="""Iki dizinin kesisimini (ortak elemanlar) dondur.
+Tekrarlar olmasin, siralama onemli degil.
+Ornek: nums1=[1,2,2,1], nums2=[2,2] -> [2]
+O(n+m) zaman, O(n) ek alan.""",
+        starter_code="""def intersection(nums1: list, nums2: list) -> list:
+    # Iki dizinin kesisimi (benzersiz)
+    pass""",
+        test_cases=[
+            {'input': ([1, 2, 2, 1], [2, 2]), 'expected': [2]},
+            {'input': ([4, 9, 5], [9, 4, 9, 8, 4]), 'expected': [9, 4]},
+            {'input': ([1, 2, 3], [4, 5, 6]), 'expected': []},
+            {'input': ([1, 1, 1], [1]), 'expected': [1]},
+        ],
+        hints=[
+            "💡 Ipucu 1: set(nums1) & set(nums2) -> Pythonic cozum.",
+            "💡 Ipucu 2: Kucuk diziyi sete cevir, buyuk diziyi iterate et.",
+            "💡 Ipucu 3: Tekrarlari onle: result.append(x); seen.add(x) ile takip et.",
+        ],
+    ),
+
+    Question(
+        id=102,
+        title="En Uzun Consecutive Sequence",
+        category="algorithms",
+        level="intermediate",
+        description="""Bir dizideki en uzun ard arda gelen sayi dizisinin uzunlugunu bul.
+O(n) zaman karmasikligi hedefle.
+Ornek: [100, 4, 200, 1, 3, 2] -> 4 (1,2,3,4 dizisi)
+Ornek: [0,3,7,2,5,8,4,6,0,1] -> 9 (0-8)""",
+        starter_code="""def longest_consecutive(nums: list) -> int:
+    # En uzun ard arda gelen sayi dizisi
+    pass""",
+        test_cases=[
+            {'input': [100, 4, 200, 1, 3, 2], 'expected': 4},
+            {'input': [0, 3, 7, 2, 5, 8, 4, 6, 0, 1], 'expected': 9},
+            {'input': [], 'expected': 0},
+            {'input': [1, 2, 3, 4], 'expected': 4},
+            {'input': [10], 'expected': 1},
+        ],
+        hints=[
+            "💡 Ipucu 1: Tum sayilari sete koy: num_set = set(nums).",
+            "💡 Ipucu 2: Sadece dizi baslangici olan sayilari kontrol et: x-1 not in num_set.",
+            "💡 Ipucu 3: Oradan baslayarak while x+1 in set: x+=1. count tut.",
+        ],
+    ),
+
+    Question(
+        id=103,
+        title="Anagram Kontrolu (Hash Table)",
+        category="algorithms",
+        level="beginner",
+        description="""Iki string'in anagram olup olmadigini kontrol et (harfler ayni, siralama farkli).
+O(n) zaman hedefle (sorted O(n log n) daha yavas).
+Ornek: 'anagram', 'nagaram' -> True
+Ornek: 'listen', 'silent' -> True
+Ornek: 'hello', 'world' -> False""",
+        starter_code="""def is_anagram(s: str, t: str) -> bool:
+    # Iki string anagram mi? (hash ile)
+    pass""",
+        test_cases=[
+            {'input': ['anagram', 'nagaram'], 'expected': True},
+            {'input': ['listen', 'silent'], 'expected': True},
+            {'input': ['hello', 'world'], 'expected': False},
+            {'input': ['a', 'b'], 'expected': False},
+            {'input': ['', ''], 'expected': True},
+        ],
+        hints=[
+            "💡 Ipucu 1: Counter ile frekans say: Counter(s) == Counter(t).",
+            "💡 Ipucu 2: Manuel: 26 harflik dizi, s'de +1, t'de -1; hepsi 0 mi?",
+            "💡 Ipucu 3: sorted(s) == sorted(t) ile kisa cozum (yavas ama basit).",
+        ],
+    ),
+
 ]
+
+# 1783001822
 # 1783001822
