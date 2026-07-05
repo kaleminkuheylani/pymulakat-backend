@@ -54,5 +54,11 @@ htmlcov/
 
 # Logs
 *.log
-data/QUESTIONS.py.bak
-data/QUESTIONS_v1.py.bak
+
+# Backup files (legacy content)
+data/*.bak
+*.bak
+
+# Local scripts (goreceli scriptler)
+.scratch/
+
