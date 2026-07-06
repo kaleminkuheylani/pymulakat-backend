@@ -11,7 +11,8 @@ __pycache__
 .venv
 venv
 env
-*.lock
+# *.lock (genel kilit dosyaları — uv.lock HARİÇ, çünkü Railway build için zorunlu)
+!uv.lock
 .uv.lock
 
 # Docs (production'da gerekmez)
