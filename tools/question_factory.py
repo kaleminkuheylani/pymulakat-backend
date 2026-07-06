@@ -283,17 +283,12 @@ def main():
     if args.validate_only:
         return
 
-    out_path = Path(args.out)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(render_questions_v4(questions), encoding="utf-8")
-    print(f"\n✅ Yazıldı: {out_path} ({out_path.stat().st_size:,} bytes)")
-
-    # Bonus: JSON output (runtime import için, dataclass syntax error'larını önler)
-    json_path = out_path.with_suffix(".json")
+    # SADECE JSON output üret (.py syntax hatalarından kaçınmak için)
+    # Factory artık .py dosyası üretmiyor — migrate_to_db ve question_loader JSON'dan okuyor.
+    json_path = Path(args.out).with_suffix(".json")
     with open(json_path, "w", encoding="utf-8") as f:
-        # dataclass object'i dict'e çevir
         json.dump([q if isinstance(q, dict) else asdict(q) for q in questions], f, ensure_ascii=False, indent=2, default=str)
-    print(f"✅ JSON yazıldı: {json_path} ({json_path.stat().st_size:,} bytes)")
+    print(f"\n✅ JSON yazıldı: {json_path} ({json_path.stat().st_size:,} bytes)")
 
 
 if __name__ == "__main__":

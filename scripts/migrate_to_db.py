@@ -49,17 +49,46 @@ def slugify(text: str) -> str:
 
 
 def load_questions_file(filename: str, source_label: str) -> list:
-    """QUESTIONS-{version}.py yükle (dash filename)."""
-    filepath = ROOT / "data" / filename
-    if not filepath.exists():
-        print(f"   ⚠️  {filename} bulunamadı, atlanıyor")
-        return []
-    spec = importlib.util.spec_from_file_location(f"{source_label}_loader", filepath)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    questions = getattr(mod, "QUESTIONS", [])
-    print(f"   ✅ {filename}: {len(questions)} soru yüklendi")
-    return questions
+    """QUESTIONS-{version}.py veya .json yükle. JSON öncelikli (.py syntax riski).
+
+    ÖNCELİKLI: data/QUESTIONS-{ver}.json (syntax temiz)
+    FALLBACK: data/QUESTIONS-{ver}.py (eski dataclass import)
+
+    Dönen her öğe dict. dataclass değil.
+    """
+    base = filename.replace(".py", "").replace(".json", "")
+    json_path = ROOT / "data" / f"{base}.json"
+    py_path = ROOT / "data" / filename
+
+    if json_path.exists():
+        try:
+            with open(json_path, encoding="utf-8") as f:
+                questions = json.load(f)
+            print(f"   ✅ {base}.json: {len(questions)} soru yüklendi (JSON)")
+            return questions
+        except Exception as e:
+            print(f"   ⚠️  {base}.json okunamadı: {e}, .py fallback denenecek")
+
+    if py_path.exists():
+        try:
+            spec = importlib.util.spec_from_file_location(f"{source_label}_loader", py_path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            qs = getattr(mod, "QUESTIONS", [])
+            # dataclass obj → dict cevir
+            qs_dict = []
+            for q in qs:
+                if hasattr(q, "__dict__"):
+                    qs_dict.append({k: v for k, v in q.__dict__.items()})
+                else:
+                    qs_dict.append(q)
+            print(f"   ✅ {base}.py: {len(qs_dict)} soru yüklendi (dataclass → dict)")
+            return qs_dict
+        except Exception as e:
+            print(f"   ⚠️  {base}.py import hatası: {e}")
+
+    print(f"   ⚠️  {base} bulunamadı (ne .json ne .py)")
+    return []
 
 
 def question_to_db_row(q, source: str = "v3") -> dict:
@@ -179,7 +208,7 @@ def main():
         qs_v3 = load_questions_file("QUESTIONS-v3.py", "v3")
         rows.extend(question_to_db_row(q, source="v3") for q in qs_v3)
     if not args.v3_only:
-        qs_v4 = load_questions_file("QUESTIONS-v4.py", "v4")
+        qs_v4 = load_questions_file("QUESTIONS-v4.json", "v4")
         rows.extend(question_to_db_row(q, source="v4") for q in qs_v4)
 
     if not rows:
