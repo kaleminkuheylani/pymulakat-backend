@@ -45,6 +45,96 @@ def health():
 
 
 # ═══════════════════════════════════════════════════════════════
+# ─── Debug: Register/Verify durumunu kontrol et ────────────
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/debug/user/{email}")
+def debug_user(email: str, request: Request):
+    """Bir email'in auth.users ve profiles'ta olup olmadığını göster.
+
+    Production'da 24 saat içinde otomatik kapatılır (opsiyonel).
+    """
+    admin_secret = os.getenv("ADMIN_SECRET", "")
+    if admin_secret and request.headers.get("X-Admin-Secret", "") != admin_secret:
+        raise HTTPException(403, "admin yetkisi gerekli (X-Admin-Secret header)")
+
+    from supabase_client import get_supabase_admin
+    sb = get_supabase_admin()
+    out = {"email": email}
+
+    # auth.users (admin API)
+    try:
+        users = sb.auth.admin.list_users()
+        auth_user = next((u for u in users if u.email == email), None)
+        out["auth_users"] = {
+            "exists": bool(auth_user),
+            "id": auth_user.id if auth_user else None,
+            "email_confirmed_at": str(auth_user.email_confirmed_at) if auth_user else None,
+            "created_at": str(auth_user.created_at) if auth_user else None,
+        }
+    except Exception as e:
+        out["auth_users_error"] = str(e)
+
+    # profiles (normal query)
+    try:
+        result = sb.table("profiles").select("*").eq("email", email).limit(1).execute()
+        rows = (result.data if result and getattr(result, "data", None) else []) or []
+        out["profiles"] = {
+            "exists": bool(rows),
+            "count": len(rows),
+            "row": rows[0] if rows else None,
+        }
+    except Exception as e:
+        out["profiles_error"] = str(e)
+
+    return out
+
+
+@router.post("/debug/ensure-profile")
+def debug_ensure_profile(email: str, username: str, request: Request):
+    """Orphan auth user için profile oluştur (admin).
+
+    POST /admin/debug/ensure-profile?email=x@y.com&username=test
+    """
+    admin_secret = os.getenv("ADMIN_SECRET", "")
+    if admin_secret and request.headers.get("X-Admin-Secret", "") != admin_secret:
+        raise HTTPException(403, "admin yetkisi gerekli (X-Admin-Secret header)")
+
+    from supabase_client import get_supabase_admin
+    sb = get_supabase_admin()
+
+    # auth.users'tan user bul
+    try:
+        users = sb.auth.admin.list_users()
+        auth_user = next((u for u in users if u.email == email), None)
+    except Exception as e:
+        raise HTTPException(500, f"auth lookup failed: {e}")
+
+    if not auth_user:
+        raise HTTPException(404, f"auth.users'ta {email} bulunamadı")
+
+    # Zaten profile var mı?
+    result = sb.table("profiles").select("id").eq("id", auth_user.id).limit(1).execute()
+    rows = (result.data if result and getattr(result, "data", None) else []) or []
+
+    if rows:
+        return {"ok": True, "message": "profile zaten var", "user_id": auth_user.id}
+
+    # Profile oluştur
+    try:
+        sb.table("profiles").insert({
+            "id": auth_user.id,
+            "username": username,
+            "email": email,
+            "is_verified": False,
+            "points": 0,
+        }).execute()
+        return {"ok": True, "message": "profile oluşturuldu", "user_id": auth_user.id}
+    except Exception as e:
+        raise HTTPException(500, f"profile create failed: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════
 # ─── KVKK Kullanıcı Taşıma ─────────────────────────────────
 # ═══════════════════════════════════════════════════════════════
 
