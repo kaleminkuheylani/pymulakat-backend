@@ -1,0 +1,116 @@
+name: Uptime Monitor
+
+on:
+  schedule:
+    # Her 5 dakikada bir kontrol et
+    - cron: "*/5 * * * *"
+  workflow_dispatch: # Manuel tetikleme
+
+jobs:
+  check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Backend health
+        id: backend
+        run: |
+          response=$(curl -sS -w "\n%{http_code}\n%{time_total}" --max-time 10 https://pymulakat-backend-production.up.railway.app/health || echo "FAIL")
+          status=$(echo "$response" | tail -2 | head -1)
+          time=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -n -2)
+          echo "status=$status"
+          echo "time=$time"
+          echo "body=$body"
+          if [ "$status" != "200" ]; then
+            echo "❌ Backend unhealthy (HTTP $status)"
+            exit 1
+          fi
+          # DB kontrolü
+          if echo "$body" | grep -q '"db":{"ok":true'; then
+            echo "✅ Backend OK + DB connected (${time}s)"
+          else
+            echo "⚠️ Backend 200 ama DB bağlantısı yok: $body"
+            exit 1
+          fi
+
+      - name: Frontend
+        id: frontend
+        run: |
+          status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 https://pythonmulakat.com/ || echo "000")
+          if [ "$status" != "200" ]; then
+            echo "❌ Frontend unhealthy (HTTP $status)"
+            exit 1
+          fi
+          echo "✅ Frontend OK"
+
+      - name: GitHub Issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 Production outage detected — ${new Date().toISOString()}`;
+            const body = `**Otomatik uptime monitor failure**
+
+            Backend: ${{ steps.backend.outputs.status }} (${steps.backend.outputs.time || '?'}s)
+            Frontend: ${{ steps.frontend.outputs.status }}
+
+            **Aksiyon:**
+            1. \`curl https://pymulakat-backend-production.up.railway.app/health\`
+            2. \`curl https://pythonmulakat.com/\`
+            3. Vercel/Railway dashboard → Deployments
+            4. Son push'ları kontrol et
+
+            Bu issue GitHub Actions tarafından otomatik açıldı.`;
+
+            // Var olan açık issue'ları bul
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'outage',
+            });
+
+            if (issues.data.length > 0) {
+              // Mevcut outage issue'suna yorum ekle
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues.data[0].number,
+                body: `Yeni failure tespit edildi: ${new Date().toISOString()}`,
+              });
+            } else {
+              // Yeni issue aç
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['outage', 'automated'],
+              });
+            }
+
+      - name: Resolve issue on recovery
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'outage',
+            });
+            for (const issue of issues.data) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `✅ Service recovered: ${new Date().toISOString()}`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+              });
+            }
