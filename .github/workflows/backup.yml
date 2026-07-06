@@ -43,10 +43,13 @@ jobs:
             export PGPORT="${BASH_REMATCH[4]}"
             export PGDATABASE="${BASH_REMATCH[5]}"
             # IPv4 zorla (GitHub Actions runner IPv6 unreachable)
-            IPV4=$(getent ahostsv4 "$PGHOST" | awk '{print $1}' | head -1)
+            # getent ahostsv4 yok, Python gethostbyname her zaman IPv4 döner
+            IPV4=$(python3 -c "import socket; print(socket.gethostbyname('$PGHOST'))" 2>/dev/null || echo "")
             if [ -n "$IPV4" ]; then
               echo "Resolved $PGHOST → $IPV4 (IPv4)"
               export PGHOST="$IPV4"
+            else
+              echo "IPv4 resolve failed, hostname ile devam (IPv6 unreachable olabilir)"
             fi
             echo "Final: $PGUSER@$PGHOST:$PGPORT/$PGDATABASE"
           else
