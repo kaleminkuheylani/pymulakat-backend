@@ -21,8 +21,11 @@ RUN uv sync --no-dev
 
 # venv python PATH'e ekle
 ENV PATH="/app/.venv/bin:$PATH"
-ENV PORT=3000
+
+# PORT env'i Railway tarafından runtime'da inject edilir; hardcoded olmasın
+# (Railway dashboard → Variables'da PORT override edilebilir)
 EXPOSE 3000
 
-# Çalıştır — main.py "app" değişkenini export ediyor
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"]
+# Çalıştır — main.py "app" değişkenini export ediyor.
+# PORT env Railway tarafından runtime'da sağlanır (default 3000).
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-3000}"]
