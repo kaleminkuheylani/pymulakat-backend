@@ -1,0 +1,35 @@
+name: Docker Build Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "pyproject.toml"
+      - "uv.lock"
+  pull_request:
+    branches: [main]
+
+jobs:
+  docker-build:
+    name: Dockerfile build test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          echo "=== uv.lock var mi? ==="
+          ls -la uv.lock || echo "uv.lock YOK"
+          echo ""
+          echo "=== Dockerfile ==="
+          cat Dockerfile
+          echo ""
+          echo "=== .dockerignore ==="
+          cat .dockerignore
+          echo ""
+          echo "=== Docker build (test) ==="
+          docker build -t pymulakat-backend-test . 2>&1 | tail -20
+        env:
+          DOCKER_BUILDKIT: 1
