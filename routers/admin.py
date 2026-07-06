@@ -986,8 +986,10 @@ async def cron_refresh_sitemap(request: Request):
 
     try:
         import subprocess
+        # generate_sitemap.py kendi icinde content-hash karsilastiracak,
+        # sadece degisiklik varsa ping atacak. Biz sadece --output veriyoruz.
         result = subprocess.run(
-            ["python3", "scripts/generate_sitemap.py", "--ping", "--output", "/tmp/sitemap.xml"],
+            ["python3", "scripts/generate_sitemap.py", "--output", "/tmp/sitemap.xml"],
             cwd=_admin_cwd(),
             capture_output=True,
             text=True,

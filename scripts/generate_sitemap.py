@@ -332,10 +332,36 @@ def main():
             print(f"  ❌ Dosya yazma hatasi: {e}")
             sys.exit(1)
 
-    # DB cache (opsiyonel)
+    # DB cache (opsiyonel, content hash ile versiyon)
     if sb is not None and not args.dry_run:
-        if write_sitemap_to_db(sb, xml, url_count):
-            print(f"  DB cache guncelledi (sitemap_cache tablosu)")
+        import hashlib
+        xml_hash = hashlib.md5(xml.encode()).hexdigest()[:12]
+        old_hash = None
+        try:
+            old = sb.table("sitemap_cache").select("content_hash").eq("key", "main").execute()
+            if old.data:
+                old_hash = old.data[0].get("content_hash")
+        except Exception:
+            pass
+
+        # Yeni content_hash ile yaz
+        try:
+            sb.table("sitemap_cache").upsert({
+                "key": "main",
+                "content": xml,
+                "content_hash": xml_hash,
+                "url_count": url_count,
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+            }, on_conflict="key").execute()
+            print(f"  DB cache guncelledi (hash: {xml_hash})")
+        except Exception as e:
+            print(f"  ⚠️ DB cache write hatasi: {e}")
+
+        # Ping sadece hash degisti ise
+        if old_hash and old_hash == xml_hash:
+            print(f"  Content hash ayni, ping atlanacak (skip)")
+        else:
+            args.ping = True
 
     # 4. Ping (opsiyonel)
     if args.ping and not args.dry_run:

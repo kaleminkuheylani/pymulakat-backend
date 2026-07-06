@@ -1,18 +1,10 @@
-# Railway cron config
-# https://docs.railway.app/reference/crons
+# Railway cron — minimized usage
+# Gunde 1 sitemap refresh yeterli (Google zaten periyodik tarar).
+# Saat 03:00 UTC = Turkiye 06:00 saatleri (sabah), dusuk trafik.
 
-# Her 4 saatte sitemap yenileme (ve Google ping atar)
 [[crons]]
 name = "sitemap-refresh"
-schedule = "0 */4 * * *"  # UTC, her 4 saatte
+schedule = "0 3 * * *"  # Her gece 03:00 UTC (Turkiye 06:00)
 command = "curl -X POST ${RAILWAY_PUBLIC_DOMAIN}/admin/cron/refresh-sitemap -H 'X-Cron-Secret: ${CRON_SECRET}'"
 path = "/admin/cron/refresh-sitemap"
-method = "POST"
-
-# KVKK retention: her gece retention policy uygula
-[[crons]]
-name = "kvkk-retention-nightly"
-schedule = "0 3 * * *"  # UTC, her gece 03:00
-command = "echo 'KVKK retention handled by pg_cron (Supabase)'"
-path = "/admin/cron/retention"
 method = "POST"
