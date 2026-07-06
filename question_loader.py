@@ -28,6 +28,28 @@ except Exception as _e:
     print(f"⚠️ QUESTIONS-v3 fallback yuklenemedi: {_e}")
 
 
+# v4 fallback (JSON’dan, Q-v3 + Q-v4 birleşik, 232+ soru)
+# JSON kullaniyoruz cunku QUESTIONS-v4.py dataclass syntax hatasi icerebiliyor.
+QUESTIONS_V4 = []
+try:
+    import json as _json
+    _v4_path = _os.path.join(_os.path.dirname(__file__), "data", "QUESTIONS-v4.json")
+    if _os.path.exists(_v4_path):
+        with open(_v4_path, encoding="utf-8") as _f:
+            _v4_data = _json.load(_f)
+        # Dict → dataclass cevirme (Question dataclass yoksa SimpleNamespace kullan)
+        from types import SimpleNamespace
+        for _item in _v4_data:
+            QUESTIONS_V4.append(SimpleNamespace(**_item))
+        print(f"✅ QUESTIONS-v4 (JSON) yuklendi: {len(QUESTIONS_V4)} soru")
+except Exception as _e:
+    print(f"⚠️ QUESTIONS-v4 (JSON) yuklenemedi: {_e}")
+
+
+# Combined fallback list (Q-V3 + Q-V4, 232+ soru, legacy_id unique)
+QUESTIONS_COMBINED = list(QUESTIONS_V3) + list(QUESTIONS_V4)
+
+
 # ═══════════════════════════════════════════════════════════════
 # Kategori meta (DB'den gelirse de fallback olarak kullanılır)
 # ═══════════════════════════════════════════════════════════════
@@ -100,11 +122,11 @@ def _load_from_db() -> Optional[List[Question]]:
 
 
 def load_questions() -> List[Question]:
-    """DB-first, fallback olarak QUESTIONS-v3.py (zenginlestirilmis)."""
+    """DB-first, fallback olarak Q-V3 + Q-V4 birleşik liste (232+ soru)."""
     db_loaded = _load_from_db()
     if db_loaded is not None:
         return db_loaded
-    return QUESTIONS_V3
+    return QUESTIONS_COMBINED
 
 
 def to_public_dict(q: Any) -> Dict:

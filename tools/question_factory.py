@@ -2,9 +2,11 @@
 """Question Factory v2 — modüler, 12 pattern, 5 unique case."""
 from __future__ import annotations
 import argparse
+import json
 import re
 import sys
 from collections import Counter
+from dataclasses import asdict
 from pathlib import Path
 
 # Modüler pattern'leri import et
@@ -285,6 +287,13 @@ def main():
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(render_questions_v4(questions), encoding="utf-8")
     print(f"\n✅ Yazıldı: {out_path} ({out_path.stat().st_size:,} bytes)")
+
+    # Bonus: JSON output (runtime import için, dataclass syntax error'larını önler)
+    json_path = out_path.with_suffix(".json")
+    with open(json_path, "w", encoding="utf-8") as f:
+        # dataclass object'i dict'e çevir
+        json.dump([q if isinstance(q, dict) else asdict(q) for q in questions], f, ensure_ascii=False, indent=2, default=str)
+    print(f"✅ JSON yazıldı: {json_path} ({json_path.stat().st_size:,} bytes)")
 
 
 if __name__ == "__main__":

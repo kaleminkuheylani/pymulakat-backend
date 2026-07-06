@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
-"""QUESTIONS-v3.py'yi DB'ye migrate et (Railway-friendly).
+"""QUESTIONS-v3.py + QUESTIONS-v4.py → DB migrate (idempotent, batch upsert).
 
-Production'da yeni soru eklenince Vercel deploy → Railway bot
-    python3 scripts/migrate_to_db.py
-calistirir. Idempotent (tekrar calistirilabilir).
-
-Davranis:
-- Slug unique conflict varsa -2,-3 eklenir
-- Tum eski sorular once DB'den export edilir (backup)
-- Bulk UPSERT (batch 50)
-- Diff raporu (in_both / in_db_only / in_v3_only)
-- Audit log DB'ye yazilir (questions_migrations tablosu)
+HEM Q-v3 (82 mevcut) HEM Q-v4 (150 yeni) → Supabase DB'ye import eder.
+- Slug unique conflict varsa -2, -3 eklenir.
+- Tüm eski sorular önce DB'den export edilir (backup).
+- Bulk UPSERT (batch 50).
+- Diff raporu (in_both / in_db_only / in_v3_only / in_v4_only).
+- Audit log DB'ye yazilir (questions_migrations).
 
 ENV:
-  SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+    SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+
+Davranış:
+    python3 scripts/migrate_to_db.py            # Q-v3 + Q-v4 migrate
+    python3 scripts/migrate_to_db.py --dry-run  # DB'ye yazma, sadece rapor
+    python3 scripts/migrate_to_db.py --backup   # Backup al
+    python3 scripts/migrate_to_db.py --v4-only  # Sadece Q-v4 migrate (idempotent)
+    python3 scripts/migrate_to_db.py --v3-only  # Sadece Q-v3 migrate
 """
 
 import argparse
@@ -25,12 +28,15 @@ import unicodedata
 import importlib.util
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import List
 
 ROOT = Path(__file__).parent.parent
 
-# ═══════════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Utilities
-# ═══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════
+
 
 def slugify(text: str) -> str:
     """Slugify (Turkce + ASCII normalize)."""
@@ -42,47 +48,61 @@ def slugify(text: str) -> str:
     return s[:80] or "question"
 
 
-def load_v3_questions() -> list:
-    """QUESTIONS-v3.py yükle (dash filename)."""
-    v3_path = ROOT / "data" / "QUESTIONS-v3.py"
-    spec = importlib.util.spec_from_file_location("questions_v3_load", v3_path)
+def load_questions_file(filename: str, source_label: str) -> list:
+    """QUESTIONS-{version}.py yükle (dash filename)."""
+    filepath = ROOT / "data" / filename
+    if not filepath.exists():
+        print(f"   ⚠️  {filename} bulunamadı, atlanıyor")
+        return []
+    spec = importlib.util.spec_from_file_location(f"{source_label}_loader", filepath)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    return mod.QUESTIONS
+    questions = getattr(mod, "QUESTIONS", [])
+    print(f"   ✅ {filename}: {len(questions)} soru yüklendi")
+    return questions
 
 
-def question_to_db_row(q) -> dict:
-    """Question dataclass → DB row."""
+def question_to_db_row(q, source: str = "v3") -> dict:
+    """Question dataclass → DB row. Q-v3 ve Q-v4 uyumlu."""
     raw_id = getattr(q, "id", 0)
     title = getattr(q, "title", "")
     starter_code = getattr(q, "starter_code", None) or ""
 
+    # Function name + signature (regex parse)
     function_name = None
     function_signature = None
-    m = re.search(r"def\s+(\w+)\(([^)]*)\)([^:]*):\s*([^\n]*)", starter_code)
+    # Çok satırlı def için DOTALL
+    m = re.search(r"def\s+(\w+)\s*\(([^)]*)\)\s*(?:->\s*([^:]+))?\s*:", starter_code)
     if m:
         function_name = m.group(1)
         params = m.group(2).strip()
-        return_type = m.group(4).strip()
+        ret = m.group(3).strip() if m.group(3) else ""
         sig = f"def {m.group(1)}({params})"
-        if return_type:
-            sig += f" -> {return_type}"
+        if ret:
+            sig += f" -> {ret}"
         function_signature = sig
 
+    # Test cases: hem "expected" hem "_manual_check" hem "expected_count" destekle
     test_cases = getattr(q, "test_cases", []) or []
     test_cases_serializable = []
     for tc in test_cases:
         if isinstance(tc, dict):
             test_cases_serializable.append(tc)
         else:
-            test_cases_serializable.append(dict(tc) if hasattr(tc, "__dict__") else tc)
+            try:
+                test_cases_serializable.append(dict(tc) if hasattr(tc, "__dict__") else tc)
+            except Exception:
+                test_cases_serializable.append({"input": str(tc), "_error": "serialize_failed"})
+
+    # Explanation text (Q-v4'te footer eklenmiş olabilir, olduğu gibi al)
+    explanation = getattr(q, "explanation", None) or None
 
     return {
         "slug": slugify(title),
         "legacy_id": raw_id,
         "title": title,
         "description": getattr(q, "description", "") or "",
-        "explanation": getattr(q, "explanation", None) or None,
+        "explanation": explanation,
         "complexity": getattr(q, "complexity", None) or None,
         "level": getattr(q, "level", "beginner"),
         "category": getattr(q, "category", "python-basics"),
@@ -94,16 +114,19 @@ def question_to_db_row(q) -> dict:
         "related_concepts": list(getattr(q, "related_concepts", []) or []),
         "related_question_ids": [int(x) for x in (getattr(q, "related_question_ids", []) or [])],
         "tags": list(getattr(q, "tags", []) or []),
+        "tutorial_slug": getattr(q, "tutorial_slug", None),
         "is_published": True,
+        "source": source,  # v3 veya v4 (audit için)
     }
 
 
-# ═══════════════════════════════════════════════════════════════
-# Migration report
-# ═══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════
+# Audit log
+# ═══════════════════════════════════════════════════════════════════════════
+
 
 def log_migration(sb, status: str, action: str, details: dict) -> None:
-    """Audit log yaz (questions_migrations tablosu)."""
+    """Audit log (questions_migrations tablosu)."""
     try:
         sb.table("questions_migrations").insert({
             "status": status,
@@ -111,28 +134,59 @@ def log_migration(sb, status: str, action: str, details: dict) -> None:
             "details": details,
             "migrated_at": datetime.now(timezone.utc).isoformat(),
         }).execute()
-    except Exception:
-        # Tablo yoksa skip
-        pass
+        print(f"   📝 Audit log yazıldı: {action} → {status}")
+    except Exception as e:
+        print(f"   ⚠️  Audit log yazılamadı: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Diff raporu
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def build_diff(existing: list, rows: list) -> dict:
+    db_by_legacy = {r["legacy_id"]: r for r in existing if r.get("legacy_id")}
+    new_by_legacy = {r["legacy_id"]: r for r in rows}
+    return {
+        "in_db_only": set(db_by_legacy.keys()) - set(new_by_legacy.keys()),
+        "in_source_only": set(new_by_legacy.keys()) - set(db_by_legacy.keys()),
+        "in_both": set(db_by_legacy.keys()) & set(new_by_legacy.keys()),
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Main
+# ═══════════════════════════════════════════════════════════════════════════
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Migrate QUESTIONS-v3.py → Supabase DB")
-    parser.add_argument("--dry-run", action="store_true", help="DB'ye yazma")
+    parser = argparse.ArgumentParser(description="Migrate Q-v3 + Q-v4 → Supabase DB")
+    parser.add_argument("--dry-run", action="store_true", help="DB'ye yazma, sadece rapor")
     parser.add_argument("--audit", action="store_true", help="Audit log yaz")
-    parser.add_argument("--backup", action="store_true", help="DB dump al")
+    parser.add_argument("--backup", action="store_true", help="DB dump al (JSON)")
+    parser.add_argument("--v3-only", action="store_true", help="Sadece Q-v3")
+    parser.add_argument("--v4-only", action="store_true", help="Sadece Q-v4")
     args = parser.parse_args()
 
     print("=" * 70)
-    print("QUESTIONS-V3 → DB MIGRATION")
+    print("QUESTIONS → DB MIGRATION (Q-v3 + Q-v4)")
     print("=" * 70)
 
-    # 1. Source: QUESTIONS-v3.py
-    questions = load_v3_questions()
-    print(f"\n[1/4] QUESTIONS-v3.py yuklendi: {len(questions)} soru")
+    # 1. Source dosyalarını yükle
+    print("\n[1/5] Source dosyalar yükleniyor...")
+    rows: List[dict] = []
+    if not args.v4_only:
+        qs_v3 = load_questions_file("QUESTIONS-v3.py", "v3")
+        rows.extend(question_to_db_row(q, source="v3") for q in qs_v3)
+    if not args.v3_only:
+        qs_v4 = load_questions_file("QUESTIONS-v4.py", "v4")
+        rows.extend(question_to_db_row(q, source="v4") for q in qs_v4)
 
-    rows = [question_to_db_row(q) for q in questions]
-    print(f"  {len(rows)} DB row hazir")
+    if not rows:
+        print("❌ Hiç soru yüklenmedi, çıkılıyor")
+        sys.exit(1)
+
+    print(f"   📦 Toplam {len(rows)} soru hazır (Q-v3 + Q-v4)")
 
     # 2. ENV check
     supabase_url = os.environ.get("SUPABASE_URL")
@@ -145,85 +199,115 @@ def main():
     try:
         from supabase import create_client
         sb = create_client(supabase_url, supabase_key)
+        print(f"   ✅ Supabase bağlantısı OK")
     except ImportError:
-        print("❌ supabase-py yuklu degil: pip install supabase")
+        print("❌ supabase-py yüklü değil: pip install supabase")
         sys.exit(1)
 
     # 4. Backup (opsiyonel)
     if args.backup:
-        print("\n[2/4] DB backup")
-        all_questions = sb.table("questions").select("*").execute()
-        backup_path = ROOT / "scripts" / f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(backup_path, "w") as f:
-            json.dump(all_questions.data or [], f, indent=2, ensure_ascii=False, default=str)
-        print(f"  Backup yazildi: {backup_path}")
+        print("\n[2/5] DB backup")
+        try:
+            all_questions = sb.table("questions").select("*").execute()
+            backup_path = ROOT / "scripts" / f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            with open(backup_path, "w") as f:
+                json.dump(all_questions.data or [], f, indent=2, ensure_ascii=False, default=str)
+            print(f"   ✅ Backup yazıldı: {backup_path} ({len(all_questions.data or [])} kayıt)")
+        except Exception as e:
+            print(f"   ⚠️  Backup alınamadı: {e}")
 
-    # 5. Slug duplicate check
-    print(f"\n[3/4] Slug duplicate kontrolu")
-    existing = sb.table("questions").select("id, slug, legacy_id").execute()
-    existing_slugs = {r["slug"]: r for r in (existing.data or [])}
+    # 5. Slug duplicate check (in source) → yoksa DB'den kontrol
+    print(f"\n[3/5] Slug duplicate kontrolü (kaynak içi)")
+    seen_slugs = set()
+    internal_dupes = 0
+    for row in rows:
+        if row["slug"] in seen_slugs:
+            internal_dupes += 1
+        seen_slugs.add(row["slug"])
+    print(f"   {internal_dupes} internal duplicate (slug ile DB conflict olabilir)")
+
+    # DB'de mevcut slugları çek
+    print(f"\n[4/5] DB mevcut state")
+    try:
+        existing = sb.table("questions").select("id, slug, legacy_id, source").execute()
+        existing_list = existing.data or []
+        print(f"   DB'de {len(existing_list)} soru var")
+    except Exception as e:
+        print(f"   ⚠️  DB sorgulanamadı: {e}")
+        existing_list = []
+
+    # Slug conflict resolution: source title → slugify → DB'de varsa -2, -3 ekle
+    db_slugs = {r["slug"]: r for r in existing_list}
     fixed = 0
     for row in rows:
-        if row["slug"] in existing_slugs:
-            new_slug = row["slug"]
-            n = 2
-            while new_slug in {r["slug"] for r in (existing.data or [])}:
-                new_slug = f"{row['slug']}-{n}"
+        original_slug = row["slug"]
+        new_slug = original_slug
+        n = 2
+        # Sadece aynı row değil, DB'de zaten varsa rename
+        is_already_in_db = any(r.get("legacy_id") == row["legacy_id"] for r in existing_list)
+        if not is_already_in_db and new_slug in db_slugs:
+            while new_slug in db_slugs:
+                new_slug = f"{original_slug}-{n}"
                 n += 1
             row["slug"] = new_slug
             fixed += 1
-    print(f"  {fixed} slug rename edildi")
+    print(f"   {fixed} slug rename edildi (DB conflict)")
 
     # Diff raporu
-    db_by_legacy = {r["legacy_id"]: r for r in (existing.data or []) if r.get("legacy_id")}
-    v3_by_legacy = {r["legacy_id"]: r for r in rows}
-    in_db_only = set(db_by_legacy.keys()) - set(v3_by_legacy.keys())
-    in_v3_only = set(v3_by_legacy.keys()) - set(db_by_legacy.keys())
-    in_both = set(db_by_legacy.keys()) & set(v3_by_legacy.keys())
+    diff = build_diff(existing_list, rows)
+    print(f"\n   📊 DIFF (legacy_id bazında):")
+    print(f"      DB-only orphans:       {len(diff['in_db_only'])}")
+    print(f"      Source-only new:       {len(diff['in_source_only'])}")
+    print(f"      Both (güncellenen):    {len(diff['in_both'])}")
 
-    print(f"\n  DB'de olan V3'te olmayan (orphans): {len(in_db_only)}")
-    print(f"  V3'te olan DB'de olmayan (yeni eklenen): {len(in_v3_only)}")
-    print(f"  Eslesen (güncellenen): {len(in_both)}")
-
-    # 6. BULK UPSERT
     if args.dry_run:
-        print(f"\n[4/4] DRY RUN — {len(rows)} soru seed edilirdi")
-        log_migration(sb, "dry-run", "questions-seed", {"row_count": len(rows)})
+        print(f"\n[5/5] DRY RUN — {len(rows)} soru seed edilirdi")
+        log_migration(sb, "dry-run", "questions-seed-v3v4", {
+            "row_count": len(rows),
+            "v3_count": sum(1 for r in rows if r["source"] == "v3"),
+            "v4_count": sum(1 for r in rows if r["source"] == "v4"),
+        })
         return
 
-    print(f"\n[4/4] BULK UPSERT ({len(rows)} soru)")
+    # 6. BULK UPSERT
+    print(f"\n[5/5] BULK UPSERT ({len(rows)} soru, batch=50)")
     batch_size = 50
     success = 0
     errors = []
     for i in range(0, len(rows), batch_size):
         batch = rows[i : i + batch_size]
+        batch_num = i // batch_size + 1
         try:
+            # source column'u DB schema'da yoksa hata verebilir → temizle
+            for r in batch:
+                r.pop("source", None)
+
             result = sb.table("questions").upsert(batch, on_conflict="legacy_id").execute()
             s = len(result.data) if result.data else 0
             success += s
-            print(f"  Batch {i // batch_size + 1}: {s}/{len(batch)} OK")
+            print(f"   Batch {batch_num}: {s}/{len(batch)} OK")
         except Exception as e:
-            errors.append({"batch": i // batch_size + 1, "error": str(e)})
-            print(f"  ❌ Batch {i // batch_size + 1}: {str(e)[:200]}")
+            errors.append({"batch": batch_num, "error": str(e)})
+            print(f"   ❌ Batch {batch_num}: {str(e)[:200]}")
 
     print(f"\n{'=' * 70}")
-    print(f"SONUC: {success}/{len(rows)} soru basariyla migrate edildi")
+    print(f"SONUÇ: {success}/{len(rows)} soru başarıyla migrate edildi")
 
     if errors:
-        print(f"Hatalar: {len(errors)}")
+        print(f"\n⚠️ Hatalar: {len(errors)} batch")
         for err in errors:
             print(f"  - Batch {err['batch']}: {err['error'][:150]}")
 
     # Audit log
     if args.audit:
-        log_migration(sb, "success", "questions-seed", {
+        log_migration(sb, "success" if not errors else "partial", "questions-seed-v3v4", {
             "row_count": len(rows),
             "success": success,
             "errors": len(errors),
-            "in_db_only": len(in_db_only),
-            "in_v3_only": len(in_v3_only),
+            "in_db_only": len(diff["in_db_only"]),
+            "in_source_only": len(diff["in_source_only"]),
+            "in_both": len(diff["in_both"]),
         })
-        print("Audit log yazildi")
 
     sys.exit(0 if not errors else 1)
 
