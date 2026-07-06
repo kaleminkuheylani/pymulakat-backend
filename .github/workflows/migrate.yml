@@ -1,0 +1,36 @@
+name: Migrate Questions (manual + scheduled)
+
+# Manuel tetikleme veya her gece 03:00 UTC otomatik
+on:
+  workflow_dispatch:  # Manuel: Actions → Migrate Questions → Run workflow
+  schedule:
+    - cron: "0 3 * * *"  # Her gece 03:00 UTC
+
+jobs:
+  migrate:
+    name: Q-V3 + Q-V4 → Supabase DB
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install supabase
+        run: pip install supabase
+
+      - name: Run migration (with audit + backup)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python scripts/migrate_to_db.py --backup --audit
+        continue-on-error: true
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Migration başarısız. Loglar yukarıda."
+          echo "Manuel kontrol: Railway shell → python scripts/migrate_to_db.py --dry-run"
