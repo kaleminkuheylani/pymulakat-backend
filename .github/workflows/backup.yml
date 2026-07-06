@@ -17,6 +17,9 @@ jobs:
     name: PostgreSQL Backup
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Job-level env: tüm step'lerde geçerli (önceki bug: sadece tek step'te tanımlıydı)
+    env:
+      DB_URL: ${{ secrets.DB_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,11 +32,23 @@ jobs:
       - name: Verify connection
         run: |
           echo "Testing DB connection..."
-          psql "$DB_URL" -c "SELECT version();" -c "SELECT COUNT(*) AS table_count FROM information_schema.tables WHERE table_schema='public';"
+          echo "DB_URL (first 50 chars): ${DB_URL:0:50}..."
+          # libpq connection string'i parçala (psql URI syntax bazı sürümlerde sorunlu)
+          # DB_URL: postgresql://user:pass@host:port/db
+          REGEX='postgresql://([^:]+):([^@]+)@([^:]+):([0-9]+)/(.+)'
+          if [[ $DB_URL =~ $REGEX ]]; then
+            export PGUSER="${BASH_REMATCH[1]}"
+            export PGPASSWORD="${BASH_REMATCH[2]}"
+            export PGHOST="${BASH_REMATCH[3]}"
+            export PGPORT="${BASH_REMATCH[4]}"
+            export PGDATABASE="${BASH_REMATCH[5]}"
+            echo "Parsed: $PGUSER@$PGHOST:$PGPORT/$PGDATABASE"
+          else
+            echo "DB_URL regex parse edilemedi, raw URI deneniyor"
+          fi
+          psql -c "SELECT version();" -c "SELECT COUNT(*) AS table_count FROM information_schema.tables WHERE table_schema='public';"
 
       - name: Run backup
-        env:
-          DB_URL: ${{ secrets.DB_URL }}
         run: bash scripts/backup_db.sh
 
       - name: Verify backup integrity
