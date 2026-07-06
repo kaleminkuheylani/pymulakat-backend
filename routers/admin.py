@@ -960,6 +960,59 @@ async def cron_run_question_generation_removed(request: Request):
 
 
 # ═══════════════════════════════════════════════════════════
+# Cron Endpoint — Sitemap refresh (Railway cron)
+# Sitemap'i DB'den uretip /tmp/sitemap.xml'e yazar
+# Railway cron: her 4 saatte bir, +60s jitter
+# ═══════════════════════════════════════════════════════════
+
+@router.post("/cron/refresh-sitemap")
+async def cron_refresh_sitemap(request: Request):
+    """Sitemap refresh (cron). Shared secret ile korunur.
+
+    Cron ornegi (Railway):
+      curl -X POST https://api.com/admin/cron/refresh-sitemap \
+        -H "X-Cron-Secret: $CRON_SECRET"
+
+    Railway config (railway.toml'da):
+      [[crons]]
+      name = "sitemap-refresh"
+      schedule = "0 */4 * * *"  # Her 4 saatte
+      command = "curl -X POST .../admin/cron/refresh-sitemap -H 'X-Cron-Secret: ...'"
+    """
+    expected = os.getenv("CRON_SECRET", "")
+    provided = request.headers.get("X-Cron-Secret", "")
+    if expected and provided != expected:
+        raise HTTPException(401, "Unauthorized")
+
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["python3", "scripts/generate_sitemap.py", "--ping", "--output", "/tmp/sitemap.xml"],
+            cwd=_admin_cwd(),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        ok = result.returncode == 0
+        return {
+            "ok": ok,
+            "stdout_tail": result.stdout[-500:] if result.stdout else "",
+            "stderr_tail": result.stderr[-500:] if result.stderr else "",
+            "returncode": result.returncode,
+        }
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "timeout (>120s)"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:300]}
+
+
+def _admin_cwd() -> str:
+    """admin.py calisma dizini."""
+    import os as _os
+    return _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+
+
+# ═══════════════════════════════════════════════════════════
 # DB Schema Endpoint — Gemini prompt'una eklenir
 # ═══════════════════════════════════════════════════════════
 
