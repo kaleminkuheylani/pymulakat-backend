@@ -124,3 +124,69 @@ async def get_migration_report(request: Request):
         return {"ok": False, "message": "henüz rapor yok"}
     with open(report_path) as f:
         return {"ok": True, "report": json.load(f)}
+
+
+# ═══════════════════════════════════════════════════════════════
+# ─── Soru Üretimi (Mavis API) ────────────────────────────
+# ═══════════════════════════════════════════════════════════════
+
+@router.post("/generate-questions")
+async def generate_questions(request: Request):
+    """Mavis API ile QUESTIONS-v3.py'ye yeni sorular üret + append.
+
+    Query params:
+      - count: 1-50 arası (default 20, eşit dağılım)
+      - dry_run: true/false (default true — dosyaya yazmaz)
+
+    Env gereksinimleri (Railway):
+      - MINIMAX_API_KEY
+      - MINIMAX_BASE_URL (opsiyonel)
+      - MINIMAX_MODEL (opsiyonel)
+    """
+    admin_secret = os.getenv("ADMIN_SECRET", "")
+    if not admin_secret or request.headers.get("X-Admin-Secret", "") != admin_secret:
+        raise HTTPException(403, "admin yetkisi gerekli (X-Admin-Secret)")
+
+    count = int(request.query_params.get("count", "20"))
+    if count < 1 or count > 50:
+        raise HTTPException(400, "count 1-50 arası olmalı")
+
+    dry_run = request.query_params.get("dry_run", "true").lower() == "true"
+
+    env = os.environ.copy()
+    env["GENERATE_COUNT"] = str(count)
+    env["DRY_RUN"] = "true" if dry_run else "false"
+
+    if not env.get("MINIMAX_API_KEY"):
+        raise HTTPException(400, "MINIMAX_API_KEY env tanımlı değil (Railway Variables)")
+
+    script_path = os.path.join(
+        os.path.dirname(__file__), "..", "scripts", "generate_questions.py"
+    )
+    if not os.path.exists(script_path):
+        raise HTTPException(500, f"Script yok: {script_path}")
+
+    log.warning(f"soru üretimi başlatıldı: count={count}, dry_run={dry_run}")
+
+    try:
+        result = subprocess.run(
+            [sys.executable, script_path],
+            capture_output=True, text=True, env=env, timeout=600,  # 10 dk
+        )
+        return {
+            "ok": result.returncode == 0,
+            "count": count,
+            "dry_run": dry_run,
+            "exit_code": result.returncode,
+            "stdout_tail": result.stdout[-3000:],
+            "stderr_tail": result.stderr[-1500:],
+            "next_step": (
+                "dr_run=true ise aynı isteği dry_run=false ile tekrarla"
+                if dry_run else
+                "scripts/seed_questions.py ile DB'ye yaz"
+            ),
+        }
+    except subprocess.TimeoutExpired:
+        raise HTTPException(504, "10 dk timeout")
+    except Exception as e:
+        raise HTTPException(500, f"subprocess error: {e}")
