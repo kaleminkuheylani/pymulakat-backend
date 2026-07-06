@@ -358,9 +358,15 @@ async def verify_email(payload: VerifyPayload):
 
         sb_admin = get_supabase_admin()
 
-        # Önce user var mı?
-        result = sb_admin.table("profiles").select("id, email").eq("email", payload.email).maybe_single().execute()
-        if not result.data:
+        # Önce user var mı? (.maybe_single() yeni SDK'da None/exception dönebiliyor — try/except korumalı)
+        try:
+            result = sb_admin.table("profiles").select("id, email").eq("email", payload.email).limit(1).execute()
+            rows = (result.data if result and getattr(result, "data", None) else []) or []
+        except Exception as e:
+            logger.warning(f"profile lookup failed for {payload.email}: {e}")
+            rows = []
+
+        if not rows:
             raise HTTPException(404, "Kullanıcı bulunamadı")
 
         # Kod doğrula
@@ -388,12 +394,17 @@ async def resend_code(payload: VerifyPayload):
     try:
         sb_admin = get_supabase_admin()
 
-        result = sb_admin.table("profiles").select("id, username, email, is_verified").eq("email", payload.email).maybe_single().execute()
-        if not result.data:
+        try:
+            result = sb_admin.table("profiles").select("id, username, email, is_verified").eq("email", payload.email).limit(1).execute()
+            rows = (result.data if result and getattr(result, "data", None) else []) or []
+        except Exception:
+            rows = []
+
+        if not rows:
             # Email enumeration koruması: yoksa bile generic mesaj
             return MessageResponse(ok=True, message="Eğer e-posta kayıtlıysa, yeni kod gönderildi.")
 
-        profile = result.data
+        profile = rows[0]
 
         # Zaten doğrulanmışsa yeni kod gönderme
         if profile.get("is_verified"):
