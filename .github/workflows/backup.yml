@@ -1,0 +1,70 @@
+name: Database Backup
+
+on:
+  # Her Pazartesi 03:00 UTC (Türkiye 06:00) — düşük trafik zamanı
+  schedule:
+    - cron: "0 3 * * 1"
+  # Manuel tetikleme (test + acil backup)
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Yedekleme sebebi (log için)"
+        required: false
+        default: "manual"
+
+jobs:
+  backup:
+    name: PostgreSQL Backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+
+      - name: Verify connection
+        run: |
+          echo "Testing DB connection..."
+          psql "$DB_URL" -c "SELECT version();" -c "SELECT COUNT(*) AS table_count FROM information_schema.tables WHERE table_schema='public';"
+
+      - name: Run backup
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+        run: bash scripts/backup_db.sh
+
+      - name: Verify backup integrity
+        run: |
+          echo "===Backup dosya bilgisi==="
+          ls -lh pymulakat-*.sql.gz | head
+          echo ""
+          echo "===İçerik önizleme (ilk 50 satır)==="
+          gunzip -c pymulakat-*.sql.gz | head -50
+          echo ""
+          echo "===SQL syntax validation (basit)==="
+          # Backup geçerli SQL mi? Tablo create count
+          gunzip -c pymulakat-*.sql.gz | grep -c "^CREATE TABLE" | xargs -I {} echo "Tablolar: {}"
+
+      - name: Upload as artifact (90 gün retention)
+        uses: actions/upload-artifact@v4
+        with:
+          name: pymulakat-db-backup-${{ github.run_id }}
+          path: pymulakat-*.sql.gz
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## DB Backup Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger:** ${{ github.event_name }} ${{ github.event.schedule || github.event.inputs.reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Size:** $(ls -lh pymulakat-*.sql.gz | awk '{print $5}')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Artifact:** pymulakat-db-backup-${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Retention:** 90 gün" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📥 Artifact indirme: Actions → run → Artifacts" >> $GITHUB_STEP_SUMMARY
