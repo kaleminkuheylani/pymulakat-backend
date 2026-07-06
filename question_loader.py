@@ -28,26 +28,10 @@ except Exception as _e:
     print(f"⚠️ QUESTIONS-v3 fallback yuklenemedi: {_e}")
 
 
-# v4 fallback (JSON’dan, Q-v3 + Q-v4 birleşik, 232+ soru)
-# JSON kullaniyoruz cunku QUESTIONS-v4.py dataclass syntax hatasi icerebiliyor.
-QUESTIONS_V4 = []
-try:
-    import json as _json
-    _v4_path = _os.path.join(_os.path.dirname(__file__), "data", "QUESTIONS-v4.json")
-    if _os.path.exists(_v4_path):
-        with open(_v4_path, encoding="utf-8") as _f:
-            _v4_data = _json.load(_f)
-        # Dict → dataclass cevirme (Question dataclass yoksa SimpleNamespace kullan)
-        from types import SimpleNamespace
-        for _item in _v4_data:
-            QUESTIONS_V4.append(SimpleNamespace(**_item))
-        print(f"✅ QUESTIONS-v4 (JSON) yuklendi: {len(QUESTIONS_V4)} soru")
-except Exception as _e:
-    print(f"⚠️ QUESTIONS-v4 (JSON) yuklenemedi: {_e}")
-
-
-# Combined fallback list (Q-V3 + Q-V4, 232+ soru, legacy_id unique)
-QUESTIONS_COMBINED = list(QUESTIONS_V3) + list(QUESTIONS_V4)
+# v4 fallback JSON (Q-V4 merged later via DB migration; in-memory fallback minimal)
+# NOTE: Railway runtime icin SADE yapiyoruz — Q-V4 import'i DB migration sonrasina birakildi
+QUESTIONS_V4 = []  # Bos — Q-V4 sadece DB'de olacak (migrate_to_db.py ile)
+QUESTIONS_COMBINED = list(QUESTIONS_V3)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -122,36 +106,15 @@ def _load_from_db() -> Optional[List[Question]]:
 
 
 def load_questions() -> List[Question]:
-    """DB-first + Q-V4 merge + fallback.
+    """DB-first, fallback Q-V3 (82 soru). Railway runtime icin SADE.
 
-    Akış:
-      1. DB'den yukle (Q-V3 82 soru + DB'ye migrate edilmiş Q-V4)
-      2. DB'de olmayan Q-V4 sorularini JSON fallback'ten ekle (merge)
-      3. Hicbiri yoksa QUESTIONS_COMBINED fallback
-
-    Boylece:
-      - DB'de 82 Q-V3 var → toplam 82 + (JSON'da 146 - DB'de zaten olanlar) = 228 soru
-      - DB bossa → 232+ soru fallback
- ;    """
+    Q-V4 sadece DB'de (migrate_to_db.py ile). Runtime'da JSON import yok — Railway'de
+    başarısız deploy riski azalır, complexity düsük.
+    """
     db_loaded = _load_from_db()
-
     if db_loaded is not None and len(db_loaded) > 0:
-        # DB'de en az 1 soru var → DB temel al, Q-V4 JSON fallback merge et
-        db_ids = {q.id for q in db_loaded}
-        db_slugs = {getattr(q, "slug", None) for q in db_loaded if getattr(q, "slug", None)}
-        merged = list(db_loaded)
-        added_from_json = 0
-        for v4_q in QUESTIONS_V4:
-            # Legacy_id veya slug zaten DB'de varsa skip (DB oncelikli)
-            if v4_q.id in db_ids:
-                continue
-            if getattr(v4_q, "slug", None) in db_slugs:
-                continue
-            merged.append(v4_q)
-            db_ids.add(v4_q.id)
-            added_from_json += 1
-        if added_from_json > 0:
-            print(f"📊 DB-MERGE: {len(db_loaded)} soru DB'den + {added_from_json} Q-V4 JSON'dan = {len(merged)} toplam")
+        return db_loaded
+    return QUESTIONS_COMBINED
         return sorted(merged, key=lambda x: x.id)
 
     # DB boş veya hata → combined fallback (Q-V3 + Q-V4 = 232+)
