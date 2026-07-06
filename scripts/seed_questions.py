@@ -80,25 +80,62 @@ def apply_seo(questions: List[Any]) -> List[Any]:
 
 
 def q_to_db_row(q) -> Dict[str, Any]:
-    """Question dataclass → Supabase row dict."""
+    """Question dataclass → Supabase row dict.
+
+    Tüm list/tuple/set alanları JSONB-safe list'e normalizasyon edilir.
+    set type JSON serializable değildir (Postgres JSONB reject eder).
+    """
+    def _listify(value):
+        """None/list/tuple/set → list; düz value → [value]."""
+        if value is None:
+            return []
+        if isinstance(value, (list, tuple)):
+            return list(value)
+        if isinstance(value, set):
+            return list(value)
+        return [value]
+
     return {
         "legacy_id": q.id,
         "title": q.title,
         "category": q.category,
         "level": q.level,
-        "description": getattr(q, "description", ""),
+        "description": getattr(q, "description", "") or "",
         "starter_code": getattr(q, "starter_code", None),
-        "test_cases": getattr(q, "test_cases", []) or [],
-        "hints": getattr(q, "hints", []) or [],
+        "test_cases": _listify(getattr(q, "test_cases", []) or []),
+        "hints": _listify(getattr(q, "hints", []) or []),
         "slug": getattr(q, "slug", None),
         "explanation": getattr(q, "explanation", None),
         "complexity": getattr(q, "complexity", None),
-        "related_concepts": getattr(q, "related_concepts", []) or [],
-        "related_question_ids": getattr(q, "related_question_ids", []) or [],
-        "tags": getattr(q, "tags", []) or [],
+        "related_concepts": _listify(getattr(q, "related_concepts", []) or []),
+        "related_question_ids": _listify(getattr(q, "related_question_ids", []) or []),
+        "tags": _listify(getattr(q, "tags", []) or []),
         "tutorial_slug": getattr(q, "tutorial_slug", None),
         "is_published": True,
     }
+
+
+def make_json_safe(obj: Any) -> Any:
+    """Supabase insert için JSONB-safe recursive normalizasyon.
+
+    set/tuple → list
+    bytes → str (decode attempt)
+    Dict/list recursive traverse.
+    """
+    if isinstance(obj, set):
+        return [make_json_safe(x) for x in obj]
+    if isinstance(obj, tuple):
+        return [make_json_safe(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: make_json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [make_json_safe(x) for x in obj]
+    if isinstance(obj, bytes):
+        try:
+            return obj.decode("utf-8")
+        except Exception:
+            return str(obj)
+    return obj
 
 
 def get_existing_slugs(sb) -> set:
@@ -244,13 +281,15 @@ def main():
     failed = []
     for i in range(0, len(to_insert), BATCH):
         batch = to_insert[i:i + BATCH]
+        # JSONB-safe normalize (set → list)
+        safe_batch = [make_json_safe(r) for r in batch]
         try:
-            sb.table("questions").insert(batch).execute()
-            inserted += len(batch)
-            log.info("  ✓ Batch %d: %d soru eklendi", i // BATCH + 1, len(batch))
+            sb.table("questions").insert(safe_batch).execute()
+            inserted += len(safe_batch)
+            log.info("  ✓ Batch %d: %d soru eklendi", i // BATCH + 1, len(safe_batch))
         except Exception as e:
             log.error("  ✗ Batch %d hata: %s", i // BATCH + 1, e)
-            failed.extend(batch)
+            failed.extend(safe_batch)
 
     log.info("=" * 60)
     log.info("✅ Seed tamamlandı: %d/%d eklendi", inserted, len(to_insert))
