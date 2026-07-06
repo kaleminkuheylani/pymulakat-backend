@@ -176,9 +176,16 @@ def _generate_6_digit_code() -> str:
 def _ensure_profile(sb_admin, user_id: str, email: str, username: str) -> bool:
     """Profile oluştur (idempotent)."""
     try:
-        existing = sb_admin.table("profiles").select("id").eq("id", user_id).maybe_single().execute()
-        if existing.data:
+        # maybe_single() yeni SDK'da None dönebiliyor → limit(1)+try/except kullanıyoruz
+        try:
+            existing = sb_admin.table("profiles").select("id").eq("id", user_id).limit(1).execute()
+            rows = (existing.data if existing and getattr(existing, "data", None) else []) or []
+        except Exception:
+            rows = []
+
+        if rows:
             return True
+
         sb_admin.table("profiles").insert({
             "id": user_id,
             "username": username,
@@ -210,15 +217,20 @@ def _store_verification_code(sb_admin, email: str, code: str) -> bool:
 def _verify_code(sb_admin, email: str, code: str, consume: bool = True) -> bool:
     """Kodu kontrol et. consume=True ise başarılıysa kod silinir."""
     try:
-        result = sb_admin.table("profiles").select(
-            "verification_code, verification_code_expires_at, verification_attempts"
-        ).eq("email", email).maybe_single().execute()
+        # maybe_single() yeni SDK'da None dönebiliyor → limit(1)+try/except kullanıyoruz
+        try:
+            result = sb_admin.table("profiles").select(
+                "verification_code, verification_code_expires_at, verification_attempts"
+            ).eq("email", email).limit(1).execute()
+            rows = (result.data if result and getattr(result, "data", None) else []) or []
+        except Exception:
+            rows = []
 
-        if not result.data:
+        if not rows:
             logger.warning(f"Verify fail: profile not found for {email}")
             return False
 
-        profile = result.data
+        profile = rows[0]
         stored_code = str(profile.get("verification_code", "") or "")
         attempts = int(profile.get("verification_attempts", 0))
 
@@ -470,8 +482,10 @@ async def login(request: Request, payload: LoginPayload):
         # 2. Profile bilgisi
         profile = None
         try:
-            result = sb_admin.table("profiles").select("*").eq("id", user.id).maybe_single().execute()
-            profile = result.data
+            # maybe_single() yeni SDK'da None dönebiliyor → limit(1)+try/except kullanıyoruz
+            result = sb_admin.table("profiles").select("*").eq("id", user.id).limit(1).execute()
+            rows = (result.data if result and getattr(result, "data", None) else []) or []
+            profile = rows[0] if rows else None
         except Exception as e:
             logger.warning(f"Profile fetch error: {e}")
 
@@ -523,8 +537,10 @@ async def get_me(request: Request):
 
         profile = None
         try:
-            result = sb_admin.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
-            profile = result.data
+            # maybe_single() yeni SDK'da None dönebiliyor → limit(1)+try/except kullanıyoruz
+            result = sb_admin.table("profiles").select("*").eq("id", user_id).limit(1).execute()
+            rows = (result.data if result and getattr(result, "data", None) else []) or []
+            profile = rows[0] if rows else None
         except Exception as e:
             logging.warning("me.profile.fetch_failed user=%s err=%s", user_id, e)
 
