@@ -17,8 +17,17 @@ set -euo pipefail
 eval "$(python3 <<PYEOF
 from urllib.parse import urlparse
 import shlex
+import socket
 u = urlparse("${DB_URL}")
-print(f"export PGHOST={shlex.quote(u.hostname or '')}")
+hostname = u.hostname or ''
+# GitHub Actions runner IPv6 unreachable → IPv4'e zorla
+try:
+    ipv4 = socket.gethostbyname(hostname)
+    print(f"# Resolved {hostname} → {ipv4} (IPv4)", file=__import__('sys').stderr)
+    hostname = ipv4
+except socket.gaierror:
+    print(f"# {hostname} IPv4 resolve failed, using as-is", file=__import__('sys').stderr)
+print(f"export PGHOST={shlex.quote(hostname)}")
 print(f"export PGPORT={u.port or 5432}")
 print(f"export PGUSER={shlex.quote(u.username or '')}")
 print(f"export PGPASSWORD={shlex.quote(u.password or '')}")

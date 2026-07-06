@@ -42,7 +42,13 @@ jobs:
             export PGHOST="${BASH_REMATCH[3]}"
             export PGPORT="${BASH_REMATCH[4]}"
             export PGDATABASE="${BASH_REMATCH[5]}"
-            echo "Parsed: $PGUSER@$PGHOST:$PGPORT/$PGDATABASE"
+            # IPv4 zorla (GitHub Actions runner IPv6 unreachable)
+            IPV4=$(getent ahostsv4 "$PGHOST" | awk '{print $1}' | head -1)
+            if [ -n "$IPV4" ]; then
+              echo "Resolved $PGHOST → $IPV4 (IPv4)"
+              export PGHOST="$IPV4"
+            fi
+            echo "Final: $PGUSER@$PGHOST:$PGPORT/$PGDATABASE"
           else
             echo "DB_URL regex parse edilemedi, raw URI deneniyor"
           fi
