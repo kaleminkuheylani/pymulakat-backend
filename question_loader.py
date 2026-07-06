@@ -122,10 +122,39 @@ def _load_from_db() -> Optional[List[Question]]:
 
 
 def load_questions() -> List[Question]:
-    """DB-first, fallback olarak Q-V3 + Q-V4 birleşik liste (232+ soru)."""
+    """DB-first + Q-V4 merge + fallback.
+
+    Akış:
+      1. DB'den yukle (Q-V3 82 soru + DB'ye migrate edilmiş Q-V4)
+      2. DB'de olmayan Q-V4 sorularini JSON fallback'ten ekle (merge)
+      3. Hicbiri yoksa QUESTIONS_COMBINED fallback
+
+    Boylece:
+      - DB'de 82 Q-V3 var → toplam 82 + (JSON'da 146 - DB'de zaten olanlar) = 228 soru
+      - DB bossa → 232+ soru fallback
+ ;    """
     db_loaded = _load_from_db()
-    if db_loaded is not None:
-        return db_loaded
+
+    if db_loaded is not None and len(db_loaded) > 0:
+        # DB'de en az 1 soru var → DB temel al, Q-V4 JSON fallback merge et
+        db_ids = {q.id for q in db_loaded}
+        db_slugs = {getattr(q, "slug", None) for q in db_loaded if getattr(q, "slug", None)}
+        merged = list(db_loaded)
+        added_from_json = 0
+        for v4_q in QUESTIONS_V4:
+            # Legacy_id veya slug zaten DB'de varsa skip (DB oncelikli)
+            if v4_q.id in db_ids:
+                continue
+            if getattr(v4_q, "slug", None) in db_slugs:
+                continue
+            merged.append(v4_q)
+            db_ids.add(v4_q.id)
+            added_from_json += 1
+        if added_from_json > 0:
+            print(f"📊 DB-MERGE: {len(db_loaded)} soru DB'den + {added_from_json} Q-V4 JSON'dan = {len(merged)} toplam")
+        return sorted(merged, key=lambda x: x.id)
+
+    # DB boş veya hata → combined fallback (Q-V3 + Q-V4 = 232+)
     return QUESTIONS_COMBINED
 
 
