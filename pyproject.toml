@@ -20,6 +20,26 @@ dependencies = [
     "gunicorn>=21.2.0"
 ]
 
+[tool.ruff]
+# Legacy code'u tolerant — yeni dosyalarda strict (refactor sırasında düzelt)
+line-length = 120
+target-version = "py311"
+extend-exclude = [
+    "data/QUESTIONS*.py",  # 70+ soru dataclass listesi
+    "data/SEO_CONTENT.py",  # markdown content
+    ".venv",
+    "scripts/migrate_to_db.py",  # one-shot migration
+]
+
+[tool.ruff.lint]
+# Sadece temel syntax + import hataları (legacy ihlalleri ignore)
+select = ["E", "F", "I", "B"]
+ignore = [
+    "E501",  # line too long (data dosyaları uzun)
+    "B008",  # function call in default argument (FastAPI Depends pattern)
+    "B904",  # raise from exception (legacy code)
+]
+
 [tool.uv]
 dev-dependencies = [
     "pytest>=8.0.0",
