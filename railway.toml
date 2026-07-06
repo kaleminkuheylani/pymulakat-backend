@@ -1,10 +1,13 @@
-# Railway cron — minimized usage
-# Gunde 1 sitemap refresh yeterli (Google zaten periyodik tarar).
-# Saat 03:00 UTC = Turkiye 06:00 saatleri (sabah), dusuk trafik.
+# Railway cron config
+# Sitemap icin backend degil, Next.js native sitemap kullanilacak.
+# Bu yuzden sitemap-refresh cron yok.
 
-[[crons]]
-name = "sitemap-refresh"
-schedule = "0 3 * * *"  # Her gece 03:00 UTC (Turkiye 06:00)
-command = "curl -X POST ${RAILWAY_PUBLIC_DOMAIN}/admin/cron/refresh-sitemap -H 'X-Cron-Secret: ${CRON_SECRET}'"
-path = "/admin/cron/refresh-sitemap"
-method = "POST"
+# KVKK retention: pg_cron ile Supabase'de yapiyoruz
+# https://supabase.com/docs/guides/database/postgres-cron
+# Bu yuzden Railway'de manuel cron trigger gerekmez.
+
+# Ornek: Gelecekte database backups icin
+# [[crons]]
+# name = "db-backup"
+# schedule = "0 2 * * *"
+# command = "echo 'Backup handled by Supabase automatic'"
