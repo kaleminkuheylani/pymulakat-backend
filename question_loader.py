@@ -115,10 +115,6 @@ def load_questions() -> List[Question]:
     if db_loaded is not None and len(db_loaded) > 0:
         return db_loaded
     return QUESTIONS_COMBINED
-        return sorted(merged, key=lambda x: x.id)
-
-    # DB boş veya hata → combined fallback (Q-V3 + Q-V4 = 232+)
-    return QUESTIONS_COMBINED
 
 
 def to_public_dict(q: Any) -> Dict:
