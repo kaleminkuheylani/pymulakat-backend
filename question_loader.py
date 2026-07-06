@@ -1,37 +1,50 @@
 # backend/question_loader.py
-# DB-first + QUESTIONS.py fallback mimarisi
+# DB-only source of truth.
 #
-# Akış:
-#   1. load_questions() → Supabase 'questions' tablosunu dene
-#   2. DB'de soru varsa ve hata yoksa → DB'den dön
-#   3. DB boş/hata → QUESTIONS.py fallback
+# Sorular SADECE Supabase 'questions' tablosundan okunur.
+# Kod içinde veri yok — eklemek/silmek için DB kullan, yoksa seed script'i çalıştır:
+#   python scripts/seed_questions.py
 #
-# Frontend aynı Question dataclass'ını alır, API contract değişmez.
+# API contract aynı: Question dataclass + to_public_dict.
 
 import os
 from typing import Optional, List, Dict, Any
-from data.QUESTIONS import QUESTIONS, Question
-
-# v3 fallback (daha zengin: SEO_CONTENT zenginlestirilmis 70 soru)
-# Dynamic import: QUESTIONS-v3.py dosya adi dash (-) iceriyor
-import importlib.util as _importlib_util
-import os as _os
-QUESTIONS_V3 = QUESTIONS  # Fallback degisken
-try:
-    _v3_path = _os.path.join(_os.path.dirname(__file__), "data", "QUESTIONS-v3.py")
-    if _os.path.exists(_v3_path):
-        _spec = _importlib_util.spec_from_file_location("data_questions_v3_dynamic", _v3_path)
-        _v3_mod = _importlib_util.module_from_spec(_spec)
-        _spec.loader.exec_module(_v3_mod)
-        QUESTIONS_V3 = _v3_mod.QUESTIONS
-except Exception as _e:
-    print(f"⚠️ QUESTIONS-v3 fallback yuklenemedi: {_e}")
+from dataclasses import dataclass, field
 
 
 # ═══════════════════════════════════════════════════════════════
-# Kategori meta (DB'den gelirse de fallback olarak kullanılır)
+# ─── Question dataclass (sadece tip tanımı, veri yok) ──────
 # ═══════════════════════════════════════════════════════════════
-CATEGORY_META = {
+
+@dataclass
+class Question:
+    id: int
+    title: str
+    category: str = ""
+    level: str = "beginner"
+    description: str = ""
+    starter_code: Optional[str] = None
+    test_cases: List[Dict] = field(default_factory=list)
+    hints: List[str] = field(default_factory=list)
+    slug: Optional[str] = None
+    related_question_ids: List[int] = field(default_factory=list)
+    explanation: Optional[str] = None
+    complexity: Optional[str] = None
+    tags: List[str] = field(default_factory=list)
+    function_name: Optional[str] = None
+    topic: Optional[str] = None
+    tutorial_slug: Optional[str] = None
+    related_concepts: List[str] = field(default_factory=list)
+    meta_title: Optional[str] = None
+    meta_description: Optional[str] = None
+    meta_keywords: List[str] = field(default_factory=list)
+
+
+# ═══════════════════════════════════════════════════════════════
+# ─── Kategori meta (statik — DB'den kategori gelmezse UI label) ─
+# ═══════════════════════════════════════════════════════════════
+
+CATEGORY_META: Dict[str, Dict[str, str]] = {
     "python-basics": {"label": "Python Temelleri", "description": "Değişkenler, döngüler, koşullar, fonksiyonlar, string islemleri.", "icon": "🐍"},
     "strings": {"label": "String İşlemleri", "description": "(deprecated — python-basics altinda)", "icon": "🔤"},
     "data-structures": {"label": "Veri Yapıları", "description": "List, dict, set, tuple, frozenset, deque, heapq, generators. Mulakat prensibi: veri yapisini kullanici secer!", "icon": "🗂️"},
@@ -55,19 +68,21 @@ CATEGORY_META = {
 }
 
 
-def _db_row_to_question(row: dict) -> Question:
-    """Supabase questions row -> Question dataclass.
+# ═══════════════════════════════════════════════════════════════
+# ─── DB helpers ────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════
 
-    id olarak once legacy_id (eski interviews.id ile uyumlu), yoksa yeni row id kullan.
-    Bu sayede interview_attempts.question_id (legacy_id) direkt DB'den cozulur.
+def _row_to_question(row: dict) -> Question:
+    """Supabase row → Question dataclass.
+
+    id olarak önce legacy_id (eski interviews.id uyumlu), yoksa yeni row id.
     """
-    question_id = row.get("legacy_id") or row["id"]
     return Question(
-        id=question_id,
-        title=row["title"],
-        category=row["category"],
+        id=row.get("legacy_id") or row["id"],
+        title=row.get("title", ""),
+        category=row.get("category", ""),
         level=row.get("level", "beginner"),
-        description=row.get("description", ""),
+        description=row.get("description", "") or "",
         starter_code=row.get("starter_code"),
         test_cases=row.get("test_cases", []) or [],
         hints=row.get("hints", []) or [],
@@ -76,35 +91,60 @@ def _db_row_to_question(row: dict) -> Question:
         explanation=row.get("explanation"),
         complexity=row.get("complexity"),
         tags=row.get("tags", []) or [],
+        function_name=row.get("function_name"),
+        topic=row.get("topic"),
+        tutorial_slug=row.get("tutorial_slug"),
+        related_concepts=row.get("related_concepts", []) or [],
+        meta_title=row.get("meta_title"),
+        meta_description=row.get("meta_description"),
+        meta_keywords=row.get("meta_keywords", []) or [],
     )
 
 
-def _load_from_db() -> Optional[List[Question]]:
-    """Supabase 'questions' tablosundan yükle. Hata durumunda None döndür.
+# In-process cache: aynı request içinde N+1 query önleme
+_CACHE: Dict[str, Any] = {"data": None, "ts": 0.0}
+_CACHE_TTL_SEC = int(os.getenv("QUESTION_CACHE_TTL", "60"))
 
-    Dönen Question.id = legacy_id (eski interviews.id) ki interview_attempts
-    foreign key reference'ı otomatik çalışsın.
-    """
+
+def _db_questions() -> List[Question]:
+    """Tüm published soruları DB'den çek (60s in-memory cache)."""
+    import time
+    now = time.time()
+    if _CACHE["data"] is not None and (now - _CACHE["ts"]) < _CACHE_TTL_SEC:
+        return _CACHE["data"]
+
     try:
         from supabase_client import get_supabase
-        supabase = get_supabase()
-        # Pagination: supabase default 1000 limit, biz 500 yeterli
-        response = supabase.table("questions").select("*").eq("is_published", True).execute()
-        if response.data and len(response.data) > 0:
-            questions = [_db_row_to_question(row) for row in response.data]
-            return sorted(questions, key=lambda x: x.id)
-        return None  # DB boş, fallback'e düş
+        sb = get_supabase()
+        # Pagination gerekirse eklenebilir; şu an <500 soru var
+        result = sb.table("questions").select("*").eq("is_published", True).execute()
+        rows = result.data or []
+        questions = [_row_to_question(r) for r in rows]
+        questions.sort(key=lambda x: x.id)
+        _CACHE["data"] = questions
+        _CACHE["ts"] = now
+        return questions
     except Exception as e:
-        pass  # silently fallback
-        return None
+        # DB erişilemez → cache varsa onu kullan, yoksa boş dön (UI boş liste gösterir)
+        if _CACHE["data"] is not None:
+            return _CACHE["data"]
+        print(f"⚠️ DB'den soru yüklenemedi ve cache yok: {e}")
+        return []
 
+
+def invalidate_cache():
+    """Cache'i temizle (seed veya admin update sonrası)."""
+    _CACHE["data"] = None
+    _CACHE["ts"] = 0.0
+
+
+# ═══════════════════════════════════════════════════════════════
+# ─── Public API ────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════
 
 def load_questions() -> List[Question]:
-    """DB-first, fallback olarak QUESTIONS-v3.py (zenginlestirilmis)."""
-    db_loaded = _load_from_db()
-    if db_loaded is not None:
-        return db_loaded
-    return QUESTIONS_V3
+    """Sadece DB'den soru listesi. Veri eklemek için scripts/seed_questions.py kullan."""
+    return _db_questions()
 
 
 def to_public_dict(q: Any) -> Dict:
@@ -127,15 +167,8 @@ def filter_questions(
     level: Optional[str] = None,
     search: Optional[str] = None,
     tag: Optional[str] = None,
-) -> List[Any]:
-    """
-    Soruları filtrele:
-    - category: kategori slug
-    - level: beginner / intermediate / advanced
-    - search: başlık + açıklamada arama
-    - tag: etiket
-    """
-    questions = load_questions()
+) -> List[Question]:
+    questions = _db_questions()
     filtered = questions
 
     if category:
@@ -172,20 +205,18 @@ def filter_questions(
     return filtered
 
 
-def get_question(question_id: int, category: Optional[str] = None) -> Optional[Any]:
-    """
-    ID veya slug'a göre tek Question getirir.
-    Önce DB'de slug ile ara, sonra source_id ile, sonra QUESTIONS.py.
-    """
-    questions = load_questions()
+def get_question(question_id, category: Optional[str] = None) -> Optional[Question]:
+    """ID veya slug ile tek Question getir."""
+    questions = _db_questions()
+    target = str(question_id)
 
-    # 1. Slug ile ara (DB-only, slug unique)
-    slug_match = next((q for q in questions if getattr(q, "slug", None) == str(question_id)), None)
+    # 1. Slug match (canonical URL)
+    slug_match = next((q for q in questions if getattr(q, "slug", None) == target), None)
     if slug_match:
         if category is None or getattr(slug_match, "category", None) == category:
             return slug_match
 
-    # 2. ID ile ara (legacy + DB source_id)
+    # 2. ID match (legacy interviews.id uyumlu)
     for q in questions:
         if q.id != question_id:
             continue
@@ -195,9 +226,8 @@ def get_question(question_id: int, category: Optional[str] = None) -> Optional[A
     return None
 
 
-def get_question_by_slug(slug: str, category: Optional[str] = None) -> Optional[Any]:
-    """Slug ile soru getir (DB-first)."""
-    questions = load_questions()
+def get_question_by_slug(slug: str, category: Optional[str] = None) -> Optional[Question]:
+    questions = _db_questions()
     for q in questions:
         if getattr(q, "slug", None) == slug:
             if category is None or getattr(q, "category", None) == category:
@@ -206,8 +236,8 @@ def get_question_by_slug(slug: str, category: Optional[str] = None) -> Optional[
 
 
 def get_categories() -> List[Dict]:
-    """Kategorileri metadata ile döndür."""
-    questions = load_questions()
+    """Kategorileri metadata + soru sayısı ile döndür."""
+    questions = _db_questions()
 
     unique_slugs = []
     for q in questions:
@@ -230,5 +260,5 @@ def get_categories() -> List[Dict]:
 
 
 def get_levels() -> List[str]:
-    questions = load_questions()
-    return sorted(list({getattr(q, "level", None) for q in questions if getattr(q, "level", None)}))
+    questions = _db_questions()
+    return sorted({getattr(q, "level", None) for q in questions if getattr(q, "level", None)})

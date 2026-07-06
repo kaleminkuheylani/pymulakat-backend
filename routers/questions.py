@@ -1,28 +1,20 @@
 # backend/routers/questions.py
-# /api/v2/questions — RESTful, envelope, RFC uyumlu pagination
-# FIXED VERSION — test_cases güvenli normalize
+# /api/v2/questions — İSKELET (4 endpoint)
+#
+# Tüm soru verisi DB'den (question_loader üzerinden).
+# Kod içinde veri yok, dosya fallback yok.
 
 import logging
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 from supabase import Client
-from question_loader import filter_questions, get_question
 
-def slugify_title_local(text: str) -> str:
-    """Basit slugify (lib.questionMeta yoksa fallback)."""
-    import re, unicodedata
-    s = text.lower()
-    tr_map = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
-    s = s.translate(tr_map)
-    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
-    s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
-    return s[:80] or "question"
+from question_loader import filter_questions, get_question, get_question_by_slug
 from dependencies import get_current_user
 from supabase_client import get_supabase
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter(prefix="/api/v2/questions", tags=["questions-v2"])
 
 
@@ -40,23 +32,21 @@ class QuestionOut(BaseModel):
     tags: list[str] = Field(default_factory=list)
     starter_code: Optional[str] = None
     test_count: int = 0
-    test_cases: list[dict] = Field(default_factory=list, description="Detay endpoint'te dolu")
+    test_cases: list[dict] = Field(default_factory=list)
     function_name: Optional[str] = None
     hints: list[str] = Field(default_factory=list)
-    # SEO alanları
     explanation: Optional[str] = None
     complexity: Optional[str] = None
     related_concepts: list[str] = Field(default_factory=list)
     related_question_ids: list[int] = Field(default_factory=list)
     tutorial_slug: Optional[str] = None
-    slug: Optional[str] = None  # Canonical URL slug
+    slug: Optional[str] = None
     meta_title: Optional[str] = None
     meta_description: Optional[str] = None
     meta_keywords: list[str] = Field(default_factory=list)
-    related_questions: list[dict] = Field(default_factory=list)  # Server-side prefetch
 
 
-class QuestionTestsResponse(BaseModel):
+class TestsResponse(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     data: Dict[str, Any]
 
@@ -73,8 +63,6 @@ class PaginationMeta(BaseModel):
     total_pages: int
     has_next: bool
     has_prev: bool
-    next_page: Optional[int] = None
-    prev_page: Optional[int] = None
 
 
 class QuestionsListResponse(BaseModel):
@@ -88,11 +76,11 @@ class AllQuestionsResponse(BaseModel):
 
 
 # ═══════════════════════════════════════════════════════════════
-# ─── Helpers — dataclass / dict dual-handling ─────────────
+# ─── Helpers ──────────────────────────────────────────────
 # ═══════════════════════════════════════════════════════════════
 
 def _q_get(q, key, default=None):
-    """Hem dict hem dataclass için güvenli erişim."""
+    """Hem dataclass hem dict için güvenli erişim."""
     if q is None:
         return default
     if isinstance(q, dict):
@@ -100,21 +88,25 @@ def _q_get(q, key, default=None):
     return getattr(q, key, default)
 
 
-def _to_question_out(q, include_starter=False):
+def _extract_function_name(starter_code: Optional[str]) -> str:
+    if not starter_code:
+        return "solution"
+    for line in starter_code.splitlines():
+        line = line.strip()
+        if line.startswith("def "):
+            return line.split("(")[0].replace("def ", "").strip()
+    return "solution"
+
+
+def _to_question_out(q, include_starter: bool = False) -> QuestionOut:
     test_cases = _q_get(q, "test_cases", []) or []
-    # Slug fallback: QUESTIONS.py'de slug None ise title'dan slugify et
-    _slug = _q_get(q, "slug")
-    if not _slug:
-        _slug = slugify_title_local(_q_get(q, "title", "") or "")
-    else:
-        _slug = str(_slug)
     if not isinstance(test_cases, list):
         test_cases = []
     starter_code = _q_get(q, "starter_code") if include_starter else None
     function_name = (
         _extract_function_name(starter_code)
         if include_starter and starter_code
-        else (_q_get(q, "function_name") or None)
+        else _q_get(q, "function_name") or None
     )
     return QuestionOut(
         id=_q_get(q, "id"),
@@ -129,114 +121,84 @@ def _to_question_out(q, include_starter=False):
         test_cases=test_cases if include_starter else [],
         function_name=function_name,
         hints=_q_get(q, "hints", []) or [],
-        explanation=_q_get(q, "explanation") or None,
-        complexity=_q_get(q, "complexity") or None,
+        explanation=_q_get(q, "explanation"),
+        complexity=_q_get(q, "complexity"),
         related_concepts=_q_get(q, "related_concepts", []) or [],
         related_question_ids=_q_get(q, "related_question_ids", []) or [],
         tutorial_slug=_q_get(q, "tutorial_slug"),
-        slug=_slug,
+        slug=str(_q_get(q, "slug") or _q_get(q, "id")),
         meta_title=_q_get(q, "meta_title"),
         meta_description=_q_get(q, "meta_description"),
         meta_keywords=_q_get(q, "meta_keywords", []) or [],
-        related_questions=[],  # Server-side prefetch (page.tsx'te doldurulur)
     )
 
 
-def _extract_function_name(starter_code):
-    if not starter_code:
-        return "solution"
-    for line in starter_code.splitlines():
-        line = line.strip()
-        if line.startswith("def "):
-            return line.split("(")[0].replace("def ", "").strip()
-    return "solution"
-
-
 # ═══════════════════════════════════════════════════════════════
-# ─── LIST — GET /api/v2/questions ──────────────────────────
+# ─── 1. LIST — GET /api/v2/questions ─────────────────────
 # ═══════════════════════════════════════════════════════════════
 
-@router.get("", response_model=QuestionsListResponse, responses={400: {"description": "Geçersiz sayfa"}})
+@router.get("", response_model=QuestionsListResponse)
 def list_questions(
     category: Optional[str] = Query(None),
     level: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     tag: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=500),
+    limit: int = Query(20, ge=1, le=100),
 ):
-    all_filtered = filter_questions(category=category, level=level, search=search, tag=tag)
-    total = len(all_filtered)
+    filtered = filter_questions(category=category, level=level, search=search, tag=tag)
+    total = len(filtered)
     total_pages = max(1, (total + limit - 1) // limit)
     if page > total_pages and total > 0:
-        raise HTTPException(400, f"Sayfa {page} mevcut değil.")
+        raise HTTPException(400, f"Sayfa {page} mevcut değil")
     offset = (page - 1) * limit
-    page_items = all_filtered[offset:offset + limit]
-    items = [_to_question_out(q, include_starter=False) for q in page_items]
+    page_items = filtered[offset:offset + limit]
     return QuestionsListResponse(
-        data=items,
+        data=[_to_question_out(q, include_starter=False) for q in page_items],
         meta=PaginationMeta(
             page=page, limit=limit, total=total, total_pages=total_pages,
             has_next=page < total_pages, has_prev=page > 1,
-            next_page=page + 1 if page < total_pages else None,
-            prev_page=page - 1 if page > 1 else None,
         ),
     )
 
 
 # ═══════════════════════════════════════════════════════════════
-# ─── ALL — GET /api/v2/questions/all ─────────────────────
+# ─── 2. ALL (minimal) — GET /api/v2/questions/all ─────────
 # ═══════════════════════════════════════════════════════════════
 
 @router.get("/all", response_model=AllQuestionsResponse)
-def list_all_questions(
-    category: Optional[str] = Query(None),
-    level: Optional[str] = Query(None),
-    search: Optional[str] = Query(None),
-    include_starter: bool = Query(False),
+def list_all_questions():
+    """Slug listesi için minimal payload (canonical URL üretimi)."""
+    filtered = filter_questions()
+    items = [_to_question_out(q, include_starter=False) for q in filtered]
+    return AllQuestionsResponse(data=items, total=len(items))
+
+
+# ═══════════════════════════════════════════════════════════════
+# ─── 3. DETAIL — GET /api/v2/questions/by-slug/{category}/{slug}
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/by-slug/{category}/{slug}", response_model=QuestionOut)
+def get_question_by_slug_endpoint(
+    category: str,
+    slug: str,
+    include_starter: bool = Query(True),
 ):
-    all_filtered = filter_questions(category=category, level=level, search=search)
-    items = all_filtered[:500]
-    return AllQuestionsResponse(
-        data=[_to_question_out(q, include_starter=include_starter) for q in items],
-        total=len(items),
-    )
-
-
-# ═══════════════════════════════════════════════════════════════
-# ─── DETAIL — GET /api/v2/questions/{id} ───────────────────
-# ═══════════════════════════════════════════════════════════════
-
-@router.get("/{question_id}", response_model=QuestionOut, responses={404: {"description": "Soru bulunamadı"}})
-def get_question_detail(question_id: int, include_starter: bool = Query(True)):
-    q = get_question(question_id)
+    q = get_question_by_slug(slug, category=category)
     if not q:
-        raise HTTPException(404, f"Soru #{question_id} bulunamadı")
-    q = _with_full_test_cases(q, include_starter=include_starter)
+        raise HTTPException(404, f"{category}/{slug} bulunamadı")
     return _to_question_out(q, include_starter=include_starter)
 
 
-def _with_full_test_cases(q, include_starter: bool = True):
-    """Detay endpoint — test_cases ve starter_code her zaman donsun."""
-    # zaten getirilmis — sadece return
-    return q
-
-
-# ═══════════════════════════════════════════════════════════════
-# ─── TESTS — GET /api/v2/questions/{id}/tests ─────────────
-# ═══════════════════════════════════════════════════════════════
-
-@router.get("/{question_id}/tests", response_model=QuestionTestsResponse)
-def get_question_tests(question_id: int):
-    """Test caseleri herkese acik — misafir de okuyabilir (kod calistirma login gerektirir)."""
-    q = get_question(question_id)
+@router.get("/by-slug/{category}/{slug}/tests", response_model=TestsResponse)
+def get_question_tests_by_slug(category: str, slug: str):
+    q = get_question_by_slug(slug, category=category)
     if not q:
-        raise HTTPException(404, f"Soru #{question_id} bulunamadı")
+        raise HTTPException(404, f"{category}/{slug} bulunamadı")
 
     starter_code = _q_get(q, "starter_code", "") or ""
     test_cases_raw = _q_get(q, "test_cases", []) or []
 
-    # ✅ Güvenli normalize — her test case'i dict'e çevir
     safe_tests: List[Dict[str, Any]] = []
     if isinstance(test_cases_raw, list):
         for tc in test_cases_raw:
@@ -246,42 +208,41 @@ def get_question_tests(question_id: int):
                     "expected": tc.get("expected"),
                     "description": tc.get("description", ""),
                 })
-            else:
-                # Beklenmedik tip — string/object — olduğu gibi geçir
-                safe_tests.append({"input": tc, "expected": None})
 
-    function_name = _extract_function_name(starter_code) if starter_code else "solution"
-
-    return QuestionTestsResponse(data={
+    return TestsResponse(data={
         "question_id": _q_get(q, "id"),
         "title": _q_get(q, "title", ""),
-        "function_name": function_name,
+        "function_name": _q_get(q, "function_name") or _extract_function_name(starter_code),
         "test_cases": safe_tests,
     })
 
 
 # ═══════════════════════════════════════════════════════════════
-# ─── PROGRESS — GET /api/v2/questions/{id}/progress ───────
+# ─── 4. PROGRESS — GET /api/v2/questions/by-slug/{category}/{slug}/progress
 # ═══════════════════════════════════════════════════════════════
 
-@router.get("/{question_id}/progress", response_model=ProgressResponse)
-def get_question_progress(
-    question_id: int,
+@router.get("/by-slug/{category}/{slug}/progress", response_model=ProgressResponse)
+def get_question_progress_by_slug(
+    category: str,
+    slug: str,
     user=Depends(get_current_user),
     sb: Client = Depends(get_supabase),
 ):
+    q = get_question_by_slug(slug, category=category)
+    if not q:
+        raise HTTPException(404, f"{category}/{slug} bulunamadı")
+    question_id = q.id
+
     try:
         result = (
             sb.table("interview_attempts")
-            .select("passed_tests, total_tests, success, execution_time_ms, hints_used, created_at")
+            .select("passed_tests,total_tests,success,execution_time_ms,hints_used,created_at")
             .eq("user_id", user["id"])
             .eq("question_id", question_id)
             .order("success", desc=True)
             .limit(1)
             .execute()
         )
-        if not result.data:
-            return ProgressResponse(data={"question_id": question_id, "best_attempt": None, "total_attempts": 0})
         total_attempts = (
             sb.table("interview_attempts")
             .select("id", count="exact")
@@ -289,148 +250,24 @@ def get_question_progress(
             .eq("question_id", question_id)
             .execute()
         ).count or 0
-        return ProgressResponse(data={"question_id": question_id, "best_attempt": result.data[0], "total_attempts": total_attempts})
+        best = result.data[0] if result.data else None
+        return ProgressResponse(data={
+            "question_id": question_id,
+            "best_attempt": best,
+            "total_attempts": total_attempts,
+        })
     except Exception as e:
-        logger.warning("progress.fetch.failed user=%s q=%s: %s", user.get("id") if user else None, question_id, e)
+        logger.warning("progress.failed user=%s q=%s: %s", user.get("id") if user else None, question_id, e)
         return ProgressResponse(data={"question_id": question_id, "best_attempt": None, "total_attempts": 0})
 
 
 # ═══════════════════════════════════════════════════════════════
-# ─── SLUG-BASED — GET /api/v2/questions/by-slug/{category}/{slug}
+# ─── Legacy ID fallback — GET /api/v2/questions/{id} ──────
 # ═══════════════════════════════════════════════════════════════
-# Frontend'in kullandığı canonical endpoint. DB-first + QUESTIONS.py fallback.
 
-@router.get("/by-slug/{category}/{slug}", response_model=QuestionOut, responses={404: {"description": "Soru bulunamadı"}})
-def get_question_by_slug_endpoint(category: str, slug: str, include_starter: bool = Query(True)):
-    """
-    Slug-based soru getir.
-    - DB'de varsa oradan (production canonical)
-    - Yoksa QUESTIONS.py fallback
-    """
-    from question_loader import get_question_by_slug
-    q = get_question_by_slug(slug, category=category)
+@router.get("/{question_id}", response_model=QuestionOut)
+def get_question_detail(question_id: int, include_starter: bool = Query(True)):
+    q = get_question(question_id)
     if not q:
-        raise HTTPException(404, f"{category}/{slug} bulunamadı")
+        raise HTTPException(404, f"Soru #{question_id} bulunamadı")
     return _to_question_out(q, include_starter=include_starter)
-
-
-@router.get("/by-slug/{category}/{slug}/tests", response_model=QuestionTestsResponse)
-def get_question_tests_by_slug(category: str, slug: str):
-    """Slug-based test case'leri getir."""
-    from question_loader import get_question_by_slug
-    q = get_question_by_slug(slug, category=category)
-    if not q:
-        raise HTTPException(404, f"{category}/{slug} bulunamadı")
-
-    starter_code = _q_get(q, "starter_code", "") or ""
-    test_cases_raw = _q_get(q, "test_cases", []) or []
-
-    safe_tests: List[Dict[str, Any]] = []
-    if isinstance(test_cases_raw, list):
-        for tc in test_cases_raw:
-            if isinstance(tc, dict):
-                safe_tests.append(tc)
-            else:
-                safe_tests.append(dict(tc) if hasattr(tc, "__dict__") else {"input": None, "expected": None})
-
-    return QuestionTestsResponse(
-        question_id=q.id,
-        function_name=_q_get(q, "function_name") or _extract_function_name(starter_code),
-        starter_code=starter_code,
-        test_cases=safe_tests,
-        total=len(safe_tests),
-    )
-
-
-@router.get("/slug-list", response_model=AllQuestionsResponse)
-def list_questions_slugs(
-    category: Optional[str] = Query(None),
-    level: Optional[str] = Query(None),
-    search: Optional[str] = Query(None),
-    include_starter: bool = Query(False),
-):
-    """Tüm soruları slug'lı döndür (canonical URL oluşturmak için)."""
-    all_filtered = filter_questions(category=category, level=level, search=search)
-    items = all_filtered[:500]
-    return AllQuestionsResponse(
-        data=[_to_question_out(q, include_starter=include_starter) for q in items],
-        total=len(items),
-    )
-
-
-# ═══════════════════════════════════════════════════════════════
-# ─── DIFF — GET /api/v2/questions/diff-sources ────────────
-# ═══════════════════════════════════════════════════════════════
-# Admin/development debug — DB ile QUESTIONS-v3.py'yi karsilastir.
-# Frontend'in kaynak tutarliligini izlemesi icin.
-
-@router.get("/diff-sources")
-def diff_sources():
-    """DB vs QUESTIONS-v3.py karsilastirmasi (title-based).
-
-    Returns:
-        - in_db_only: DB'de olup QUESTIONS-v3'te yok
-        - in_v3_only: QUESTIONS-v3'te olup DB'de yok
-        - in_both: Eslesen basliklar
-        - field_mismatch: Eslesen basliklarda alan farklari
-    """
-    try:
-        from supabase_client import get_supabase_admin
-        sb = get_supabase_admin()
-        db_result = sb.table("questions").select("id, title, complexity, related_concepts, tags, explanation").execute()
-        db_by_title = {r.get("title"): r for r in (db_result.data or []) if r.get("title")}
-    except Exception as e:
-        return {"error": f"DB erisim hatasi: {e}"}
-
-    try:
-        # QUESTIONS-v3.py dosya ismi dash iceriyor, import olarak load et
-        import importlib.util
-        import os as _os
-        _v3_path = _os.path.join(_os.path.dirname(__file__), "..", "data", "QUESTIONS-v3.py")
-        if not _os.path.exists(_v3_path):
-            # Alternatif: data dizininden
-            _v3_path = "data/QUESTIONS-v3.py"
-        _spec = importlib.util.spec_from_file_location("_q_v3_temp", _v3_path)
-        _mod = importlib.util.module_from_spec(_spec)
-        _spec.loader.exec_module(_mod)
-        QUESTIONS_V3_LOCAL = _mod.QUESTIONS
-        v3_by_title = {q.title: q for q in QUESTIONS_V3_LOCAL}
-    except Exception as e:
-        return {"error": f"QUESTIONS-v3 import hatasi: {e}"}
-
-    db_titles = set(db_by_title.keys())
-    v3_titles = set(v3_by_title.keys())
-
-    in_db_only_titles = sorted(db_titles - v3_titles)
-    in_v3_only_titles = sorted(v3_titles - db_titles)
-    in_both_titles = sorted(db_titles & v3_titles)
-
-    # Alan farklari (title bazinda) — complexity, tags
-    field_mismatches = []
-    for title in in_both_titles[:10]:
-        db_row = db_by_title[title]
-        v3_q = v3_by_title[title]
-
-        diffs = {}
-        if (db_row.get("complexity") or "") != (getattr(v3_q, "complexity", "") or ""):
-            diffs["complexity"] = {"db": db_row.get("complexity"), "v3": getattr(v3_q, "complexity", None)}
-        if sorted(db_row.get("tags") or []) != sorted(getattr(v3_q, "tags", None) or []):
-            diffs["tags"] = {"db": sorted(db_row.get("tags") or []), "v3": sorted(getattr(v3_q, "tags", None) or [])}
-        if sorted(db_row.get("related_concepts") or []) != sorted(getattr(v3_q, "related_concepts", None) or []):
-            diffs["related_concepts"] = {"db": sorted(db_row.get("related_concepts") or []), "v3": sorted(getattr(v3_q, "related_concepts", None) or [])}
-
-        if diffs:
-            field_mismatches.append({
-                "title": title,
-                "diffs": diffs,
-            })
-
-    return {
-        "db_count": len(db_titles),
-        "v3_count": len(v3_titles),
-        "in_both_count": len(in_both_titles),
-        "in_db_only_titles": in_db_only_titles[:20],
-        "in_v3_only_titles": in_v3_only_titles[:20],
-        "field_mismatches": field_mismatches,
-        "sync_status": "ESIT" if (not in_db_only_titles and not in_v3_only_titles and not field_mismatches) else "FARK VAR",
-    }

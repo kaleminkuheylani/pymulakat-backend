@@ -1,0 +1,82 @@
+<!--
+  KVKK Uyumlu Kullanıcı Taşıma Davet Maili
+  ─────────────────────────────────────────
+  • Açık rıza: linke tıklamak = taşımaya onay
+  • Reddetme hakkı: "Vazgeç" linki
+  • Aydınlatma: kim, neden, süre, haklar
+  • Amaç sınırı: sadece auth için email alınır, attempts/profiles taşınmaz
+-->
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Hesap Taşıma Daveti — PythonMulakat</title>
+</head>
+<body style="margin:0;padding:0;background:#0b0f19;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#e6e8eb;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0b0f19;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#131826;border:1px solid #1f2937;border-radius:16px;padding:32px;">
+          <tr>
+            <td>
+              <div style="font-size:13px;color:#9ca3af;letter-spacing:0.08em;text-transform:uppercase;">PythonMulakat</div>
+              <h1 style="font-size:22px;line-height:1.4;color:#f3f4f6;margin:8px 0 16px;">Hesabını yeni altyapımıza taşıyabilir misin?</h1>
+
+              <p style="font-size:15px;line-height:1.6;color:#cbd5e1;margin:0 0 12px;">
+                Merhaba <strong style="color:#f3f4f6;">{{ username }}</strong>,
+              </p>
+              <p style="font-size:15px;line-height:1.6;color:#cbd5e1;margin:0 0 12px;">
+                PythonMulakat'ı daha hızlı, daha güvenli ve daha sürdürülebilir bir altyapıya taşıyoruz. Hesabını
+                <strong style="color:#f3f4f6;">yeni sisteme sadece senin onayınla</strong> aktarabiliriz.
+              </p>
+
+              <!-- KVKK Aydınlatma Kutusu -->
+              <div style="background:#0f1422;border-left:3px solid #38bdf8;border-radius:8px;padding:14px 16px;margin:20px 0;">
+                <div style="font-size:12px;color:#7dd3fc;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;">KVKK Aydınlatma</div>
+                <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.6;color:#94a3b8;">
+                  <li><strong style="color:#e2e8f0;">Veri sorumlusu:</strong> PythonMulakat (mkemal@pythonmulakat.com)</li>
+                  <li><strong style="color:#e2e8f0;">İşlenen veri:</strong> Yalnızca e-posta adresin ve tercih ettiğin kullanıcı adın</li>
+                  <li><strong style="color:#e2e8f0;">Amaç:</strong> Hesabını yeni altyapıya taşımak (authentication)</li>
+                  <li><strong style="color:#e2e8f0;">Taşınmayan veriler:</strong> Çözüm geçmişin, kodların, profil bilgilerin yeni sistemde boş başlar</li>
+                  <li><strong style="color:#e2e8f0;">Saklama süresi:</strong> Eski sistemdeki kaydın 30 gün sonra silinir</li>
+                  <li><strong style="color:#e2e8f0;">Hakların:</strong> Vazgeçebilir, silme talep edebilir, verilerini görebilirsin (KVKK Md. 11)</li>
+                </ul>
+              </div>
+
+              <!-- Onay Butonu -->
+              <div style="text-align:center;margin:28px 0 12px;">
+                <a href="{{ magic_link }}" target="_blank"
+                   style="display:inline-block;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 28px;border-radius:10px;">
+                  Evet, hesabımı taşı →
+                </a>
+              </div>
+              <p style="text-align:center;font-size:12px;color:#64748b;margin:8px 0 0;">
+                Bu butona tıklaman, yukarıdaki aydınlatmayı okuduğun ve taşımaya <strong style="color:#94a3b8;">açık rıza</strong> verdiğin anlamına gelir.
+              </p>
+
+              <!-- Vazgeçme -->
+              <div style="text-align:center;margin:20px 0 8px;padding-top:18px;border-top:1px solid #1f2937;">
+                <p style="font-size:13px;color:#94a3b8;margin:0 0 8px;">Taşımak istemiyor musun?</p>
+                <a href="{{ optout_url }}" target="_blank"
+                   style="color:#94a3b8;text-decoration:underline;font-size:13px;">
+                  Vazgeç, hesabım eski sistemde kalsın
+                </a>
+              </div>
+
+              <p style="font-size:12px;color:#475569;margin-top:24px;line-height:1.5;">
+                Bu mail <code style="background:#1e293b;padding:2px 6px;border-radius:4px;font-family:'SF Mono',Monaco,monospace;">{{ email }}</code>
+                adresine, PythonMulakat hesap taşıma kampanyası kapsamında gönderilmiştir. Soruların için
+                <a href="mailto:mkemal@pythonmulakat.com" style="color:#7dd3fc;">mkemal@pythonmulakat.com</a> adresine yazabilirsin.
+              </p>
+            </td>
+          </tr>
+        </table>
+        <div style="font-size:11px;color:#475569;margin-top:16px;">
+          © 2026 PythonMulakat · <a href="https://pythonmulakat.com/privacy" style="color:#7dd3fc;text-decoration:none;">Gizlilik Politikası</a>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

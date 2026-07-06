@@ -1,785 +1,126 @@
-"""Geçici admin endpointleri — migration ve bakım için.
+"""Admin endpointleri — minimal iskelet.
 
-⚠️ PRODUCTION'DA KULLANIRKEN DİKKATLİ OL!
-Bu endpoint migration çalıştırır, DB'ye büyük INSERT/UPDATE yapar.
-Sadece ilk kurulumda veya veri güncellemesinde kullanılmalı.
+Sadece:
+  • /admin/health              → basit health check
+  • /admin/migrate/users-full  → KVKK uyumlu kullanıcı taşıma (eski → yeni Supabase)
+  • /admin/migrate/report      → son taşıma raporu
 
-Kullanım:
-    curl -X POST https://pymulakat-backend-production.up.railway.app/admin/migrate/questions
-    curl -X POST https://pymulakat-backend-production.up.railway.app/admin/migrate/tutorials
+Soru/tutorial/seed işlemleri artık scripts/ üzerinden yapılıyor.
+Detay: scripts/seed_questions.py
 """
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+from typing import Optional
 import os
+import subprocess
 import sys
-import re
 import json
-from typing import Dict, List, Optional
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-class MigrationResponse(BaseModel):
-    ok: bool
-    message: str
-    details: dict = {}
+# ═══════════════════════════════════════════════════════════════
+# ─── Health ───────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/health")
+def health():
+    """Liveness + DB bağlantı testi."""
+    from supabase_client import get_supabase
+    db_ok = False
+    db_error = None
+    try:
+        sb = get_supabase()
+        sb.table("questions").select("id").limit(1).execute()
+        db_ok = True
+    except Exception as e:
+        db_error = str(e)
+    return {
+        "ok": True,
+        "db_ok": db_ok,
+        "db_error": db_error,
+        "env": os.getenv("APP_ENV", "development"),
+    }
 
 
-def _run_script(script_name: str) -> dict:
-    """Bir Python script'i subprocess olarak çalıştır."""
-    import subprocess
-    script_path = os.path.join(os.path.dirname(__file__), "..", "scripts", script_name)
-    script_path = os.path.abspath(script_path)
+# ═══════════════════════════════════════════════════════════════
+# ─── KVKK Kullanıcı Taşıma ─────────────────────────────────
+# ═══════════════════════════════════════════════════════════════
 
-    if not os.path.exists(script_path):
-        raise FileNotFoundError(f"Script bulunamadı: {script_path}")
+class FullMigrationRequest(BaseModel):
+    dry_run: bool = True
+    old_supabase_url: Optional[str] = None
+    old_service_role_key: Optional[str] = None
+    new_supabase_url: Optional[str] = None
+    new_service_role_key: Optional[str] = None
 
-    # Env'i forward et
+
+@router.post("/migrate/users-full")
+async def migrate_users_full(req: FullMigrationRequest, request: Request):
+    """Tüm kullanıcı verisini eski Supabase'den yeni Supabase'ye taşı (KVKK Md. 12 log'lu).
+
+    Service role key'ler body veya env'de olabilir.
+    """
+    admin_secret = os.getenv("ADMIN_SECRET", "")
+    if not admin_secret or request.headers.get("X-Admin-Secret", "") != admin_secret:
+        raise HTTPException(403, "admin yetkisi gerekli (X-Admin-Secret header)")
+
     env = os.environ.copy()
+    env["DRY_RUN"] = "true" if req.dry_run else "false"
+    env["OLD_SUPABASE_URL"] = req.old_supabase_url or env.get("OLD_SUPABASE_URL", "")
+    env["OLD_SUPABASE_SERVICE_ROLE_KEY"] = (
+        req.old_service_role_key or env.get("OLD_SUPABASE_SERVICE_ROLE_KEY", "")
+    )
+    env["NEW_SUPABASE_URL"] = req.new_supabase_url or env.get("NEW_SUPABASE_URL", "")
+    env["NEW_SUPABASE_SERVICE_ROLE_KEY"] = (
+        req.new_service_role_key or env.get("NEW_SUPABASE_SERVICE_ROLE_KEY", "")
+    )
+
+    missing = [k for k in [
+        "OLD_SUPABASE_URL", "OLD_SUPABASE_SERVICE_ROLE_KEY",
+        "NEW_SUPABASE_URL", "NEW_SUPABASE_SERVICE_ROLE_KEY",
+    ] if not env.get(k)]
+    if missing:
+        raise HTTPException(400, f"Eksik env: {', '.join(missing)}")
+
+    script_path = os.path.join(
+        os.path.dirname(__file__), "..", "scripts", "migrate_users_full.py"
+    )
+    script_path = os.path.abspath(script_path)
+    if not os.path.exists(script_path):
+        raise HTTPException(500, f"Script yok: {script_path}")
 
     try:
         result = subprocess.run(
             [sys.executable, script_path],
-            capture_output=True,
-            text=True,
-            env=env,
-            timeout=300,  # 5 dakika timeout
+            capture_output=True, text=True, env=env, timeout=1800,
         )
         return {
+            "ok": result.returncode == 0,
+            "dry_run": req.dry_run,
             "exit_code": result.returncode,
-            "stdout": result.stdout[-3000:],  # Son 3000 char
-            "stderr": result.stderr[-1000:] if result.stderr else "",
+            "stdout_tail": result.stdout[-3000:],
+            "stderr_tail": result.stderr[-1500:],
+            "report_path": "data/migration_report.json",
+            "consent_log_path": "data/consent_log.jsonl",
         }
     except subprocess.TimeoutExpired:
-        return {"exit_code": -1, "error": "Migration 300 saniyede tamamlanmadı"}
+        raise HTTPException(504, "30 dk timeout — script uzun sürdü")
     except Exception as e:
-        return {"exit_code": -1, "error": str(e)}
+        raise HTTPException(500, f"subprocess error: {e}")
 
 
-@router.post("/migrate/questions", response_model=MigrationResponse)
-async def migrate_questions():
-    """QUESTIONS.py + SEO_CONTENT'i Supabase 'interwiews' tablosuna migrate et."""
-    result = _run_script("migrate_questions.py")
-    return MigrationResponse(
-        ok=result.get("exit_code") == 0,
-        message="Migration tamamlandı" if result.get("exit_code") == 0 else "Migration başarısız",
-        details=result,
+@router.get("/migrate/report")
+async def get_migration_report(request: Request):
+    """Son migration raporunu döndür."""
+    admin_secret = os.getenv("ADMIN_SECRET", "")
+    if not admin_secret or request.headers.get("X-Admin-Secret", "") != admin_secret:
+        raise HTTPException(403, "admin yetkisi gerekli")
+    report_path = os.path.join(
+        os.path.dirname(__file__), "..", "data", "migration_report.json"
     )
-
-
-@router.post("/upload/new-questions", response_model=MigrationResponse)
-async def upload_new_questions():
-    """Yeni sorulari (id 69-73) Supabase 'interwiews' tablosuna upsert eder.
-    slug kolonu gerektirmez — doğrudan id ile upsert yapar.
-    """
-    from supabase_client import get_supabase_admin
-    from dataclasses import dataclass, field
-    from typing import List, Dict, Any
-
-    @dataclass
-    class Q:
-        id: int
-        title: str
-        category: str
-        level: str
-        description: str
-        starter_code: str
-        test_cases: List[Dict[str, Any]]
-        hints: List[str] = field(default_factory=list)
-
-    NEW_QUESTIONS = [
-        Q(
-            id=69, title="İki Sıralı Listeyi Birleştir (Merge)",
-            category="algorithms", level="intermediate",
-            description="İki sıralı liste veriliyor (her ikisi de artan düzende).\nBu iki listeyi tek bir sıralı liste halinde birleştir.\nOrijinal listeleri değiştirme, yeni bir liste döndür.\n\n⚠️ sorted() veya .sort() KULLANMA.\nMülakatta O(n+m) çözüm beklenir.",
-            starter_code="def merge_sorted_lists(list1: list, list2: list) -> list:\n    # İki sıralı listeyi birleştir, sonuç sıralı olsun\n    pass",
-            test_cases=[
-                {"input": {"list1": [1, 3, 5, 7], "list2": [2, 4, 6, 8]}, "expected": [1, 2, 3, 4, 5, 6, 7, 8]},
-                {"input": {"list1": [1, 2, 3], "list2": [4, 5, 6]}, "expected": [1, 2, 3, 4, 5, 6]},
-                {"input": {"list1": [], "list2": [1, 2, 3]}, "expected": [1, 2, 3]},
-                {"input": {"list1": [1, 1, 1], "list2": [1, 1]}, "expected": [1, 1, 1, 1, 1]},
-            ],
-            hints=["💡 İpucu 1: İki işaretçi (pointer) kullan — biri list1, biri list2 için.", "💡 İpucu 2: Her adımda hangisi küçükse onu sonuca ekle ve o işaretçiyi ilerlet.", "💡 İpucu 3: Biri bitince kalanları olduğu gibi sonuca extend et."],
-        ),
-        Q(
-            id=70, title="En Yakın Rakam Toplamı",
-            category="algorithms", level="intermediate",
-            description="Bir sayı dizisinde, toplamı hedef sayıya en yakın olan iki elemanı bul.\nBirden fazla çözüm varsa, herhangi birini döndürmek yeterli.\nSonuç: [eleman1, eleman2] şeklinde liste döndür.\n\nÖrnek: [1, 2, 3, 4, 5], hedef = 8 → [3, 5] (toplam 8, tam isabet)\nÖrnek: [1, 2, 3, 4], hedef = 10 → [4, 4] veya [1, 4] (en yakın toplam 9)",
-            starter_code="def find_closest_pair(numbers: list, target: int) -> list:\n    # İki elemanın toplamı hedefe en yakın olsun\n    pass",
-            test_cases=[
-                {"input": {"numbers": [1, 2, 3, 4, 5], "target": 8}, "expected": [3, 5]},
-                {"input": {"numbers": [1, 2, 3, 4], "target": 10}, "expected": [4, 4]},
-                {"input": {"numbers": [3, 3, 3], "target": 6}, "expected": [3, 3]},
-                {"input": {"numbers": [-1, -2, -3, -4], "target": -5}, "expected": [-1, -4]},
-            ],
-            hints=["💡 İpucu 1: Önce listeyi sırala (sıralanmış liste ile çalışmak daha kolay).", "💡 İpucu 2: İki işaretçi tekniği kullan — biri başta, biri sonda.", "💡 İpucu 3: current_sum = arr[left] + arr[right]; hedefe göre işaretçileri hareket ettir."],
-        ),
-        Q(
-            id=71, title="Tekrarlanan Karakter Zinciri",
-            category="algorithms", level="intermediate",
-            description="Bir string'de art arda tekrar eden karakterlerden oluşan\nen uzun zinciri bul.\nSonuç: (karakter, zincir uzunluğu) şeklinde tuple döndür.\n\nÖrnek: 'aabbbcccddaaa' → ('b', 3) veya ('a', 3)\nÖrnek: 'abcdef' → ('a', 1) (tüm karakterler 1'er)",
-            starter_code="def longest_char_chain(s: str) -> tuple:\n    # Art arda tekrar eden en uzun zinciri bul\n    pass",
-            test_cases=[
-                {"input": "aabbbcccddaaa", "expected": ("b", 3)},
-                {"input": "abcdef", "expected": ("a", 1)},
-                {"input": "aaaaa", "expected": ("a", 5)},
-                {"input": "abbaa", "expected": ("a", 2)},
-                {"input": "", "expected": ("", 0)},
-                {"input": "abccdeeeffg", "expected": ("e", 3)},
-            ],
-            hints=["💡 İpucu 1: İki değişken tut: mevcut karakter ve mevcut sayı.", "💡 İpucu 2: Her yeni karakter için: aynıysa sayıyı artır, farklıysa sıfırla.", "💡 İpucu 3: En uzun zinciri ve karakterini takip et."],
-        ),
-        Q(
-            id=72, title="Alt Dizi Toplam Kontrolü",
-            category="algorithms", level="intermediate",
-            description="Bir sayı listesi ve bir hedef sayı veriliyor.\nListedeki herhangi bir alt dizinin (continuous subsequence)\ntoplamının hedef sayıya eşit olup olmadığını kontrol et.\n\n⚠️ Tüm alt dizileri brute-force deneme O(n²) yapma.\nDaha verimli bir yöntem düşün.",
-            starter_code="def has_subarray_with_sum(nums: list, target: int) -> bool:\n    # Alt dizi toplamı hedefe eşit mi?\n    pass",
-            test_cases=[
-                {"input": {"nums": [1, 4, 20, 3, 10, 5], "target": 33}, "expected": True},
-                {"input": {"nums": [1, 2, 3, 4], "target": 15}, "expected": False},
-                {"input": {"nums": [1, 2, 3], "target": 6}, "expected": True},
-                {"input": {"nums": [0, 0], "target": 0}, "expected": True},
-                {"input": {"nums": [-2, -1, 0, 1, 2], "target": 0}, "expected": True},
-            ],
-            hints=["💡 İpucu 1: Sliding window tekniği düşün — başlangıç ve bitiş işaretçileri.", "💡 İpucu 2: Mevcut toplam hedefi aştıysa, başlangıcı kaydır.", "💡 İpucu 3: Negatif sayılar varsa sliding window çalışmaz — prefix sum + hashmap dene."],
-        ),
-        Q(
-            id=73, title="Benzersiz Alt Dizgi Sayısı",
-            category="algorithms", level="intermediate",
-            description="Bir string'deki tüm benzersiz alt dizgilerin (substring)\nsayısını bul.\nBoş alt dizgi sayılmaz.\n\nÖrnek: 'abc' → 'a','b','c','ab','bc','abc' → 6\nÖrnek: 'aaa' → 'a','aa','aaa' → 2 (tekrarlar sayılmaz)\nÖrnek: '' → 0",
-            starter_code="def count_unique_substrings(s: str) -> int:\n    # Tüm benzersiz alt dizgilerin sayısını bul\n    pass",
-            test_cases=[
-                {"input": "abc", "expected": 6},
-                {"input": "aaa", "expected": 2},
-                {"input": "", "expected": 0},
-                {"input": "abcd", "expected": 10},
-                {"input": "aab", "expected": 4},
-            ],
-            hints=["💡 İpucu 1: Her karakterden başlayarak tüm alt dizgileri oluştur.", "💡 İpucu 2: Bir set() kullanarak benzersiz olanları sakla.", "💡 İpucu 3: İç içe döngü yerine, her i için j=i+1,...,len(s) alt dizgisini sete ekle."],
-        ),
-    ]
-
-    sb = get_supabase_admin()
-    payload = [
-        {
-            "id": q.id,
-            "title": q.title,
-            "category": q.category,
-            "level": q.level,
-            "description": q.description,
-            "starter_code": q.starter_code,
-            "test_cases": q.test_cases,
-            "hints": q.hints,
-        }
-        for q in NEW_QUESTIONS
-    ]
-
-    try:
-        result = (
-            sb.table("interwiews")
-            .upsert(payload, on_conflict="id")
-            .execute()
-        )
-        return MigrationResponse(
-            ok=True,
-            message=f"{len(payload)} soru başarıyla Supabase'e yüklendi.",
-            details={"uploaded": len(payload), "first_id": payload[0]["id"] if payload else None},
-        )
-    except Exception as e:
-        return MigrationResponse(
-            ok=False,
-            message=f"Upsert başarısız: {e}",
-            details={"error": str(e)},
-        )
-
-
-@router.post("/update/seo-fields", response_model=MigrationResponse)
-async def update_seo_fields():
-    """Mevcut 67 satırın SEO alanlarını title üzerinden güncelle."""
-    result = _run_script("update_seo_fields.py")
-    return MigrationResponse(
-        ok=result.get("exit_code") == 0,
-        message="SEO güncelleme tamamlandı" if result.get("exit_code") == 0 else "SEO güncelleme başarısız",
-        details=result,
-    )
-
-
-@router.post("/migrate/tutorials", response_model=MigrationResponse)
-async def migrate_tutorials():
-    """7 fallback tutorial'ı 'tutorials' tablosuna migrate et."""
-    result = _run_script("migrate_tutorials.py")
-    return MigrationResponse(
-        ok=result.get("exit_code") == 0,
-        message="Migration tamamlandı" if result.get("exit_code") == 0 else "Migration başarısız",
-        details=result,
-    )
-
-
-@router.post("/migrate/slugs", response_model=MigrationResponse)
-async def migrate_slugs(force: bool = False):
-    """interwiews tablosuna title'dan slug üretip yaz (canonical URL için)."""
-    import re
-    try:
-        # 1. psycopg2 ile slug kolonu ekle (DATABASE_URL'den) — kolon zaten var muhtemelen
-        sql_added = False
-        sql_error = None
-        try:
-            import psycopg2
-            db_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL")
-            if db_url:
-                try:
-                    conn = psycopg2.connect(db_url)
-                    conn.autocommit = True
-                    cur = conn.cursor()
-                    cur.execute("ALTER TABLE public.interwiews ADD COLUMN IF NOT EXISTS slug TEXT")
-                    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_interwiews_slug ON public.interwiews(slug) WHERE slug IS NOT NULL")
-                    cur.execute("NOTIFY pgrst, 'reload schema'")
-                    cur.close()
-                    conn.close()
-                    sql_added = True
-                    print("✅ Slug kolonu + index eklendi (psycopg2)")
-                except Exception as e:
-                    sql_error = str(e)[:200]
-                    print(f"⚠️ psycopg2 ALTER basarisiz: {e}")
-            else:
-                sql_error = "DATABASE_URL tanimli degil, SQL atlaniyor"
-                print(f"⚠️ {sql_error}")
-        except ImportError:
-            sql_error = "psycopg2 yuklu degil"
-            print(f"⚠️ {sql_error}")
-
-        # 2. Supabase admin ile devam
-        from supabase_client import get_supabase_admin
-        sb = get_supabase_admin()
-
-        try:
-            result = sb.table("interwiews").select("id, title, slug").execute()
-            rows = result.data or []
-            print(f"📝 [SLUGS] {len(rows)} soru bulundu")
-        except Exception as e:
-            return MigrationResponse(
-                ok=False,
-                message=f"SELECT hatasi (slug kolonu hala yok?): {e}. SQL durumu: {'OK' if sql_added else sql_error}",
-            )
-
-        def slugify(text: str) -> str:
-            tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
-            text = text.lower().translate(tr)
-            text = re.sub(r'[^a-z0-9\s-]', '', text)
-            text = re.sub(r'\s+', '-', text).strip('-')
-            return text[:80]
-
-        updated = 0
-        skipped = 0
-        errors = []
-        seen_slugs = set()
-        for row in rows:
-            title = row.get("title", "")
-            existing = row.get("slug")
-            if existing and not force:
-                skipped += 1
-                seen_slugs.add(existing)
-                continue
-
-            new_slug = slugify(title)
-            final_slug = new_slug
-            counter = 1
-            while final_slug in seen_slugs:
-                counter += 1
-                final_slug = f"{new_slug}-{counter}"
-            seen_slugs.add(final_slug)
-
-            try:
-                sb.table("interwiews").update({"slug": final_slug}).eq("id", row["id"]).execute()
-                updated += 1
-            except Exception as e:
-                errors.append({"id": row["id"], "title": title, "error": str(e)})
-
-        return MigrationResponse(
-            ok=True,
-            message=f"{updated} yeni slug, {skipped} zaten vardi (SQL: {'OK' if sql_added else sql_error})",
-            details={
-                "updated": updated,
-                "skipped": skipped,
-                "total": len(rows),
-                "sql_added": sql_added,
-                "sql_error": sql_error,
-                "errors": errors[:5],
-            },
-        )
-    except Exception as e:
-        print(f"❌ [SLUGS] {type(e).__name__}: {e}")
-
-@router.post("/migrate/related-questions")
-async def migrate_related_questions():
-    """Hardcoded mapping — frontend QuestionMeta ile senkronize."""
-    try:
-        RELATED_MAP = {
-            1: [2, 3, 10, 11], 2: [53, 11, 1], 3: [1, 7, 17, 19],
-            4: [30, 14, 10], 5: [9, 14, 16], 6: [11, 19, 29],
-            7: [1, 3, 17], 8: [9, 11, 16], 9: [5, 7],
-            10: [1, 3, 7, 17], 11: [12, 14, 16], 12: [26, 27, 28],
-            13: [1, 17, 23], 14: [4, 30, 10], 15: [9, 11, 16],
-            16: [17, 19, 23], 17: [23, 25, 27], 18: [1, 2, 3],
-            19: [6, 18, 20], 20: [1, 2, 3], 21: [7, 22, 24],
-            22: [1, 21, 25], 23: [11, 19, 25], 24: [19, 23, 25],
-            25: [22, 24, 27], 26: [27, 28, 29], 27: [26, 28, 29],
-            28: [26, 27, 29], 29: [26, 27, 28], 30: [14, 4, 27],
-            31: [28, 29, 30], 32: [33, 35, 36], 33: [32, 35, 36],
-            34: [28, 29, 30], 35: [8, 26, 27, 29], 36: [32, 33, 35],
-            37: [38, 41, 43], 38: [32, 33, 41], 39: [32, 33, 35],
-            40: [32, 33, 41], 41: [37, 42, 43], 42: [41, 43, 44],
-            43: [38, 42, 44], 44: [32, 42, 43], 45: [38, 41, 43],
-            46: [47, 48, 49], 47: [46, 48, 49], 48: [46, 47, 49],
-            49: [46, 47, 48], 50: [16, 47, 48, 49], 51: [1, 3, 7],
-            52: [1, 17, 23], 53: [1, 7, 17], 54: [1, 17, 19],
-            55: [1, 7, 23], 56: [1, 17, 23], 57: [19, 38, 41],
-            58: [1, 7, 17], 59: [19, 38, 41], 60: [1, 7, 17],
-            61: [19, 23, 38], 62: [1, 17, 23], 63: [19, 38, 41],
-            64: [19, 23, 38], 65: [38, 41, 42], 66: [38, 41, 43],
-            67: [38, 41, 43],
-        }
-        print(f"Mapping: {len(RELATED_MAP)} entry")
-
-        from supabase_client import get_supabase_admin
-        sb = get_supabase_admin()
-
-        updated = 0
-        errors = []
-        for qid, related_list in RELATED_MAP.items():
-            try:
-                sb.table("interwiews").update({"related_question_ids": related_list}).eq("id", qid).execute()
-                updated += 1
-            except Exception as e:
-                errors.append({"id": qid, "error": str(e)[:100]})
-
-        return {
-            "ok": True,
-            "message": f"{updated} soruya related_question_ids yazildi",
-            "details": {"updated": updated, "total": len(RELATED_MAP), "errors": errors[:5]},
-        }
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {"ok": False, "message": f"Hata: {e}"}
-
-@router.post("/migrate/schema", response_model=MigrationResponse)
-async def migrate_schema():
-    """interwiews tablosuna yeni kolonları ekle (idempotent)."""
-    import subprocess
-    sql_path = os.path.join(os.path.dirname(__file__), "..", "scripts", "migrate_schema.sql")
-    sql_path = os.path.abspath(sql_path)
-
-    if not os.path.exists(sql_path):
-        raise HTTPException(404, f"SQL bulunamadı: {sql_path}")
-
-    try:
-        from supabase_client import get_supabase_admin
-        sb = get_supabase_admin()
-
-        with open(sql_path, "r") as f:
-            sql_content = f.read()
-
-        # SQL'i statement'lara böl ve her birini çalıştır
-        statements = [s.strip() for s in sql_content.split(";") if s.strip() and not s.strip().startswith("--")]
-
-        results = []
-        for i, stmt in enumerate(statements):
-            try:
-                # rpc ile SQL çalıştır (PostgREST bunu desteklemiyor)
-                # Alternatif: psycopg2 kullan
-                results.append({"index": i, "stmt_preview": stmt[:80], "ok": True})
-            except Exception as e:
-                results.append({"index": i, "stmt_preview": stmt[:80], "ok": False, "error": str(e)})
-
-        # psycopg2 ile direkt connection
-        try:
-            import psycopg2
-            db_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL")
-            if db_url:
-                conn = psycopg2.connect(db_url)
-                conn.autocommit = True
-                cur = conn.cursor()
-                cur.execute(sql_content)
-                cur.close()
-                conn.close()
-                return MigrationResponse(
-                    ok=True,
-                    message="Schema migration tamamlandı (psycopg2)",
-                    details={"method": "psycopg2", "statements": len(statements)},
-                )
-        except ImportError:
-            pass
-        except Exception as e:
-            return MigrationResponse(
-                ok=False,
-                message=f"psycopg2 hatası: {e}",
-                details={"hint": "DATABASE_URL tanımlı mı? psycopg2 yüklü mü?"},
-            )
-
-        # Fallback: supabase rpc (exec_sql fonksiyonu gerekli)
-        return MigrationResponse(
-            ok=False,
-            message="Schema migration için DATABASE_URL veya Supabase exec_sql gerekli",
-            details={
-                "hint": "Supabase Dashboard → SQL Editor'da migrate_schema.sql'i manuel çalıştır",
-                "sql_file_path": sql_path,
-            },
-        )
-    except Exception as e:
-        return MigrationResponse(
-            ok=False,
-            message=f"Schema migration hatası: {e}",
-            details={},
-        )
-
-
-@router.get("/health")
-async def admin_health():
-    """Admin endpoint sağlık kontrolü."""
-    return {
-        "ok": True,
-        "supabase_url": os.getenv("SUPABASE_URL", "NOT SET"),
-        "has_service_key": bool(os.getenv("SUPABASE_SERVICE_ROLE_KEY")),
-    }
-
-
-@router.post("/fix/duplicate-slugs", response_model=MigrationResponse)
-@router.post("/fix/slug", response_model=MigrationResponse)
-async def fix_slug_alias():
-    """Alias for /fix/duplicate-slugs."""
-    return await fix_duplicate_slugs()
-
-
-@router.post("/fix/slug/tr-ascii", response_model=MigrationResponse)
-async def fix_slug_tr_ascii():
-    """Tüm slug'lardaki Türkçe karakterleri ASCII'ye çevir.
-
-    Ornek:
-      iki-maaş-bordrosunu-birleştir-68 → iki-maas-bordrosunu-birlestir-68
-      liste-düzleştirme-8              → liste-duzlestirme-8
-    """
-    try:
-        from supabase_client import get_supabase_admin
-        sb = get_supabase_admin()
-
-        # Tüm slug'ları oku
-        result = sb.table("interwiews").select("id, slug, title").execute()
-        rows = result.data or []
-
-        tr_map = {
-            'ı': 'i', 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ö': 'o', 'ç': 'c',
-            'İ': 'i', 'Ğ': 'g', 'Ü': 'u', 'Ş': 's', 'Ö': 'o', 'Ç': 'c',
-        }
-        fixed = 0
-        skipped = 0
-        for r in rows:
-            qid = r.get("id")
-            slug = r.get("slug", "")
-            if not qid or not slug:
-                continue
-            # ASCII'ye çevir
-            new_slug = slug
-            for tr, asc in tr_map.items():
-                new_slug = new_slug.replace(tr, asc)
-            if new_slug != slug:
-                try:
-                    sb.table("interwiews").update({"slug": new_slug}).eq("id", qid).execute()
-                    fixed += 1
-                except Exception as e:
-                    logger.exception("Slug fix q%d: %s", qid, e)
-                    skipped += 1
-
-        return MigrationResponse(
-            ok=True,
-            message=f"{fixed} slug ASCII'ye çevrildi ({skipped} hata)",
-            details={"total": len(rows), "fixed": fixed, "skipped": skipped},
-        )
-    except Exception as e:
-        logger.exception("fix_slug_tr_ascii failed")
-        return MigrationResponse(ok=False, message=f"Hata: {e}")
-
-
-class CreateTutorialRequest(BaseModel):
-    slug: str
-    title: str
-    content_md: str
-    description: Optional[str] = None
-    category: str = "python-basics"
-    difficulty: str = "beginner"
-    reading_time_minutes: int = 5
-    related_question_ids: List[int] = []
-    faq: List[dict] = []
-
-
-@router.post("/create/tutorial", response_model=MigrationResponse)
-async def create_tutorial(payload: CreateTutorialRequest):
-    """Yeni tutorial oluştur ve 'tutorials' tablosuna INSERT et.
-
-    Body:
-      {
-        "slug": "python-palindrome-rehberi",
-        "title": "Python Palindrome Algoritma Rehberi",
-        "content_md": "Markdown icerik...",
-        "description": "Kisa ozet",
-        "category": "python-basics",
-        "difficulty": "beginner",
-        "reading_time_minutes": 7,
-        "related_question_ids": [1, 11],
-        "faq": [{"q": "Soru", "a": "Cevap"}]
-      }
-    """
-    try:
-        from supabase_client import get_supabase_admin
-        sb = get_supabase_admin()
-
-        # Slug uniqueness kontrolü
-        existing = sb.table("tutorials").select("id, slug").eq("slug", payload.slug).execute()
-        if existing.data:
-            return MigrationResponse(
-                ok=False,
-                message=f"Bu slug zaten var: {payload.slug}",
-                details={"existing_id": existing.data[0].get("id") if existing.data else None},
-            )
-
-        # INSERT - DB semasina uygun
-        tutorial = {
-            "slug": payload.slug,
-            "title": payload.title,
-            "content_md": payload.content_md,
-            "description": payload.description or payload.title[:150],
-            "category": payload.category,
-            "difficulty": payload.difficulty,
-            "reading_time_minutes": payload.reading_time_minutes,
-            "related_question_ids": payload.related_question_ids,
-            "faq": payload.faq,
-        }
-
-        result = sb.table("tutorials").insert(tutorial).execute()
-        if result.data:
-            new_id = result.data[0].get("id")
-            return MigrationResponse(
-                ok=True,
-                message=f"Tutorial olusturuldu: {payload.slug} (id={new_id})",
-                details={"id": new_id, "slug": payload.slug},
-            )
-        return MigrationResponse(ok=False, message="INSERT basarisiz, data donmedi")
-    except Exception as e:
-        logger.exception("create_tutorial failed")
-        return MigrationResponse(ok=False, message=f"Hata: {e}")
-async def fix_duplicate_slugs():
-    """interwiews tablosundaki duplicate slug'ları temizle.
-
-    Mantık:
-    - Her slug grubundan sadece 1 tane (en küçük id) korunur
-    - Geri kalanların slug'ı 'q{id}' formatına çevrilir
-    - Bu sayede unique constraint ihlal edilmez
-    """
-    try:
-        from supabase_client import get_supabase_admin
-        sb = get_supabase_admin()
-
-        # 1. Tüm slug'ları çek
-        result = sb.table("interwiews").select("id, slug, title").execute()
-        rows = result.data or []
-
-        # 2. Slug gruplarını bul
-        slug_groups: Dict[str, List[int]] = {}
-        for r in rows:
-            s = r.get("slug")
-            if s:  # boş string ve NULL atla
-                slug_groups.setdefault(s, []).append(r["id"])
-
-        # 3. Duplicate'leri tespit et
-        duplicates = {s: ids for s, ids in slug_groups.items() if len(ids) > 1}
-        if not duplicates:
-            return MigrationResponse(
-                ok=True,
-                message="Duplicate slug yok",
-                details={"total": len(rows), "duplicates": 0, "fixed": 0},
-            )
-
-        # 4. Her gruptan ilk (en küçük id) kalsın, diğerlerini q{id} yap
-        fixed = 0
-        for slug, ids in duplicates.items():
-            ids_sorted = sorted(ids)
-            keep_id = ids_sorted[0]
-            for qid in ids_sorted[1:]:
-                new_slug = f"q{qid}"
-                try:
-                    sb.table("interwiews").update({"slug": new_slug}).eq("id", qid).execute()
-                    fixed += 1
-                except Exception as e:
-                    logger.exception("Slug fix failed for id=%s: %s", qid, e)
-
-        return MigrationResponse(
-            ok=True,
-            message=f"{fixed} duplicate slug temizlendi ({len(duplicates)} grup)",
-            details={"total": len(rows), "duplicates": len(duplicates), "fixed": fixed, "groups": duplicates},
-        )
-
-    except Exception as e:
-        logger.exception("fix_duplicate_slugs failed")
-        return MigrationResponse(
-            ok=False,
-            message=f"Hata: {e}",
-        )
-
-
-class ScheduleUpdate(BaseModel):
-    enabled: bool = True
-    interval_days: int = 7
-    n_questions: int = 5
-    target_per_type: int = 12
-    dry_run: bool = False
-
-
-class ScheduleResponse(BaseModel):
-    ok: bool
-    schedule: dict = {}
-    last_result: dict = {}
-
-
-@router.get("/schedule/generation")
-async def get_schedule_endpoint_removed():
-    """AI generation schedule artik kullanilmiyor.
-
-    Sorular QUESTIONS-v3.py + seed_questions.py ile yonetilir.
-    Bu endpoint geriye uyumluluk icin 410 Gone donduruyor.
-    """
-    return {"ok": False, "removed": True, "reason": "AI question generation kaldirildi. seed_questions.py kullanin."}
-
-
-@router.post("/schedule/generation")
-async def update_schedule_endpoint_removed(payload=None):
-    """Stub — AI generation kaldirildi."""
-    return {"ok": False, "removed": True}
-
-
-@router.post("/schedule/generation/run-now")
-async def run_schedule_now_removed():
-    """Stub — AI generation kaldirildi."""
-    return {"ok": False, "removed": True}
-
-
-@router.post("/generate/questions")
-async def generate_questions_endpoint_removed(req=None):
-    """Stub — AI question generation kaldirildi.
-
-    Sorular questions/questions-v3.py ile source-controlled.
-    Yeni soru eklemek icin QUESTIONS-v3.py'i duzenleyin ve
-    `python3 scripts/seed_questions.py` calistirin.
-    """
-    return {"ok": False, "removed": True, "reason": "AI generation endpoint'i kaldirildi. QUESTIONS-v3.py + seed_questions.py kullanin."}
-
-
-@router.post("/cron/run-question-generation")
-async def cron_run_question_generation_removed(request: Request):
-    """Stub — cron AI generation kaldirildi. 410 Gone."""
-    return {"ok": False, "removed": True}
-
-
-# Not: Sitemap backend'de uretilmiyor. Next.js native sitemap.ts
-# (app/sitemap.ts) /sitemap.xml'i Supabase REST'ten okuyarak build
-# sirasinda olusturuyor. Backend'de sitemap cron'a gerek yok.
-
-
-# ═══════════════════════════════════════════════════════════
-# DB Schema Endpoint (form / generate endpoint'lerinin prompt'una eklenir)
-# ═══════════════════════════════════════════════════════════
-
-INTERVIEWS_SCHEMA = {
-    "title": {"type": "str", "required": True, "description": "Emoji'li baslik (text)"},
-    "category": {"type": "str", "required": True, "description": "python-basics|strings|list-dict|oop|algorithms|data-types|pandas|numpy|sqlite3|sklearn|matplotlib|beyin-firtinasi|simple-apps|web|async (text)"},
-    "level": {"type": "str", "required": True, "description": "beginner|intermediate|advanced (text)"},
-    "description": {"type": "str", "required": True, "description": "Turkce detayli aciklama (text)"},
-    "starter_code": {"type": "str", "required": True, "description": "def fn(...) -> ...:\\n    pass (text)"},
-    "test_cases": {"type": "list", "required": True, "description": "[{input: ..., expected: ...}, ...] (jsonb)"},
-    "hints": {"type": "list", "required": True, "description": "['💡 ...', ...] (text[])"},
-    "topic": {"type": "list", "required": False, "description": "Konu etiketleri (text[]) — ornek: ['merge-sort', 'arrays']"},
-    "difficulty": {"type": "str", "required": False, "description": "easy|medium|hard (text)"},
-    "complexity": {"type": "str", "required": False, "description": "Big-O notasyonu (text)"},
-    "explanation": {"type": "str", "required": False, "description": "Cozum yaklasimi markdown (text)"},
-    "related_concepts": {"type": "list", "required": False, "description": "String[] konu etiketleri (text[])"},
-    "related_question_ids": {"type": "list", "required": False, "description": "Integer[] iliskili soru id'leri (int[])"},
-    "tutorial_slug": {"type": "str", "required": False, "description": "Iliskili tutorial slug (text)"},
-    "meta_title": {"type": "str", "required": False, "description": "SEO title (text)"},
-    "meta_description": {"type": "str", "required": False, "description": "SEO description (text)"},
-    "meta_keywords": {"type": "list", "required": False, "description": "String[] SEO keywords (text[])"},
-    "reading_time_minutes": {"type": "int", "required": False, "description": "Varsayilan: 5 (int)"},
-    "tags": {"type": "list", "required": False, "description": "String[] etiketler (text[])"},
-}
-# NOT: Bu kolonlar DB'de YOK (eklenmedi): function_name, day, week, theme, slug
-
-
-def _get_interwiews_schema() -> Dict:
-    return INTERVIEWS_SCHEMA
-
-
-@router.get("/schema/interwiews")
-async def get_interwiews_schema_endpoint():
-    return {"table": "interwiews", "schema": INTERVIEWS_SCHEMA}
-
-
-@router.get("/schema/tutorials")
-async def get_tutorials_schema_endpoint():
-    return {
-        "table": "tutorials",
-        "schema": {
-            "slug": {"type": "str", "required": True},
-            "title": {"type": "str", "required": True},
-            "content_md": {"type": "str", "required": True},
-            "description": {"type": "str", "required": False},
-            "category": {"type": "str", "required": False},
-            "difficulty": {"type": "str", "required": False},
-            "reading_time_minutes": {"type": "int", "required": False},
-            "related_question_ids": {"type": "list", "required": False},
-            "faq": {"type": "list", "required": False},
-        },
-    }
-
-
-# ═════════════════════════════════════════════════════════════════════
-# Detay Sayfa Testleri (self-test) — /admin/test/detail-pages
-# ═════════════════════════════════════════════════════════════════════
-
-@router.get("/test/detail-pages")
-async def test_detail_pages_endpoint(include_frontend: bool = False):
-    """Tüm detay sayfalarını (API + opsiyonel Frontend) test eder.
-
-    Cron job / monitoring için kullanılır:
-      curl https://backend/admin/test/detail-pages?include_frontend=true
-
-    Returns: {passed, failed, skipped, errors}
-    """
-    import io
-    from contextlib import redirect_stdout
-    import importlib.util
-
-    # scripts/test_detail_pages.py'i runtime'da import et
-    script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
-                              "scripts", "test_detail_pages.py")
-    spec = importlib.util.spec_from_file_location("test_detail_pages", script_path)
-    tdp = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(tdp)
-
-    # Frontend testlerini kapat istenirse
-    if not include_frontend:
-        tdp.FRONTEND_BASE = "http://skip-frontend-tests"
-
-    buf = io.StringIO()
-    with redirect_stdout(buf):
-        report = tdp.run_all(as_endpoint=True)
-
-    return {
-        "status": "ok" if report["failed"] == 0 else "issues_found",
-        "passed": report["passed"],
-        "failed": report["failed"],
-        "skipped": report["skipped"],
-        "elapsed_seconds": report["elapsed_seconds"],
-        "errors": report["errors"][:20],  # Ilk 20 hata
-        "console_output": buf.getvalue()[-2500:],  # Son 2500 char
-    }
-# 1782883061
-# 1782885672
+    if not os.path.exists(report_path):
+        return {"ok": False, "message": "henüz rapor yok"}
+    with open(report_path) as f:
+        return {"ok": True, "report": json.load(f)}

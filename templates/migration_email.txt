@@ -1,0 +1,32 @@
+PythonMulakat — Hesap Taşıma Daveti
+═══════════════════════════════════
+
+Merhaba {{ username }},
+
+PythonMulakat'ı daha hızlı, daha güvenli ve daha sürdürülebilir bir altyapıya
+taşıyoruz. Hesabını yeni sisteme sadece senin onayınla aktarabiliriz.
+
+KVKK Aydınlatma
+───────────────
+• Veri sorumlusu : PythonMulakat (mkemal@pythonmulakat.com)
+• İşlenen veri   : Yalnızca e-posta adresin ve kullanıcı adın
+• Amaç          : Hesabını yeni altyapıya taşımak (authentication)
+• Taşınmayan    : Çözüm geçmişin, kodların, profil bilgilerin yeni sistemde
+                   boş başlar
+• Saklama süresi: Eski sistemdeki kaydın 30 gün sonra silinir
+• Hakların      : Vazgeçebilir, silme talep edebilir, verilerini
+                   görebilirsin (KVKK Md. 11)
+
+Onay vermek için:
+{{ magic_link }}
+
+Bu linke tıklaman, yukarıdaki aydınlatmayı okuduğun ve taşımaya açık rıza
+verdiğin anlamına gelir.
+
+Vazgeçmek için:
+{{ optout_url }}
+
+Soruların için: mkemal@pythonmulakat.com
+
+© 2026 PythonMulakat
+https://pythonmulakat.com/privacy
