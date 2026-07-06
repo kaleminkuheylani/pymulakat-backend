@@ -1,13 +1,12 @@
 # 🐍 PythonMulakat — Backend
 
-Python mülakat hazırlık platformu — FastAPI + Supabase + Gemini AI.
+Python mülakat hazırlık platformu — FastAPI + Supabase.
 
 ## ✨ Özellikler
 
 - 🔐 **Auth** — Supabase ile sign up, login, email verification (6 haneli kod), magic link
 - 🐍 **Soru yönetimi** — Kategori bazlı sorular, başlangıç kodu, test case'ler
 - 🧪 **Attempt tracking** — Kullanıcı denemeleri, başarı oranı, puan hesaplama
-- 🤖 **AI entegrasyonu** — Gemini ile otomatik soru üretimi + değerlendirme
 - 📧 **Email** — Resend ile doğrulama kodu gönderimi
 
 ## 🚀 Hızlı Başlangıç
@@ -39,7 +38,6 @@ Docs: http://localhost:8000/docs
 | FastAPI | latest |
 | Supabase | latest |
 | Resend | latest |
-| Gemini AI | latest |
 | Pydantic | v2 |
 
 ## 📂 Yapı
@@ -60,7 +58,6 @@ backend/
 │   └── attempts.py               # /api/v2/attempts
 │
 ├── services/
-│   ├── gemini.py                 # AI soru üretimi
 │   └── upload_questions.py       # Toplu soru yükleme
 │
 ├── models/

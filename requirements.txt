@@ -1,5 +1,5 @@
 # pymulakat-backend production dependencies
-# AI generation dependencies removed (gemini, openai)
+# Source: pyproject.toml — keep in sync via `uv pip compile pyproject.toml`
 
 supabase>=2.0.0
 resend>=2.0.0

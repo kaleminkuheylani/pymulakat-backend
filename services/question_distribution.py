@@ -223,7 +223,7 @@ def get_next_id(existing_ids: List[int]) -> int:
 
 def build_distribution_prompt(plan: List[Dict], existing_questions_sample: str, db_schema: Optional[Dict] = None) -> str:
     """
-    Gemini için prompt — input/output ilişkisi olan sorular.
+    Soru üretim prompt'u — input/output ilişkisi olan sorular.
     """
     plan_lines_parts = []
     for i, p in enumerate(plan):
