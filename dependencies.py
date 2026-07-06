@@ -1,7 +1,12 @@
-from fastapi import HTTPException, Request
-from supabase_client import get_supabase
-import jwt
+import logging
 import os
+
+import jwt
+from fastapi import HTTPException, Request
+
+from supabase_client import get_supabase
+
+logger = logging.getLogger("pymulakat")
 
 
 async def get_current_user(request: Request):
@@ -21,6 +26,7 @@ async def get_current_user(request: Request):
 
     # JWT decode yöntemi (Supabase v2'de get_user() çalışmıyor)
     jwt_secret = os.environ.get("SUPABASE_JWT_SECRET")
+    app_env = os.environ.get("APP_ENV", "development").lower()
 
     if jwt_secret:
         # Secret varsa tam doğrulama yap
@@ -43,7 +49,19 @@ async def get_current_user(request: Request):
         except jwt.InvalidTokenError as e:
             raise HTTPException(401, f"Geçersiz token: {e}")
 
-    # Secret yoksa verify'siz decode (sadece development için)
+    # Secret yoksa — fail fast in production, warn in dev
+    if app_env == "production":
+        # Production'da secret zorunlu — startup'ta patlamalı
+        raise RuntimeError(
+            "SUPABASE_JWT_SECRET zorunlu! APP_ENV=production ama secret tanımsız. "
+            "Supabase Dashboard → Settings → API → JWT Secret"
+        )
+
+    # Geliştirme modunda: uyar + verify'siz decode
+    logger.warning(
+        "⚠️ SUPABASE_JWT_SECRET tanımsız — geliştirme modunda verify'siz decode aktif. "
+        "Production'da MUTLAKA ayarlayın!"
+    )
     try:
         payload = jwt.decode(token, options={"verify_signature": False})
         user_id = payload.get("sub")

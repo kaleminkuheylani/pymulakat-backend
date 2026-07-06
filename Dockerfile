@@ -3,21 +3,26 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Sistem bağımlılıkları
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Python bağımlılıkları (requirements.txt)
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# uv (pinned, official image)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-# Uygulama dosyaları
+# Layer cache: dependency kurulumu önce (pyproject + lock değişmedikçe cache)
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+
+# Source
 COPY . .
+RUN uv sync --frozen --no-dev
 
-# Vercel @vercel/docker runtime PORT env üzerinden çalışır (default 3000)
+# venv python PATH'e ekle
+ENV PATH="/app/.venv/bin:$PATH"
 ENV PORT=3000
 EXPOSE 3000
 
 # Çalıştır — main.py "app" değişkenini export ediyor
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT}
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"]
