@@ -3120,4 +3120,588 @@ Yapıyı sen seç.''',
         related_question_ids=[33, 28, 110],
         tags=['data_structures', 'intermediate', 'interview'],
     ),
+    # ─────────────────────────────────────────────────────────────────
+    # 20 Yeni Soru (ID 122-141) — Soru Üretici v3 genişletmesi
+    # "Kullanıcı karar versin" prensibi korundu. Akış bozulmadı.
+    # ─────────────────────────────────────────────────────────────────
+    Question(
+        id=122,
+        title='İki Listenin Simetrik Farkı',
+        category='list-dict',
+        level='beginner',
+        description='''İki listeyi parametre al. Yalnızca bir listede bulunan elemanları
+(simetrik fark) döndür. Sıra önemli değil, tekrarlar kaldırılır.
+Yapıyı sen seç.''',
+        starter_code='''def symmetric_diff(a, b):
+    # a, b: list
+    # sadece birinde olan elemanlari dondur
+    pass''',
+        test_cases=[
+            {'input': [[1, 2, 3], [3, 4, 5]], 'expected': {1, 2, 4, 5}, 'description': 'klasik simetrik fark'},
+            {'input': [[1, 1, 2], [2, 3]], 'expected': {1, 3}, 'description': 'tekrarlar kaldirilir'},
+            {'input': [[], [1, 2]], 'expected': {1, 2}, 'description': 'bos liste'},
+        ],
+        hints=['💡 İpucu 1: set.symmetric_difference() kullanabilirsin.', '💡 İpucu 2: (a ^ b) küme operatörü de çalışır.', '💡 İpucu 3: list döndürmek istersen sorted() ile sırala.'],
+        explanation='''**Simetrik Fark** set teorisinin klasik operasyonudur.
+
+**Problem:** İki kümenin ortak olmayan elemanlarının birleşimi.
+
+**Yaklaşımlar:**
+- set kullanımı (en hızlı): `set(a) ^ set(b)`
+- liste ile manuel kontrol (öğretici)
+
+**Mulakat notu:** Yapı senin. set en doğal cevap ama nedenini açıkla.''' ,
+        complexity='O(n+m)',
+        related_concepts=['set', 'symmetric_difference', 'membership'],
+        related_question_ids=[11, 113],
+        tags=['list_dict', 'beginner', 'interview'],
+    ),
+    Question(
+        id=123,
+        title='Cümleyi Kelimelere Ayır (Noktalama Koruyarak)',
+        category='python-basics',
+        level='beginner',
+        description='''Bir cümleyi kelimelere ayır ama noktalama işaretlerini kelimeye
+yapıştırarak bırak. Örn: "Merhaba, dünya!" -> ["Merhaba,", "dünya!"]
+Yapıyı sen seç.''',
+        starter_code='''def split_keep_punct(sentence):
+    # cumleyi kelimelere ayir, noktalama kelimeye yapisik kalsin
+    pass''',
+        test_cases=[
+            {'input': 'Merhaba, dünya!', 'expected': ['Merhaba,', 'dünya!'], 'description': 'temel noktalama'},
+            {'input': 'Python mı?', 'expected': ['Python', 'mı?'], 'description': 'soru işareti'},
+            {'input': 'a b c', 'expected': ['a', 'b', 'c'], 'description': 'düz metin'},
+        ],
+        hints=['💡 İpucu 1: re.findall(r"\\w+[\\w]*\\S*", s) deneyebilirsin.', '💡 İpucu 2: Karakter karakter gezip harf olmayanları sınır olarak kullan.', '💡 İpucu 3: split() noktalamayı kaybeder, findall daha iyi.'],
+        explanation='''**Split-with-punctuation** string işleme mülakat klasiğidir.
+
+**Problem:** Varsayılan `split()` noktalamayı kelimeye yapıştırır ya da ayırır. İstediğimiz davranış: noktalama kelimede kalsın.
+
+**Yaklaşım:** regex ile `\\w+` (kelime karakterleri) gruplarını yakala.
+
+**Mulakat notu:** Veri yapısı senin — liste mi tuple mı karar senin.''' ,
+        complexity='O(n)',
+        related_concepts=['regex', 'findall', 'string parsing'],
+        related_question_ids=[3, 19],
+        tags=['python_basics', 'beginner', 'interview'],
+    ),
+    Question(
+        id=124,
+        title='Dizide Çoğunluk Elemanı (Boyer-Moore)',
+        category='algorithms',
+        level='intermediate',
+        description='''Bir dizide n/2'den fazla geçen elemanı bul. Her zaman böyle bir
+eleman var. Veri yapısı kullanmadan, O(1) bellekte çöz.
+Yapıyı sen seç.''',
+        starter_code='''def majority_element(nums):
+    # n/2'den fazla geçen elemani O(1) bellekte bul
+    pass''',
+        test_cases=[
+            {'input': [3, 2, 3], 'expected': 3, 'description': 'tek majority'},
+            {'input': [2, 2, 1, 1, 1, 2, 2], 'expected': 2, 'description': 'uzun dizi'},
+            {'input': [1], 'expected': 1, 'description': 'tek eleman'},
+        ],
+        hints=['💡 İpucu 1: Boyer-Moore Voting Algorithm kullan.', '💡 İpucu 2: candidate tut, count artır/azalt.', '💡 İpucu 3: Son aday kesin çözüm (garanti varken).'],
+        explanation='''**Boyer-Moore Voting Algorithm** bir klasik algoritma sorusudur.
+
+**Fikir:** Bir eleman n/2'den fazlaysa, diğerlerini "iptal etsek" bile o kalır.
+
+**Kod:**
+```python
+candidate, count = None, 0
+for n in nums:
+    if count == 0: candidate = n
+    count += 1 if n == candidate else -1
+return candidate
+```
+
+**Mulakat notu:** O(n) zaman + O(1) bellek — bu soruyu set/heap ile çözmek kolay ama asıl başarı O(1) bellekte çıkıyor.''' ,
+        complexity='O(n) zaman, O(1) bellek',
+        related_concepts=['Boyer-Moore', 'greedy', 'candidate-counter'],
+        related_question_ids=[100, 102],
+        tags=['algorithms', 'intermediate', 'interview'],
+    ),
+    Question(
+        id=125,
+        title='Sözlüğü Değere Göre Sırala (Tie-Break Anahtarla)',
+        category='data-structures',
+        level='beginner',
+        description='''Bir dict ver. Anahtarlarını value'ya göre artan sırala.
+Value eşitse alfabetik olarak anahtara göre sırala.
+Sonuç: [(key, value), ...] listesi.
+Yapıyı sen seç.''',
+        starter_code='''def sort_by_value(d):
+    # d: dict
+    # [(key, value), ...] sirali liste dondur
+    pass''',
+        test_cases=[
+            {'input': {'banana': 3, 'apple': 3, 'cherry': 1}, 'expected': [('cherry', 1), ('apple', 3), ('banana', 3)], 'description': 'tie-break'},
+            {'input': {'a': 2, 'b': 1}, 'expected': [('b', 1), ('a', 2)], 'description': 'basit'},
+            {'input': {}, 'expected': [], 'description': 'bos dict'},
+        ],
+        hints=['💡 İpucu 1: sorted(d.items(), key=lambda kv: (kv[1], kv[0]))', '💡 İpucu 2: Tuple karşılaştırma önce ilk elemana, sonra ikinciye bakar.', '💡 İpucu 3: reverse=True azalan sıralama yapar.'],
+        explanation='''**Dict sıralama** Python mülakatlarının en sık konusudur.
+
+**Problem:** dict yapısı Python 3.7+ insertion-ordered ama "value sıralı" istiyoruz.
+
+**Çözüm:** `sorted(d.items(), key=lambda kv: (kv[1], kv[0]))` — tuple key önce value, sonra key sıralar.
+
+**Mulakat notu:** Yapıyı sen seç. sorted + tuple güzel. Counter kullanımı da alternatif.''' ,
+        complexity='O(n log n)',
+        related_concepts=['sorted', 'tuple comparison', 'dict ordering'],
+        related_question_ids=[121, 110],
+        tags=['data_structures', 'beginner', 'interview'],
+    ),
+    Question(
+        id=126,
+        title='İki Sayının Ortalaması (Overflow Olmadan)',
+        category='python-basics',
+        level='intermediate',
+        description='''İki tam sayının ortalamasını hesapla. (a + b) hesabı overflow
+yapabilir (düşünce düzeyinde), bitsel operatörle çöz.
+Python int overflow olmaz, ama algoritmayı göster.
+Yapıyı sen seç.''',
+        starter_code='''def average(a, b):
+    # overflow yapmadan ortalama al
+    pass''',
+        test_cases=[
+            {'input': [10, 20], 'expected': 15, 'description': 'pozitif'},
+            {'input': [-5, 5], 'expected': 0, 'description': 'negatif + pozitif'},
+            {'input': [3, 7], 'expected': 5, 'description': 'tek sayi'},
+        ],
+        hints=['💡 İpucu 1: (a & b) + ((a ^ b) >> 1) bitsel çözüm.', '💡 İpucu 2: Sıradan: (a + b) // 2.', '💡 İpucu 3: (a // 2) + (b // 2) + ((a % 2 + b % 2) // 2).'],
+        explanation='''**Average without overflow** bitsel işlem mülakat sorusudur.
+
+**Fikir:** `a + b` yerine `(a & b) + ((a ^ b) >> 1)`. Çünkü a+b = (a&b)*2 + (a^b); ortalaması = (a&b) + (a^b)/2.
+
+**Mulakat notu:** Python’da int sınırsız, ama soru bitwise düşünmeyi test eder.''' ,
+        complexity='O(1)',
+        related_concepts=['bitwise ops', 'overflow', 'integer arithmetic'],
+        related_question_ids=[97],
+        tags=['python_basics', 'intermediate', 'interview'],
+    ),
+    Question(
+        id=127,
+        title='DataFrame\'de Satır Bazlı Normalizasyon',
+        category='pandas',
+        level='intermediate',
+        description='''Bir DataFrame\'in sayısal sütunlarını satır bazlı normalize et.
+Yani her satır için: (x - min) / (max - min) formülü uygula.
+Sonuç yine DataFrame.
+Veri yapısı senin — pandas kullanmak zorunlu.''',
+        starter_code='''def row_normalize(df):
+    # sayisal sutunlari satir bazli normalize et
+    pass''',
+        test_cases=[
+            {'input': [[1, 2], [3, 4]], 'expected': [[0.0, 1.0], [0.0, 1.0]], 'description': 'basit kare'},
+            {'input': [[10, 20, 30]], 'expected': [[0.0, 0.5, 1.0]], 'description': 'tek satir'},
+            {'input': [[5, 5]], 'expected': [[0, 0]], 'description': 'sabit satir'},
+        ],
+        hints=['💡 İpucu 1: df.select_dtypes(include="number").sub(df.min(axis=1), axis=0).div(df.max(axis=1) - df.min(axis=1), axis=0)', '💡 İpucu 2: axis=1 satır bazlı demek.', '💡 İpucu 3: max == min olan satırlarda 0/0 olur, NaN döner.'],
+        explanation='''**Row-wise normalization** feature engineering klasiğidir.
+
+**Problem:** Her satırı kendi içinde 0-1 aralığına çek. Görüntü işleme, recommendation\'da yaygın.
+
+**Yaklaşım:** `df.sub(row_min).div(row_max - row_min)` axis=1 ile.
+
+**Mulakat notu:** Yapıyı sen seç — apply mi vectorized mi karar senin.''' ,
+        complexity='O(n*m)',
+        related_concepts=['pandas axis', 'broadcasting', 'normalization'],
+        related_question_ids=[130],
+        tags=['pandas', 'intermediate', 'interview'],
+    ),
+    Question(
+        id=128,
+        title='Dizideki En Uzun Artan Altdizi (LIS)',
+        category='algorithms',
+        level='intermediate',
+        description='''Bir dizideki en uzun kesin artan altdizinin uzunluğunu bul.
+Örn: [10, 9, 2, 5, 3, 7, 101, 18] -> 4 (2, 3, 7, 18 veya 2, 5, 7, 101)
+Yapıyı sen seç — O(n log n) hedef.''',
+        starter_code='''def length_of_lis(nums):
+    # en uzun kesin artan altdizi uzunlugu
+    pass''',
+        test_cases=[
+            {'input': [10, 9, 2, 5, 3, 7, 101, 18], 'expected': 4, 'description': 'klasik'},
+            {'input': [0, 1, 0, 3, 2, 3], 'expected': 4, 'description': 'tekrar'},
+            {'input': [7, 7, 7, 7], 'expected': 1, 'description': 'sabit dizi'},
+        ],
+        hints=['💡 İpucu 1: Patience sorting / binary search ile O(n log n).', '💡 İpucu 2: bisect_left ile uygun pozisyonu bul.', '💡 İpucu 3: O(n²) DP de çalışır ama yavaş.'],
+        explanation='''**Longest Increasing Subsequence** en sık sorulan DP sorularından.
+
+**Problem:** Sırayı bozmadan en uzun kesin artan altdizi.
+
+**İki yaklaşım:**
+- DP O(n²) — basit, yavaş.
+- Patience sorting + binary search O(n log n) — `bisect_left` ile.
+
+**Mulakat notu:** Soruyu soran O(n log n) çözümü görmek ister.''' ,
+        complexity='O(n log n)',
+        related_concepts=['DP', 'patience sort', 'bisect'],
+        related_question_ids=[102, 100],
+        tags=['algorithms', 'intermediate', 'interview'],
+    ),
+    Question(
+        id=129,
+        title='Birleştirme Noktaları (Merge Intervals)',
+        category='algorithms',
+        level='intermediate',
+        description='''Çakışan aralıkları birleştir. Sonuç: çakışmayan, sıralı aralıklar.
+Girdi: [[1,3],[2,6],[8,10],[15,18]] -> [[1,6],[8,10],[15,18]]
+Yapıyı sen seç.''',
+        starter_code='''def merge_intervals(intervals):
+    # [[start, end], ...] -> birlesmis liste
+    pass''',
+        test_cases=[
+            {'input': [[1, 3], [2, 6], [8, 10], [15, 18]], 'expected': [[1, 6], [8, 10], [15, 18]], 'description': 'klasik'},
+            {'input': [[1, 4], [4, 5]], 'expected': [[1, 5]], 'description': 'temas birlesir'},
+            {'input': [], 'expected': [], 'description': 'bos liste'},
+        ],
+        hints=['💡 İpucu 1: önce start\'a göre sırala.', '💡 İpucu 2: sıralı liste gezip current.end >= next.start ise birleştir.', '💡 İpucu 3: stack mantığı da kullanılabilir.'],
+        explanation='''**Merge Intervals** klasik sıralama + greedy sorusudur.
+
+**Problem:** Üst üste binen aralıkları tek bir aralığa indir.
+
+**Çözüm:** Sırala, sonra ardışık olarak birleştir.
+
+**Mulakat notu:** Yapıyı sen seç — list yeterli, heap gerekmez.''' ,
+        complexity='O(n log n)',
+        related_concepts=['sorting', 'greedy', 'interval overlap'],
+        related_question_ids=[121, 128],
+        tags=['algorithms', 'intermediate', 'interview'],
+    ),
+    Question(
+        id=130,
+        title='DataFrame\'de Kategorik Eksik Değerleri Doldur',
+        category='pandas',
+        level='intermediate',
+        description='''DataFrame\'deki kategorik sütunlarda NaN değerleri en sık geçen
+değerle (mode) doldur. Sayısal sütunlara dokunma.
+Veri yapısı senin.''',
+        starter_code='''def fill_categorical_nan(df):
+    # kategorik sutunlarda NaN -> mode
+    pass''',
+        test_cases=[
+            {'input': "df with NaN in 'city' column", 'expected': "df with NaN filled by mode", 'description': 'temel'},
+            {'input': "df all numeric", 'expected': 'df unchanged', 'description': 'sayisal dokunulmaz'},
+            {'input': "df no NaN", 'expected': 'df unchanged', 'description': 'bos is yok'},
+        ],
+        hints=['💡 İpucu 1: df.select_dtypes(include="object").columns', '💡 İpucu 2: s.mode()[0] en sık değeri verir.', '💡 İpucu 3: df[col].fillna(s.mode()[0]) inplace=True.'],
+        explanation='''**Categorical NaN imputation** veri temizleme klasiğidir.
+
+**Yaklaşım:** Kategorik sütunları seç, her birinde mode hesapla, NaN\'leri doldur.
+
+**Mulakat notu:** Yapıyı sen seç — dict comprehension ile daha hızlı çözüm.''' ,
+        complexity='O(n*m)',
+        related_concepts=['mode', 'imputation', 'dtype selection'],
+        related_question_ids=[127],
+        tags=['pandas', 'intermediate', 'interview'],
+    ),
+    Question(
+        id=131,
+        title='Listedeki Yinelenenleri Say',
+        category='python-basics',
+        level='beginner',
+        description='''Bir listedeki elemanların kaç kez geçtiğini dict olarak döndür.
+Sıra önemsiz. Yapıyı sen seç.''',
+        starter_code='''def count_items(items):
+    # her elemandan kac tane var -> dict
+    pass''',
+        test_cases=[
+            {'input': [1, 2, 2, 3, 3, 3], 'expected': {1: 1, 2: 2, 3: 3}, 'description': 'basit'},
+            {'input': [], 'expected': {}, 'description': 'bos liste'},
+            {'input': ['a', 'a', 'b'], 'expected': {'a': 2, 'b': 1}, 'description': 'string'},
+        ],
+        hints=['💡 İpucu 1: collections.Counter(items).', '💡 İpucu 2: dict.get(k, 0) + 1 döngüsü.', '💡 İpucu 3: defaultdict(int) kullanabilirsin.'],
+        explanation='''**Counting** en temel mülakat problemidir.
+
+**Çözüm:** `Counter` hazır kütüphane, elle yazmak da öğretici.
+
+**Mulakat notu:** Yapıyı sen seç — Counter, dict, defaultdict hepsi olur.''' ,
+        complexity='O(n)',
+        related_concepts=['Counter', 'dict', 'defaultdict'],
+        related_question_ids=[110, 125],
+        tags=['python_basics', 'beginner', 'interview'],
+    ),
+    Question(
+        id=132,
+        title='Deque Kullanarak Kayan Pencere Maksimumu',
+        category='data-structures',
+        level='intermediate',
+        description='''Bir dizide k boyutunda kayan pencere ile her pencerenin maksimumunu bul.
+O(n) zamanda çöz. Yapı: collections.deque.
+Veri yapısı: deque (önerilir ama karar senin).''',
+        starter_code='''def max_sliding_window(nums, k):
+    # her pencere max -> list
+    pass''',
+        test_cases=[
+            {'input': [[1, 3, -1, -3, 5, 3, 6, 7], 3], 'expected': [3, 3, 5, 5, 6, 7], 'description': 'klasik'},
+            {'input': [[1], 1], 'expected': [1], 'description': 'tek eleman'},
+            {'input': [[9, 11], 2], 'expected': [11], 'description': 'k=2'},
+        ],
+        hints=['💡 İpucu 1: deque tut, index\'leri sakla.', '💡 İpucu 2: eski ve küçük index\'leri çıkar.', '💡 İpucu 3: her adımda deque[0] = pencere max.'],
+        explanation='''**Sliding Window Maximum** deque\'in en güzel kullanımıdır.
+
+**Fikir:** Monotonic deque — sadece aday indexleri tut. Pencere dışına çıkanı ve küçükleri at.
+
+**Mulakat notu:** Veri yapısı senin. deque ile O(n), heap ile O(n log n). Hangisi? sen karar ver.''' ,
+        complexity='O(n) zaman, O(k) bellek',
+        related_concepts=['deque', 'monotonic queue', 'sliding window'],
+        related_question_ids=[102, 128],
+        tags=['data_structures', 'intermediate', 'interview'],
+    ),
+    Question(
+        id=133,
+        title='İki Dizinin Ortak Elemanları (Sıra Koruyarak)',
+        category='python-basics',
+        level='beginner',
+        description='''İki listenin ortak elemanlarını, ilk listenin sırası koruyarak döndür.
+Yapıyı sen seç.''',
+        starter_code='''def common_in_order(a, b):
+    # a'daki sirayla, a ∩ b
+    pass''',
+        test_cases=[
+            {'input': [[1, 2, 3, 4], [3, 4, 5, 6]], 'expected': [3, 4], 'description': 'temel'},
+            {'input': [[1, 1, 2], [1, 2, 2]], 'expected': [1, 1, 2], 'description': 'tekrarlar korunur'},
+            {'input': [[], [1]], 'expected': [], 'description': 'bos liste'},
+        ],
+        hints=['💡 İpucu 1: set(b) oluştur, sonra a\'da gez, varsa ekle.', '💡 İpucu 2: list comprehension ile tek satır.', '💡 İpucu 3: dict.fromkeys ile tekrarı at.'],
+        explanation='''**Order-preserving intersection** set/list ayrımı sorusudur.
+
+**Problem:** `set(a) & set(b)` sırayı korumaz, tekrarları siler.
+
+**Çözüm:** set lookup O(1), liste ile sıra korunur.
+
+**Mulakat notu:** Yapıyı sen seç — set + list combo en hızlı.''' ,
+        complexity='O(n+m)',
+        related_concepts=['set', 'intersection', 'order-preserving'],
+        related_question_ids=[11, 122],
+        tags=['python_basics', 'beginner', 'interview'],
+    ),
+    Question(
+        id=134,
+        title='Sözlük Anahtarlarını Swap ile Değiştir',
+        category='list-dict',
+        level='beginner',
+        description='''Bir dict\'in anahtarları ile değerlerini yer değiştir.
+Değerler benzersiz olmalı. Yapıyı sen seç.''',
+        starter_code='''def invert_dict(d):
+    # {k: v} -> {v: k}
+    pass''',
+        test_cases=[
+            {'input': {'a': 1, 'b': 2, 'c': 3}, 'expected': {1: 'a', 2: 'b', 3: 'c'}, 'description': 'temel'},
+            {'input': {'x': 'y'}, 'expected': {'y': 'x'}, 'description': 'tekil'},
+            {'input': {}, 'expected': {}, 'description': 'bos dict'},
+        ],
+        hints=['💡 İpucu 1: {v: k for k, v in d.items()}', '💡 İpucu 2: dict comprehension en kısa.', '💡 İpucu 3: zip ile de yapılabilir: dict(zip(d.values(), d.keys())).'],
+        explanation='''**Dict inversion** temel mülakat sorusudur.
+
+**Problem:** Anahtar-değer takası. Değerler uniqua değilse ikinci değer kazanır.
+
+**Mulakat notu:** Yapıyı sen seç — dict comprehension en doğal.''' ,
+        complexity='O(n)',
+        related_concepts=['dict comprehension', 'swap', 'uniqueness'],
+        related_question_ids=[125, 110],
+        tags=['list_dict', 'beginner', 'interview'],
+    ),
+    Question(
+        id=135,
+        title='Yığın (Stack) ile Parantez Doğrulama',
+        category='data-structures',
+        level='beginner',
+        description='''Bir string\'deki parantezlerin ()[]{} dengeli olup olmadığını kontrol et.
+Yanlışsa False, doğruysa True. Yapı: stack (list kullanılabilir).
+Veri yapısı: stack.''',
+        starter_code='''def is_balanced(s):
+    # parantezler dengeli mi?
+    pass''',
+        test_cases=[
+            {'input': '()[]{}', 'expected': True, 'description': 'hep dogru'},
+            {'input': '(]', 'expected': False, 'description': 'yanlis cins'},
+            {'input': '([)]', 'expected': False, 'description': 'ici ice yanlis'},
+            {'input': '{[]}', 'expected': True, 'description': 'ici ice dogru'},
+        ],
+        hints=['💡 İpucu 1: dict ile kapanis->acilis eslemesi tut.', '💡 İpucu 2: stack oluştur, acilanlari push, kapananla esle.', '💡 İpucu 3: en sonunda stack bos olmali.'],
+        explanation='''**Balanced parentheses** stack\'in klasik uygulamasıdır.
+
+**Fikir:** Açılışta push, kapanışta pop ve eşleşme kontrolü.
+
+**Mulakat notu:** Veri yapısı: stack (list ile yapılabilir).''' ,
+        complexity='O(n)',
+        related_concepts=['stack', 'matching pairs', 'push/pop'],
+        related_question_ids=[113],
+        tags=['data_structures', 'beginner', 'interview'],
+    ),
+    Question(
+        id=136,
+        title='Linked List Döngü Tespiti (Floyd)',
+        category='algorithms',
+        level='intermediate',
+        description='''Bir linked list\'te döngü var mı? Tortoise-Hare (Floyd) algoritması
+ile O(1) bellekte çöz. Yapıyı sen seç — düğüm (Node) sınıfı kullanılabilir.''',
+        starter_code='''def has_cycle(head):
+    # linked list'te dongu var mi? O(1) bellek
+    pass''',
+        test_cases=[
+            {'input': 'linked list with cycle', 'expected': True, 'description': 'dongulu'},
+            {'input': 'linear list', 'expected': False, 'description': 'duz'},
+            {'input': 'single node no cycle', 'expected': False, 'description': 'tekil'},
+        ],
+        hints=['💡 İpucu 1: slow, fast = head, head.', '💡 İpucu 2: slow birer, fast ikişer ilerler.', '💡 İpucu 3: slow == fast ise dongu var.'],
+        explanation='''**Floyd cycle detection** linked list mülakatının klasiğidir.
+
+**Fikir:** İki işaretçi — biri yavaş, biri hızlı. Döngü varsa buluşurlar.
+
+**Mulakat notu:** Yapıyı sen seç — Node sınıfı, tuple, namedtuple hepsi olur.''' ,
+        complexity='O(n) zaman, O(1) bellek',
+        related_concepts=['Floyd', 'two pointers', 'linked list'],
+        related_question_ids=[97, 99],
+        tags=['algorithms', 'intermediate', 'interview'],
+    ),
+    Question(
+        id=137,
+        title='İki Sözlüğü Birleştir (Derinlik-1)',
+        category='list-dict',
+        level='intermediate',
+        description='''İki dict\'i birleştir. Çakışan anahtarlarda ikincinin değeri kazansın.
+Yapıyı sen seç.''',
+        starter_code='''def merge_dicts(a, b):
+    # a ∪ b, b kazanir catismada
+    pass''',
+        test_cases=[
+            {'input': [{'x': 1, 'y': 2}, {'y': 3, 'z': 4}], 'expected': {'x': 1, 'y': 3, 'z': 4}, 'description': 'catisma'},
+            {'input': [{'a': 1}, {'b': 2}], 'expected': {'a': 1, 'b': 2}, 'description': 'ayrik'},
+            {'input': [{}, {'k': 'v'}], 'expected': {'k': 'v'}, 'description': 'bos a'},
+        ],
+        hints=['💡 İpucu 1: {**a, **b} Python 3.5+ syntax.', '💡 İpucu 2: a | b Python 3.9+ operatörü.', '💡 İpucu 3: dict(b.items() + a.items()) eski yöntem.'],
+        explanation='''**Dict merge** config management\'ın temelidir.
+
+**Çözüm:** PEP 448 spread syntax: `{**a, **b}`. Python 3.9+ ile: `a | b`.
+
+**Mulakat notu:** Yapıyı sen seç — operatör, spread, update hepsi geçerli.''' ,
+        complexity='O(n+m)',
+        related_concepts=['dict merge', 'PEP 448', 'spread syntax'],
+        related_question_ids=[134, 125],
+        tags=['list_dict', 'intermediate', 'interview'],
+    ),
+    Question(
+        id=138,
+        title='Pivotlanmış Binary Search',
+        category='algorithms',
+        level='intermediate',
+        description='''Döndürülmüş sıralı dizide bir hedef değeri bul. Varsa index, yoksa -1.
+[4,5,6,7,0,1,2] target=0 -> 4. O(log n) zorunlu.
+Yapıyı sen seç.''',
+        starter_code='''def search_rotated(nums, target):
+    # dondurulmus sirali dizide arama
+    pass''',
+        test_cases=[
+            {'input': [[4, 5, 6, 7, 0, 1, 2], 0], 'expected': 4, 'description': 'pivot ortada'},
+            {'input': [[4, 5, 6, 7, 0, 1, 2], 3], 'expected': -1, 'description': 'yok'},
+            {'input': [[1], 0], 'expected': -1, 'description': 'tekil yok'},
+        ],
+        hints=['💡 İpucu 1: Her adımda hangi yarının sıralı olduğunu belirle.', '💡 İpucu 2: mid ile target\'i karşılaştır.', '💡 İpucu 3: duplicate\'lerde O(log n) zorlaşır — LeetCode 81.'],
+        explanation='''**Search in rotated sorted array** binary search varyasyonudur.
+
+**Fikir:** Her adımda ya sol ya sağ yarı sıralıdır. Sıralı yarıda aramayı yap.
+
+**Mulakat notu:** Yapıyı sen seç — recursion veya iterative.''' ,
+        complexity='O(log n)',
+        related_concepts=['binary search', 'rotated array', 'invariant'],
+        related_question_ids=[117, 128],
+        tags=['algorithms', 'intermediate', 'interview'],
+    ),
+    Question(
+        id=139,
+        title='DataFrame\'de Eksik Değer Isı Haritası Mantığı',
+        category='pandas',
+        level='beginner',
+        description='''Her sütun için NaN sayısını hesapla ve dict olarak döndür.
+{column_name: nan_count}. Veri yapısı senin.''',
+        starter_code='''def nan_counts(df):
+    # her sutun -> NaN sayisi dict
+    pass''',
+        test_cases=[
+            {'input': 'df with NaN in 2 cols', 'expected': "{'a': 1, 'b': 2}", 'description': 'NaN var'},
+            {'input': 'df no NaN', 'expected': '{}', 'description': 'temiz'},
+            {'input': 'df all NaN', 'expected': "{'a': 5}", 'description': 'hepsi NaN'},
+        ],
+        hints=['💡 İpucu 1: df.isna().sum().to_dict() tek satırda çözer.', '💡 İpucu 2: dict comprehension ile: {c: df[c].isna().sum() for c in df.columns}.', '💡 İpucu 3: Series.sum() NaN\'leri 0 sayar.'],
+        explanation='''**Missing value detection** EDA\'nın ilk adımıdır.
+
+**Çözüm:** `df.isna().sum()` her sütunun eksik sayısını verir.
+
+**Mulakat notu:** Veri yapısı senin — Series, dict, list hepsi olur.''' ,
+        complexity='O(n*m)',
+        related_concepts=['isna', 'sum aggregation', 'EDA'],
+        related_question_ids=[130, 127],
+        tags=['pandas', 'beginner', 'interview'],
+    ),
+    Question(
+        id=140,
+        title='Permütasyon Kontrolü (İki String)',
+        category='python-basics',
+        level='beginner',
+        description='''İki string birbirinin permütasyonu mu? (aynı karakterler farklı sırada)
+Büyük/küçük harf önemli, boşluk önemli. Yapıyı sen seç.''',
+        starter_code='''def is_permutation(a, b):
+    # birbirinin permutasyonu mu?
+    pass''',
+        test_cases=[
+            {'input': ['abc', 'bca'], 'expected': True, 'description': 'temel'},
+            {'input': ['abc', 'abd'], 'expected': False, 'description': 'farkli karakter'},
+            {'input': ['', ''], 'expected': True, 'description': 'bos-bos'},
+            {'input': ['a', 'aa'], 'expected': False, 'description': 'uzunluk farkli'},
+        ],
+        hints=['💡 İpucu 1: sorted(a) == sorted(b) en kısa.', '💡 İpucu 2: Counter(a) == Counter(b) karakter sayıları.', '💡 İpucu 3: Önce len kontrolü yap, erken çık.'],
+        explanation='''**Permutation check** klasik string mülakat sorusudur.
+
+**Fikir:** İki string aynı karakter sayılarına sahip mi?
+
+**Çözüm:** Counter karşılaştırma, sorted karşılaştırma veya array count.
+
+**Mulakat notu:** Yapıyı sen seç — O(n log n) veya O(n).''' ,
+        complexity='O(n) veya O(n log n)',
+        related_concepts=['Counter', 'sorting', 'permutation'],
+        related_question_ids=[3, 1],
+        tags=['python_basics', 'beginner', 'interview'],
+    ),
+    Question(
+        id=141,
+        title='LRU Cache Uygulaması',
+        category='data-structures',
+        level='intermediate',
+        description='''En az kullanılan elemanı (LRU) çıkaran bir cache uygula.
+get/put O(1). Yapı: ordered dict veya dict + doubly linked list.
+Veri yapısı senin.''',
+        starter_code='''class LRUCache:
+    def __init__(self, capacity):
+        pass
+
+    def get(self, key):
+        # varsa deger, yoksa -1 (key\'i en son kullanilmis yap)
+        pass
+
+    def put(self, key, value):
+        # ekle veya guncelle, kapasiteyi asma
+        pass''',
+        test_cases=[
+            {'input': '[put(1,1),put(2,2),get(1),put(3,3),get(2)]', 'expected': '[1, -1]', 'description': 'klasik'},
+            {'input': '[put(2,1),get(2)]', 'expected': '[1]', 'description': 'basit'},
+        ],
+        hints=['💡 İpucu 1: collections.OrderedDict.move_to_end.', '💡 İpucu 2: dict + doubly linked list (Node sınıfı).', '💡 İpucu 3: get hit ettiğinde sırayı sona taşı.'],
+        explanation='''**LRU Cache** en sık sorulan sistem tasarımı sorusudur.
+
+**Fikir:** Erişilen eleman "en yeni" olur. Kapasite aşıldığında en eski atılır.
+
+**Yaklaşımlar:**
+- OrderedDict (built-in, Python 3.7+ dict\'in insertion-ordered\'ından farklı — `move_to_end` var).
+- Kendi doubly linked list + dict.
+
+**Mulakat notu:** Veri yapısı senin. O(1) zorunlu.''' ,
+        complexity='O(1) get/put',
+        related_concepts=['OrderedDict', 'doubly linked list', 'cache eviction'],
+        related_question_ids=[125, 110],
+        tags=['data_structures', 'intermediate', 'interview'],
+    ),
 ]

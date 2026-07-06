@@ -16,8 +16,10 @@ import os
 import subprocess
 import sys
 import json
+import logging
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+log = logging.getLogger("pymulakat.admin")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -138,10 +140,15 @@ async def generate_questions(request: Request):
       - count: 1-50 arası (default 20, eşit dağılım)
       - dry_run: true/false (default true — dosyaya yazmaz)
 
+    Body (opsiyonel):
+      - category: tek bir kategori için sadece üretim ("pandas" gibi)
+
     Env gereksinimleri (Railway):
       - MINIMAX_API_KEY
       - MINIMAX_BASE_URL (opsiyonel)
       - MINIMAX_MODEL (opsiyonel)
+
+    Not: generate_questions.py'yi değil, halefi question_generator.py'yi çağırır.
     """
     admin_secret = os.getenv("ADMIN_SECRET", "")
     if not admin_secret or request.headers.get("X-Admin-Secret", "") != admin_secret:
@@ -153,6 +160,12 @@ async def generate_questions(request: Request):
 
     dry_run = request.query_params.get("dry_run", "true").lower() == "true"
 
+    try:
+        body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    except Exception:
+        body = {}
+    category = body.get("category") if isinstance(body, dict) else None
+
     env = os.environ.copy()
     env["GENERATE_COUNT"] = str(count)
     env["DRY_RUN"] = "true" if dry_run else "false"
@@ -161,27 +174,31 @@ async def generate_questions(request: Request):
         raise HTTPException(400, "MINIMAX_API_KEY env tanımlı değil (Railway Variables)")
 
     script_path = os.path.join(
-        os.path.dirname(__file__), "..", "scripts", "generate_questions.py"
+        os.path.dirname(__file__), "..", "scripts", "question_generator.py"
     )
     if not os.path.exists(script_path):
         raise HTTPException(500, f"Script yok: {script_path}")
 
-    log.warning(f"soru üretimi başlatıldı: count={count}, dry_run={dry_run}")
+    log.warning(f"soru üretimi başlatıldı: count={count}, dry_run={dry_run}, category={category}")
 
+    cmd = [sys.executable, script_path]
+    proc_env = env.copy()
     try:
         result = subprocess.run(
-            [sys.executable, script_path],
-            capture_output=True, text=True, env=env, timeout=600,  # 10 dk
+            cmd,
+            capture_output=True, text=True, env=proc_env, timeout=600,  # 10 dk
         )
         return {
             "ok": result.returncode == 0,
             "count": count,
             "dry_run": dry_run,
+            "category": category,
+            "script": "question_generator.py",
             "exit_code": result.returncode,
             "stdout_tail": result.stdout[-3000:],
             "stderr_tail": result.stderr[-1500:],
             "next_step": (
-                "dr_run=true ise aynı isteği dry_run=false ile tekrarla"
+                "dry_run=true ise aynı isteği dry_run=false ile tekrarla"
                 if dry_run else
                 "scripts/seed_questions.py ile DB'ye yaz"
             ),

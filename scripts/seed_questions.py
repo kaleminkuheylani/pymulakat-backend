@@ -23,7 +23,7 @@ Davranış:
 import os
 import sys
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pathlib import Path
 
 logging.basicConfig(
@@ -64,7 +64,11 @@ def apply_seo(questions: List[Any]) -> List[Any]:
     import importlib.util
     spec = importlib.util.spec_from_file_location("seo_content_seed", seo_path)
     seo_mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(seo_mod)
+    try:
+        spec.loader.exec_module(seo_mod)
+    except Exception as e:
+        log.warning("SEO_CONTENT import başarısız (devam ediliyor): %s", e)
+        return questions
 
     # SEO_CONTENT.py data/QUESTIONS.py'yi import ediyor — v3'e yönlendirmek için
     # patch gerekebilir. QUESTIONS-v3'ün id'leri QUESTIONS.py ile çakışıyorsa çalışır.
@@ -103,6 +107,65 @@ def get_existing_slugs(sb) -> set:
     return {r.get("slug") for r in (result.data or []) if r.get("slug")}
 
 
+def get_existing_legacy_ids(sb) -> set:
+    """DB'deki legacy_id'leri çek. 20 yeni soru append edildiğinde çakışma kontrolü için."""
+    try:
+        result = sb.table("questions").select("legacy_id").execute()
+        return {r.get("legacy_id") for r in (result.data or []) if r.get("legacy_id") is not None}
+    except Exception as e:
+        log.warning("legacy_id cekilemedi (devam ediliyor): %s", e)
+        return set()
+
+
+def slugify(text: str) -> str:
+    """migrate_to_db ile aynı slugify — title'dan URL-friendly slug üretir."""
+    import re as _re
+    import unicodedata as _u
+    s = text.lower()
+    tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
+    s = s.translate(tr)
+    s = _u.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+    s = _re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+    return s[:80] or "question"
+
+
+def ensure_slug(row: Dict[str, Any], idx: int, used: set) -> Dict[str, Any]:
+    """Slug yoksa title'dan üret. Çakışma varsa -2/-3 ekle."""
+    if row.get("slug"):
+        return row
+    base = slugify(row.get("title", f"question-{idx}"))
+    candidate = base
+    n = 2
+    while candidate in used:
+        candidate = f"{base}-{n}"
+        n += 1
+    if candidate != base:
+        row["slug"] = candidate
+    else:
+        row["slug"] = candidate
+    used.add(row["slug"])
+    return row
+
+
+def validate_row(row: Dict[str, Any]) -> Optional[str]:
+    """Minimum validasyon — hata varsa neden döner, yoksa None."""
+    if not row.get("slug"):
+        return "slug bos"
+    if not row.get("title"):
+        return "title bos"
+    if not row.get("category"):
+        return "category bos"
+    tc = row.get("test_cases") or []
+    if not isinstance(tc, list) or not tc:
+        return "test_cases bos/yanlis tip"
+    for tc_item in tc:
+        if not isinstance(tc_item, dict):
+            return "test_cases elemani dict degil"
+        if "input" not in tc_item or "expected" not in tc_item:
+            return "test_cases elemani input/expected icermiyor"
+    return None
+
+
 def main():
     require_env()
 
@@ -118,8 +181,22 @@ def main():
     log.info("✅ SEO_CONTENT uygulandı")
 
     rows = [q_to_db_row(q) for q in questions]
+
+    # Slug yoksa title'dan üret (mevcut data'da slug alanları boş olabiliyor)
+    used_slugs: set = set()
+    for i, r in enumerate(rows):
+        ensure_slug(r, i, used_slugs)
     rows = [r for r in rows if r.get("slug")]  # slug'sızları atla
     log.info("📋 Slug'lı sorular: %d", len(rows))
+
+    # Validasyon — her satır sorunsuz mu?
+    invalid = [(r, validate_row(r)) for r in rows if validate_row(r) is not None]
+    if invalid:
+        log.warning("⚠️ %d gecersiz soru bulundu (ilk 5):", len(invalid))
+        for r, reason in invalid[:5]:
+            log.warning("  • %s :: %s", r.get("slug") or "—", reason)
+        rows = [r for r in rows if validate_row(r) is None]
+    log.info("📋 Gecerli sorular: %d / slug'lı: aynı sayı, gecersiz atlandı", len(rows))
 
     if DRY_RUN:
         log.info("🔍 DRY_RUN — INSERT yapılmadı")
@@ -137,10 +214,22 @@ def main():
     sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
     existing = get_existing_slugs(sb)
-    log.info("📊 DB'de mevcut: %d soru", len(existing))
+    log.info("📊 DB'de mevcut (slug bazlı): %d soru", len(existing))
 
-    to_insert = [r for r in rows if r["slug"] not in existing]
-    to_skip = [r for r in rows if r["slug"] in existing]
+    # legacy_id çakışma kontrolü — yeni 20 soru eklendikten sonra idempotency için
+    existing_legacy_ids = get_existing_legacy_ids(sb)
+    log.info("📊 DB'de mevcut legacy_id: %d adet", len(existing_legacy_ids))
+
+    def _to_skip(r):
+        # Skip: slug zaten var VEYA legacy_id zaten varsa
+        if r["slug"] in existing:
+            return True
+        if r.get("legacy_id") in existing_legacy_ids:
+            return True
+        return False
+
+    to_insert = [r for r in rows if not _to_skip(r)]
+    to_skip = [r for r in rows if _to_skip(r)]
 
     log.info("➕ Eklenecek: %d", len(to_insert))
     log.info("⏭️  Atlanacak (zaten var): %d", len(to_skip))
