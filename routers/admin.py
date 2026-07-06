@@ -32,18 +32,49 @@ def health():
     from supabase_client import get_supabase
     db_ok = False
     db_error = None
+    db_stats = {}
     try:
         sb = get_supabase()
         sb.table("questions").select("id").limit(1).execute()
         db_ok = True
+        # Detaylı sayım (debug için)
+        try:
+            total = sb.table("questions").select("id", count="exact").execute()
+            db_stats["total"] = total.count
+        except Exception:
+            pass
+        try:
+            active = sb.table("questions").select("id", count="exact").eq("is_published", True).execute()
+            db_stats["is_published_true"] = active.count
+        except Exception as e:
+            db_stats["is_published_error"] = str(e)[:200]
     except Exception as e:
         db_error = str(e)
     return {
         "ok": True,
         "db_ok": db_ok,
         "db_error": db_error,
+        "db_stats": db_stats,
+        "supabase_url": os.getenv("SUPABASE_URL", "(unset)"),
         "env": os.getenv("APP_ENV", "development"),
     }
+
+
+@router.post("/invalidate-cache")
+async def invalidate_cache_endpoint(request: Request):
+    """In-process soru cache'i sıfırla (DB update'ten sonra).
+
+    60 saniye cache'i beklemek istemiyorsan bunu çağır.
+    """
+    admin_secret = os.getenv("ADMIN_SECRET", "")
+    if not admin_secret or request.headers.get("X-Admin-Secret", "") != admin_secret:
+        raise HTTPException(403, "admin yetkisi gerekli (X-Admin-Secret header)")
+    try:
+        from question_loader import invalidate_cache
+        invalidate_cache()
+        return {"ok": True, "message": "Cache sıfırlandı. Sonraki istek DB'den fresh çeker."}
+    except Exception as e:
+        raise HTTPException(500, f"cache invalidate hata: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════
