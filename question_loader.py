@@ -28,12 +28,6 @@ except Exception as _e:
     print(f"⚠️ QUESTIONS-v3 fallback yuklenemedi: {_e}")
 
 
-# v4 fallback JSON (Q-V4 merged later via DB migration; in-memory fallback minimal)
-# NOTE: Railway runtime icin SADE yapiyoruz — Q-V4 import'i DB migration sonrasina birakildi
-QUESTIONS_V4 = []  # Bos — Q-V4 sadece DB'de olacak (migrate_to_db.py ile)
-QUESTIONS_COMBINED = list(QUESTIONS_V3)
-
-
 # ═══════════════════════════════════════════════════════════════
 # Kategori meta (DB'den gelirse de fallback olarak kullanılır)
 # ═══════════════════════════════════════════════════════════════
@@ -106,15 +100,11 @@ def _load_from_db() -> Optional[List[Question]]:
 
 
 def load_questions() -> List[Question]:
-    """DB-first, fallback Q-V3 (82 soru). Railway runtime icin SADE.
-
-    Q-V4 sadece DB'de (migrate_to_db.py ile). Runtime'da JSON import yok — Railway'de
-    başarısız deploy riski azalır, complexity düsük.
-    """
+    """DB-first, fallback olarak QUESTIONS-v3.py (zenginlestirilmis)."""
     db_loaded = _load_from_db()
-    if db_loaded is not None and len(db_loaded) > 0:
+    if db_loaded is not None:
         return db_loaded
-    return QUESTIONS_COMBINED
+    return QUESTIONS_V3
 
 
 def to_public_dict(q: Any) -> Dict:
