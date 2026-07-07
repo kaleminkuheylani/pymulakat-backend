@@ -271,3 +271,34 @@ def get_question_detail(question_id: int, include_starter: bool = Query(True)):
     if not q:
         raise HTTPException(404, f"Soru #{question_id} bulunamadı")
     return _to_question_out(q, include_starter=include_starter)
+
+
+@router.get("/{question_id}/tests", response_model=TestsResponse)
+def get_question_tests_by_id(question_id: int):
+    """Sorunun test case'lerini ID ile getir (public — auth gerekmez).
+
+    WorkspaceClient bu endpoint'i kullanır; /by-slug/{cat}/{slug}/tests ile aynı formatta.
+    """
+    q = get_question(question_id)
+    if not q:
+        raise HTTPException(404, f"Soru #{question_id} bulunamadı")
+
+    starter_code = _q_get(q, "starter_code", "") or ""
+    test_cases_raw = _q_get(q, "test_cases", []) or []
+
+    safe_tests: List[Dict[str, Any]] = []
+    if isinstance(test_cases_raw, list):
+        for tc in test_cases_raw:
+            if isinstance(tc, dict):
+                safe_tests.append({
+                    "input": tc.get("input"),
+                    "expected": tc.get("expected"),
+                    "description": tc.get("description", ""),
+                })
+
+    return TestsResponse(data={
+        "question_id": _q_get(q, "id"),
+        "title": _q_get(q, "title", ""),
+        "function_name": _q_get(q, "function_name") or _extract_function_name(starter_code),
+        "test_cases": safe_tests,
+    })
