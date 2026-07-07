@@ -206,6 +206,9 @@ def get_question_tests_by_slug(category: str, slug: str):
                 safe_tests.append({
                     "input": tc.get("input"),
                     "expected": tc.get("expected"),
+                    # 📌 Referans çözüm çıktısı (varsa) misafirlere önizleme olarak dönderilir.
+                    #    DB'de "actual" key'i yoksa None olur — frontend "Beklenen" gibi davranır.
+                    "actual": tc.get("actual"),
                     "description": tc.get("description", ""),
                 })
 
@@ -293,6 +296,7 @@ def get_question_tests_by_id(question_id: int):
                 safe_tests.append({
                     "input": tc.get("input"),
                     "expected": tc.get("expected"),
+                    "actual": tc.get("actual"),
                     "description": tc.get("description", ""),
                 })
 
