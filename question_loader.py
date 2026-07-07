@@ -187,10 +187,35 @@ def _load_questions_v3_fallback() -> List[Question]:
 
     questions_raw = getattr(mod, "QUESTIONS", [])
 
+    # Slug üret (data'da slug alanları None olabilir)
+    used_slugs: set = set()
+    def _slugify(t: str) -> str:
+        import re as _re, unicodedata as _u
+        s = t.lower()
+        tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
+        s = s.translate(tr)
+        s = _u.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+        s = _re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+        return s[:80] or "question"
+
+    def _ensure_slug(title: str) -> str:
+        base = _slugify(title or "question")
+        candidate = base
+        n = 2
+        while candidate in used_slugs:
+            candidate = f"{base}-{n}"
+            n += 1
+        used_slugs.add(candidate)
+        return candidate
+
     # Question dataclass → DB row dict → Question dataclass (loader)
     result: List[Question] = []
     for q in questions_raw:
-        # Mevcut loader'ın Question dataclass'ını kullan
+        # Slug None ise title'dan üret (slug benzersizliği DB UNIQUE ile uyumlu)
+        slug_val = getattr(q, "slug", None)
+        if not slug_val:
+            slug_val = _ensure_slug(q.title or f"question-{q.id}")
+
         result.append(Question(
             id=q.id,
             title=q.title,
@@ -200,7 +225,7 @@ def _load_questions_v3_fallback() -> List[Question]:
             starter_code=getattr(q, "starter_code", None),
             test_cases=getattr(q, "test_cases", []) or [],
             hints=getattr(q, "hints", []) or [],
-            slug=getattr(q, "slug", None),
+            slug=slug_val,
             related_question_ids=list(getattr(q, "related_question_ids", []) or []),
             explanation=getattr(q, "explanation", None),
             complexity=getattr(q, "complexity", None),
