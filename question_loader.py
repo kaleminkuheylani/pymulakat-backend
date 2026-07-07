@@ -107,29 +107,114 @@ _CACHE_TTL_SEC = int(os.getenv("QUESTION_CACHE_TTL", "60"))
 
 
 def _db_questions() -> List[Question]:
-    """Tüm published soruları DB'den çek (60s in-memory cache)."""
+    """Tüm published soruları DB'den çek (60s in-memory cache).
+
+    DB bağlantısı başarısız veya boş dönerse data/QUESTIONS-v3.py fallback kullan.
+    Bu sayede deploy/URL hatası olsa bile API yanıt verir.
+    """
     import time
     now = time.time()
     if _CACHE["data"] is not None and (now - _CACHE["ts"]) < _CACHE_TTL_SEC:
         return _CACHE["data"]
 
+    # Önce DB'den dene
+    db_questions: List[Question] = []
+    db_error: Optional[str] = None
     try:
         from supabase_client import get_supabase
         sb = get_supabase()
-        # Pagination gerekirse eklenebilir; şu an <500 soru var
         result = sb.table("questions").select("*").eq("is_published", True).execute()
         rows = result.data or []
-        questions = [_row_to_question(r) for r in rows]
-        questions.sort(key=lambda x: x.id)
-        _CACHE["data"] = questions
-        _CACHE["ts"] = now
-        return questions
+        db_questions = [_row_to_question(r) for r in rows]
+        db_questions.sort(key=lambda x: x.id)
     except Exception as e:
-        # DB erişilemez → cache varsa onu kullan, yoksa boş dön (UI boş liste gösterir)
-        if _CACHE["data"] is not None:
-            return _CACHE["data"]
-        print(f"⚠️ DB'den soru yüklenemedi ve cache yok: {e}")
+        db_error = str(e)
+        print(f"⚠️ DB'den soru yüklenemedi: {e}")
+
+    # DB'den veri geldiyse onu kullan
+    if db_questions:
+        _CACHE["data"] = db_questions
+        _CACHE["ts"] = now
+        return db_questions
+
+    # DB bağlantısı kurulamadıysa VEYA boş döndüyse fallback'e geç
+    if db_error or not db_questions:
+        fallback = _load_questions_v3_fallback()
+        if fallback:
+            print(f"🔄 Fallback: data/QUESTIONS-v3.py'den {len(fallback)} soru yüklendi (db_error={bool(db_error)}, db_empty={not db_questions})")
+            _CACHE["data"] = fallback
+            _CACHE["ts"] = now
+            return fallback
+
+    # Hem DB hem fallback boş
+    if _CACHE["data"] is not None:
+        return _CACHE["data"]
+    return []
+
+
+def _load_questions_v3_fallback() -> List[Question]:
+    """data/QUESTIONS-v3.py'den soru yükle (DB fallback).
+
+    dataclass → DB row dataclass dönüşümü.
+    CATEGORY_META'dan label/description/icon al.
+    """
+    import importlib.util
+    from pathlib import Path
+
+    data_path = Path(__file__).resolve().parent / "data" / "QUESTIONS-v3.py"
+    if not data_path.exists():
+        print(f"⚠️ Fallback dosyası yok: {data_path}")
         return []
+
+    try:
+        spec = importlib.util.spec_from_file_location("questions_v3_fallback", data_path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+    except Exception as e:
+        print(f"⚠️ Fallback import hatası: {e}")
+        return []
+
+    # SEO_CONTENT merge (varsa)
+    seo_path = data_path.parent / "SEO_CONTENT.py"
+    if seo_path.exists():
+        try:
+            spec_seo = importlib.util.spec_from_file_location("seo_content_fallback", seo_path)
+            seo_mod = importlib.util.module_from_spec(spec_seo)
+            spec_seo.loader.exec_module(seo_mod)
+            seo_mod.apply_seo_content()
+        except Exception:
+            pass  # SEO merge başarısız, devam et
+
+    questions_raw = getattr(mod, "QUESTIONS", [])
+
+    # Question dataclass → DB row dict → Question dataclass (loader)
+    result: List[Question] = []
+    for q in questions_raw:
+        # Mevcut loader'ın Question dataclass'ını kullan
+        result.append(Question(
+            id=q.id,
+            title=q.title,
+            category=q.category,
+            level=q.level,
+            description=getattr(q, "description", "") or "",
+            starter_code=getattr(q, "starter_code", None),
+            test_cases=getattr(q, "test_cases", []) or [],
+            hints=getattr(q, "hints", []) or [],
+            slug=getattr(q, "slug", None),
+            related_question_ids=list(getattr(q, "related_question_ids", []) or []),
+            explanation=getattr(q, "explanation", None),
+            complexity=getattr(q, "complexity", None),
+            tags=list(getattr(q, "tags", []) or []),
+            function_name=None,
+            topic=None,
+            tutorial_slug=getattr(q, "tutorial_slug", None),
+            related_concepts=list(getattr(q, "related_concepts", []) or []),
+            meta_title=None,
+            meta_description=None,
+            meta_keywords=[],
+        ))
+
+    return result
 
 
 def invalidate_cache():
