@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "sh -c 'uvicorn main:app --host 0.0.0.0 --port ${PORT:-3000} --log-level warning'",
+    "startCommand": "sh -c 'echo \"[startup] Schema fix + migrate (idempotent)\" && python3 scripts/migrate_to_db.py --v4-only --fix-schema 2>&1 | tail -20; echo \"[startup] Uvicorn başlatılıyor\" && uvicorn main:app --host 0.0.0.0 --port ${PORT:-3000} --log-level warning'",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10,
     "healthcheckPath": "/admin/health",
