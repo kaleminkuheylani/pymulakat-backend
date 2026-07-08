@@ -4,8 +4,8 @@
 
 | Dosya | Kaynak | Soru | Kategori | Durum |
 |---|---|---|---|---|
-| `QUESTIONS_FACTORY.csv` | Manuel eklenen yeni set | 67 | 5 (python-basics, strings, list-dict, pandas, algorithms) | aktif runtime |
-| `QUESTIONS-v3.csv` | Eski QUESTIONS-v3.py'den donusturuldu | 102 | 5 (python-basics, list-dict, pandas, algorithms, data-structures) | yedek / opsiyonel |
+| `QUESTIONS_FACTORY.csv` | Manuel eklenen yeni set | 67 | 5 (python-basics, strings, list-dict, pandas, algorithms) | yedek / opsiyonel |
+| `QUESTIONS-v3.csv` | Eski V3.py'den donusturuldu + 30 yeni soru | 132 | 9 (python-basics, list-dict, pandas, algorithms, data-structures, dynamic-programming, heap, stack, queue) | **PRIMARY runtime** |
 
 ## CSV mimarisi
 

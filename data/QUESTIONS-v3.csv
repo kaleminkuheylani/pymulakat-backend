@@ -192,3 +192,140 @@ Yapıyı sen seç.","def merge_dicts(a, b","[{""input"": [{""x"": 1, ""y"": 2}, 
 "python-basics","İki string birbirinin permütasyonu mu? (aynı ka...","beginner","İki string birbirinin permütasyonu mu? (aynı karakterler farklı sırada","def is_permutation(a, b","[{""input"": [""abc"", ""bca""], ""expected"": true, ""description"": ""temel""}, {""input"": [""abc"", ""abd""], ""expected"": false, ""description"": ""farkli karakter""}, {""input"": ["""", """"], ""expected"": true, ""description"": ""bos-bos""}, {""input"": [""a"", ""aa""], ""expected"": false, ""description"": ""uzunluk farkli""}]","[""💡 İpucu 1: sorted(a) == sorted(b) en kısa."", ""💡 İpucu 2: Counter(a) == Counter(b) karakter sayıları."", ""💡 İpucu 3: Önce len kontrolü yap, erken çık.""]","140"
 "data-structures","LRU Cache Uygulaması","intermediate","En az kullanılan elemanı (LRU","class LRUCache:
     def __init__(self, capacity","[{""input"": ""[put(1,1),put(2,2),get(1),put(3,3),get(2)]"", ""expected"": ""[1, -1]"", ""description"": ""klasik""}, {""input"": ""[put(2,1),get(2)]"", ""expected"": ""[1]"", ""description"": ""basit""}]","[""💡 İpucu 1: collections.OrderedDict.move_to_end."", ""💡 İpucu 2: dict + doubly linked list (Node sınıfı)."", ""💡 İpucu 3: get hit ettiğinde sırayı sona taşı.""]","141"
+"dynamic-programming","Climbing Stairs","beginner","n basamaklı bir merdiven var. Her adımda 1 veya 2 basamak çıkabilirsin.
+Kaç farklı yol var?
+Temel DP: dp[i] = dp[i-1] + dp[i-2] (Fibonacci).","def climb_stairs(n: int) -> int:
+    # dp[1]=1, dp[2]=2, dp[i]=dp[i-1]+dp[i-2]
+    pass","[{""input"": 2, ""expected"": 2}, {""input"": 3, ""expected"": 3}, {""input"": 5, ""expected"": 8}]","[""💡 dp[1]=1, dp[2]=2 ile başla"", ""💡 dp[i] = dp[i-1] + dp[i-2] (1 veya 2 basamak)"", ""💡 Son iki değeri değişkende tut, O(1) hafıza""]","142"
+"dynamic-programming","Coin Change","intermediate","Verilen coin listesi ile amount kadar para üret.
+En az kaç coin gerekir? Olası değilse -1.
+Unbounded knapsack.","def coin_change(coins: list, amount: int) -> int:
+    # dp[i] = i amount icin minimum coin sayisi
+    pass","[{""input"": {""coins"": [1, 5, 10, 25], ""amount"": 41}, ""expected"": 4}, {""input"": {""coins"": [2], ""amount"": 3}, ""expected"": -1}]","[""💡 dp[0]=0, dp[i]=min(dp[i-coin]+1 for coin in coins)"", ""💡 Sonsuz ile başlat (float('inf'))"", ""💡 Her coin için tüm amount'ları güncelle""]","143"
+"dynamic-programming","0/1 Knapsack","intermediate","Her item'ın weight ve value'su var. Kapasite W.
+Maksimum value elde et (her item en fazla 1 kez).","def knapsack(weights: list, values: list, W: int) -> int:
+    # dp[i][w] = ilk i item ile kapasite w icin max value
+    pass","[{""input"": {""weights"": [1, 3, 4, 5], ""values"": [1, 4, 5, 7], ""W"": 7}, ""expected"": 9}]","[""💡 2D DP tablosu: dp[i][w]"", ""💡 ya item'i al ya alma: max(dp[i-1][w], dp[i-1][w-weight]+value)"", ""💡 1D DP'ye indir (geriye doğru döngü)""]","144"
+"dynamic-programming","Longest Common Subsequence","advanced","İki string'in en uzun ortak alt dizisinin uzunluğu.
+LCS — klasik 2D DP.","def lcs(text1: str, text2: str) -> int:
+    # dp[i][j] = text1[:i] ve text2[:j] LCS
+    pass","[{""input"": {""text1"": ""abcde"", ""text2"": ""ace""}, ""expected"": 3}, {""input"": {""text1"": ""abc"", ""text2"": ""abc""}, ""expected"": 3}]","[""💡 Eşit karakter: dp[i][j] = dp[i-1][j-1] + 1"", ""💡 Farklı: max(dp[i-1][j], dp[i][j-1])"", ""💡 Boş string base case""]","145"
+"dynamic-programming","Longest Increasing Subsequence","advanced","Bir dizide en uzun kesin artan altdizinin uzunluğu.
+LIS — O(n log n) patience sorting ile optimal.","def length_of_lis(nums: list) -> int:
+    # O(n log n): bisect_left ile tails dizisi
+    pass","[{""input"": [10, 9, 2, 5, 3, 7, 101, 18], ""expected"": 4}, {""input"": [0, 1, 0, 3, 2, 3], ""expected"": 4}]","[""💡 tails[i] = uzunluk i+1 olan LIS'in minimum son elemanı"", ""💡 bisect_left(tails, num) ile yer bul"", ""💡 len(tails) = cevap""]","146"
+"dynamic-programming","Maximum Subarray (Kadane)","beginner","Bir dizide en büyük toplam alt diziyi bul.
+Kadane's algorithm — O(n).","def max_subarray(nums: list) -> int:
+    # current = max(current + num, num), best = max(best, current)
+    pass","[{""input"": [-2, 1, -3, 4, -1, 2, 1, -5, 4], ""expected"": 6}, {""input"": [1], ""expected"": 1}]","[""💡 current_max ya current + num ya num"", ""💡 best'i her adımda güncelle"", ""💡 Hepsi negatifse en büyük negatif döner""]","147"
+"dynamic-programming","Word Break","intermediate","String s, wordDict'teki kelimelerle oluşturulabilir mi?
+Her kelime en az 1 kez, sırasıyla.","def word_break(s: str, word_dict: list) -> bool:
+    # dp[i] = s[:i] wordDict ile olusturulabilir mi
+    pass","[{""input"": {""s"": ""leetcode"", ""word_dict"": [""leet"", ""code""]}, ""expected"": true}, {""input"": {""s"": ""catsandog"", ""word_dict"": [""cats"", ""dog"", ""sand"", ""and"", ""cat""]}, ""expected"": false}]","[""💡 dp[0]=True, dp[i] = any(dp[j] and s[j:i] in wordDict for j<i)"", ""💡 set'e çevir lookup için O(1)"", ""💡 İç döngüyü j üzerinde tut""]","148"
+"dynamic-programming","Edit Distance","advanced","word1'i word2'ye çevirmek için minimum işlem.
+İşlemler: insert, delete, replace (her biri 1).","def edit_distance(word1: str, word2: str) -> int:
+    # dp[i][j] = word1[:i] → word2[:j] mesafesi
+    pass","[{""input"": {""word1"": ""horse"", ""word2"": ""ros""}, ""expected"": 3}, {""input"": {""word1"": ""intention"", ""word2"": ""execution""}, ""expected"": 5}]","[""💡 Eşit karakter: dp[i][j] = dp[i-1][j-1]"", ""💡 Farklı: 1 + min(insert, delete, replace)"", ""💡 dp[0][j]=j, dp[i][0]=i""]","149"
+"dynamic-programming","Unique Paths","beginner","m×n grid'de (0,0)'dan (m-1,n-1)'e sadece sağ/aşağı.
+Kaç farklı yol?","def unique_paths(m: int, n: int) -> int:
+    # dp[i][j] = (0,0)'dan (i,j)'ye yol sayisi
+    pass","[{""input"": {""m"": 3, ""n"": 7}, ""expected"": 28}, {""input"": {""m"": 3, ""n"": 2}, ""expected"": 3}]","[""💡 dp[i][j] = dp[i-1][j] + dp[i][j-1]"", ""💡 dp[0][j]=dp[i][0]=1"", ""💡 1D versiyon: sadece son satırı tut""]","150"
+"dynamic-programming","House Robber","beginner","Bir dizi ev var. Yan yana iki ev soyamazsın.
+Maksimum para.","def rob(nums: list) -> int:
+    # dp[i] = ilk i ev icin max, dp[i] = max(dp[i-1], dp[i-2]+nums[i-1])
+    pass","[{""input"": [1, 2, 3, 1], ""expected"": 4}, {""input"": [2, 7, 9, 3, 1], ""expected"": 12}]","[""💡 ya i. evi soy ya soymа"", ""💡 dp[i] = max(dp[i-1], dp[i-2] + nums[i-1])"", ""💡 O(1) hafıza: prev1, prev2""]","151"
+"dynamic-programming","Decode Ways","intermediate","Sayı string'ini decode et. 'A'=1, 'B'=2, ..., 'Z'=26.
+Kaç farklı yol var?","def num_decodings(s: str) -> int:
+    # dp[i] = s[:i] decode yol sayisi
+    pass","[{""input"": ""12"", ""expected"": 2}, {""input"": ""226"", ""expected"": 3}, {""input"": ""06"", ""expected"": 0}]","[""💡 '0' ile başlayan geçersiz"", ""💡 Tek hane: dp[i] += dp[i-1] (eğer s[i-1] != '0')"", ""💡 İki hane: dp[i] += dp[i-2] (eğer 10 <= int(s[i-2:i]) <= 26)""]","152"
+"dynamic-programming","Partition Equal Subset Sum","intermediate","Dizi iki alt kümeye bölünebilir mi, eşit toplam?
+Subset sum problemi.","def can_partition(nums: list) -> bool:
+    # toplam tekse False, dp[target] kontrol et
+    pass","[{""input"": [1, 5, 11, 5], ""expected"": true}, {""input"": [1, 2, 3, 5], ""expected"": false}]","[""💡 Hedef = toplam // 2"", ""💡 Toplam tekse hemen False"", ""💡 dp[s] = s toplam elde edilebilir mi""]","153"
+"heap","Kth Largest Element","beginner","Bir dizideki k. en büyük elemanı bul.
+O(n log k) heap ile.","def find_kth_largest(nums: list, k: int) -> int:
+    # heapq.nlargest(k, nums)[-1] veya min-heap k boyutunda
+    pass","[{""input"": {""nums"": [3, 2, 1, 5, 6, 4], ""k"": 2}, ""expected"": 5}, {""input"": {""nums"": [3, 2, 3, 1, 2, 4, 5, 5, 6], ""k"": 4}, ""expected"": 4}]","[""💡 heapq.nlargest(k, nums)[-1] O(n log k)"", ""💡 Veya min-heap tut, boyut k'yı geçince pop"", ""💡 Quickselect O(n) ortalama ama unstable""]","154"
+"heap","Top K Frequent Elements","intermediate","En sık geçen k elemanı bul (sıra önemli değil).","def top_k_frequent(nums: list, k: int) -> list:
+    # Counter + heapq.nlargest
+    pass","[{""input"": {""nums"": [1, 1, 1, 2, 2, 3], ""k"": 2}, ""expected"": [1, 2]}]","[""💡 Counter ile frekansları say"", ""💡 heapq.nlargest(k, freq.items(), key=lambda x: x[1])"", ""💡 Bucket sort O(n) ile de yapılabilir""]","155"
+"heap","Merge K Sorted Lists","advanced","K tane sıralı listeyi tek sıralı liste olarak birleştir.
+List[list[int]] input olarak gelir.","def merge_k_sorted(lists: list) -> list:
+    # heapq ile k heap, her seferinde min pop
+    pass","[{""input"": [[1, 4, 5], [1, 3, 4], [2, 6]], ""expected"": [1, 1, 2, 3, 4, 4, 5, 6]}]","[""💡 heapq.merge(*lists) kullan"", ""💡 Veya manuel: (val, idx, list_idx) tuple heap'le"", ""💡 Her adımda en küçük elemanı al""]","156"
+"heap","Find Median from Data Stream","advanced","Veri akışından medyanı bul.
+İki heap: max-heap (küçük yarı) + min-heap (büyük yarı).","class MedianFinder:
+    def __init__(self):
+        # self.small = [], self.large = []
+        pass
+    def add_num(self, num: int) -> None:
+        pass
+    def find_median(self) -> float:
+        pass","[{""ops"": [""MedianFinder"", ""addNum"", ""addNum"", ""findMedian"", ""addNum"", ""findMedian""], ""args"": [[], [1], [2], [], [3], []], ""expected"": [null, null, null, 1.5, null, 2.0]}]","[""💡 small (max-heap) ≤ large (min-heap)"", ""💡 len(small) >= len(large), fark max 1"", ""💡 Medyan: small[0] veya (small[0]+large[0])/2""]","157"
+"heap","Task Scheduler","intermediate","Aynı task arasında en az n boşluk olmalı.
+Minimum süre?","def least_interval(tasks: list, n: int) -> int:
+    # max frekanslı task etrafında plan yap
+    pass","[{""input"": {""tasks"": [""A"", ""A"", ""A"", ""B"", ""B"", ""B""], ""n"": 2}, ""expected"": 8}]","[""💡 En sık task sayısı f_max"", ""💡 minimum = max(len(tasks), (f_max-1)*(n+1) + max_count)"", ""💡 max_count = f_max olan task sayısı""]","158"
+"heap","K Closest Points to Origin","intermediate","Orijine en yakın K noktayı bul.","def k_closest(points: list, k: int) -> list:
+    # (uzaklık, x, y) tuple'a göre heap
+    pass","[{""input"": {""points"": [[1, 3], [-2, 2]], ""k"": 1}, ""expected"": [[-2, 2]]}]","[""💡 heapq.nsmallest(k, points, key=lambda p: p[0]**2 + p[1]**2)"", ""💡 Veya max-heap k boyutunda, O(n log k)"", ""💡 Uzaklık hesabı: sqrt yerine karesi yeterli""]","159"
+"heap","Last Stone Weight","beginner","İki en ağır taşı çarpıştır, küçük olan kaybolur.
+Son kalan taşın ağırlığı?","def last_stone_weight(stones: list) -> int:
+    # heapq'yu max-heap gibi kullan (negatif değer)
+    pass","[{""input"": [2, 7, 4, 1, 8, 1], ""expected"": 1}]","[""💡 heapq min-heap, ama max-heap için negatifleri sakla"", ""💡 heapq.heappush/heappop ile yönet"", ""💡 Eşitse ikisi de silinir""]","160"
+"heap","Smallest Number Range","advanced","K sıralı dizide hepsinden en az 1 eleman içeren
+en küçük aralık [a,b]?","def smallest_range(nums: list) -> list:
+    # heap ile (max, idx, list_idx) takip
+    pass","[{""input"": [[4, 10, 15, 24, 26], [0, 9, 12, 20], [5, 18, 22, 30]], ""expected"": [20, 24]}]","[""💡 Her diziden ilk elemanı al, heap'e koy"", ""💡 Min'i pop, max'i tut, aralık güncelle"", ""💡 Pop edilen listeden sonraki elemana bak""]","161"
+"stack","Valid Parentheses","beginner","Bir string'de parantezler dengeli mi?
+() [] {}","def is_valid(s: str) -> bool:
+    # stack, açılışta push, kapanışta pop ve match kontrol
+    pass","[{""input"": ""()"", ""expected"": true}, {""input"": ""()[]{}"", ""expected"": true}, {""input"": ""(]"", ""expected"": false}]","[""💡 Stack'te son açılan parantezi tut"", ""💡 Kapanış gelince stack'ten pop, eşleşmeli"", ""💡 String sonunda stack boş olmalı""]","162"
+"stack","Min Stack","intermediate","Stack O(1)'de push, pop, top, getMin.
+Her değer için şu ana kadarki min'i sakla.","class MinStack:
+    def __init__(self): pass
+    def push(self, val: int) -> None: pass
+    def pop(self) -> None: pass
+    def top(self) -> int: pass
+    def get_min(self) -> int: pass","[{""ops"": [""MinStack"", ""push"", ""push"", ""push"", ""getMin"", ""pop"", ""getMin""], ""args"": [[], [-2], [0], [-3], [], [], []], ""expected"": [null, null, null, null, -3, null, -2]}]","[""💡 Tuple stack: (val, current_min)"", ""💡 Her push'ta min(val, son_min)"", ""💡 Pop'ta tuple'ı sil, top eski tuple'dan""]","163"
+"stack","Daily Temperatures","intermediate","Her gün için, sonraki daha sıcak günü kaç gün sonra?
+Yoksa 0.","def daily_temperatures(temps: list) -> list:
+    # monotonik stack, index tut
+    pass","[{""input"": [73, 74, 75, 71, 69, 72, 76, 73], ""expected"": [1, 1, 4, 2, 1, 1, 0, 0]}]","[""💡 Stack'te index tut"", ""💡 Mevcut sıcaklık > stack top ise: farkı yaz, pop"", ""💡 Stack monoton decreasing kalır""]","164"
+"stack","Evaluate Reverse Polish Notation","intermediate","RPN ifadesini hesapla. ""2 1 + 3 *"" = 9.","def eval_rpn(tokens: list) -> int:
+    # stack, sayı push, operatör gelince 2 pop ve hesapla
+    pass","[{""input"": [""2"", ""1"", ""+"", ""3"", ""*""], ""expected"": 9}, {""input"": [""4"", ""13"", ""5"", ""/"", ""+""], ""expected"": 6}]","[""💡 Operatör değilse stack'e push"", ""💡 Operatörse 2 sayıyı pop ve uygula"", ""💡 Bölme Python negatif-yuvarlama farkına dikkat""]","165"
+"stack","Largest Rectangle in Histogram","advanced","Histogram'da en büyük dikdörtgen alanı bul.","def largest_rectangle(heights: list) -> int:
+    # stack'te index tut, artan heights
+    pass","[{""input"": [2, 1, 5, 6, 2, 3], ""expected"": 10}]","[""💡 Stack'te artan yüksekliklerin indexleri"", ""💡 heights[i] < stack top: genişlik = i - stack[-2] - 1"", ""💡 Sonda sentinel -1 ile stack boşalt""]","166"
+"queue","Implement Queue with Stacks","beginner","Sadece stack kullanarak queue implement et.
+Amortized O(1).","class MyQueue:
+    def __init__(self): pass
+    def push(self, x: int) -> None: pass
+    def pop(self) -> int: pass
+    def peek(self) -> int: pass
+    def empty(self) -> bool: pass","[{""ops"": [""MyQueue"", ""push"", ""push"", ""peek"", ""pop"", ""empty""], ""args"": [[], [1], [2], [], [], []], ""expected"": [null, null, null, 1, 1, false]}]","[""💡 İki stack: input + output"", ""💡 Pop/peek'te output boşsa input'tan aktar"", ""💡 Amortized O(1): her eleman max 2 kez taşınır""]","167"
+"queue","Sliding Window Maximum","advanced","Her k-boyutlu pencerede maksimum.
+Deque (monotonic queue) — O(n).","def max_sliding_window(nums: list, k: int) -> list:
+    # deque, (idx, val) tut, monoton decreasing
+    pass","[{""input"": {""nums"": [1, 3, -1, -3, 5, 3, 6, 7], ""k"": 3}, ""expected"": [3, 3, 5, 5, 6, 7]}]","[""💡 deque sol = en büyük, monoton decreasing"", ""💡 Yeni eleman daha büyükse arkadan küçükleri at"", ""💡 i >= k-1 olduğunda deque[0] cevap""]","168"
+"queue","Design Circular Queue","intermediate","Sabit boyutlu circular queue tasarla.
+FIFO, front/rear wrap eder.","class CircularQueue:
+    def __init__(self, k: int): pass
+    def en_queue(self, value: int) -> bool: pass
+    def de_queue(self) -> bool: pass
+    def front(self) -> int: pass
+    def rear(self) -> int: pass
+    def is_empty(self) -> bool: pass
+    def is_full(self) -> bool: pass","[{""ops"": [""CircularQueue"", ""enQueue"", ""enQueue"", ""enQueue"", ""enQueue"", ""rear"", ""isFull"", ""deQueue"", ""enQueue"", ""front""], ""args"": [[3], [1], [2], [3], [4], [], [], [], [4], []], ""expected"": [null, true, true, true, false, 3, true, true, true, 4]}]","[""💡 head/tail index, modulo ile wrap"", ""💡 count ile boş/dolu takibi"", ""💡 Veya bir slot boş bırak (head==tail → boş)""]","169"
+"queue","Number of Recent Calls","beginner","Son 3000 ms içindeki ping sayısı.
+Her ping() çağrısı için.","class RecentCounter:
+    def __init__(self): pass
+    def ping(self, t: int) -> int:
+        # deque, t-3000'den küçükleri at
+        pass","[{""ops"": [""RecentCounter"", ""ping"", ""ping"", ""ping"", ""ping""], ""args"": [[], [1], [100], [3001], [3002]], ""expected"": [null, 1, 2, 3, 3]}]","[""💡 deque'ya t ekle"", ""💡 deque[0] < t-3000 ise pop"", ""💡 len(deque) = cevap""]","170"
+"queue","Moving Average from Data Stream","intermediate","Son N değerin ortalaması (sliding window).","class MovingAverage:
+    def __init__(self, size: int): pass
+    def next(self, val: float) -> float:
+        # queue, sum, window dolunca eskiyi cikar
+        pass","[{""ops"": [""MovingAverage"", ""next"", ""next"", ""next"", ""next""], ""args"": [[3], [1], [10], [3], [5]], ""expected"": [null, 1.0, 5.5, 4.666666666666667, 6.0]}]","[""💡 deque maxlen=size"", ""💡 sum tut"", ""💡 Her next: push + sum güncelle""]","171"
