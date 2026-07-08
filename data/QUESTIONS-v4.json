@@ -25638,5 +25638,1743 @@
     "tutorial_slug": null,
     "slug": "type-hints-self-paramspec-v4",
     "_rendered_explanation": "ParamSpec decorator'da orijinal signature'ı korur (type checker için). @wraps metadata (docstring, name) kopyalar. Self class method return type için. timing decorator fonksiyonu sarar, süre ölçer, döner. Production ortaminda bu fonksiyon icin defensive programming (input validation, type checks), comprehensive testing (unit + integration) ve performance profiling (cProfile ile) yapilmali. Edge caseler (bos input, None, buyuk degerler) production bug'larin yuzde seksenini olusturur. Pure function tercih edilirse test edilebilirlik artar, side effectler minimize edilir. Type hints ve docstring ile kod kalitesi yukselir."
+  },
+  {
+    "id": 1146,
+    "title": "Top-K En Sık Geçen Eleman",
+    "category": "algorithms",
+    "level": "intermediate",
+    "description": "Bir tam sayı listesinde en sık geçen K elemanı büyükten küçüğe döndür.\n\nProblem: Hangi veri yapısı en uygun? Birden fazla yaklaşım var — hepsini düşün.\n\nKısıt: Zaman O(n log k), bellek O(n+k). n=10000, k=10 için < 100ms.\n\nÖrnek: top_k_frequent([1,1,1,2,2,3], 2) → [1, 2] (1 üç kez, 2 iki kez)",
+    "starter_code": "def top_k_frequent(nums: list, k: int) -> list:\n    # Hangi veri yapısı? Counter, dict, heap, sorting...\n    # 'En sık K' ifadesi seni yönlendirmeli.\n    pass",
+    "test_cases": [
+      {
+        "input": {
+          "nums": [
+            1,
+            1,
+            1,
+            2,
+            2,
+            3
+          ],
+          "k": 2
+        },
+        "expected": [
+          1,
+          2
+        ]
+      },
+      {
+        "input": {
+          "nums": [
+            1
+          ],
+          "k": 1
+        },
+        "expected": [
+          1
+        ]
+      },
+      {
+        "input": {
+          "nums": [
+            4,
+            4,
+            4,
+            5,
+            5,
+            6,
+            6,
+            6,
+            6,
+            7
+          ],
+          "k": 2
+        },
+        "expected": [
+          6,
+          4
+        ]
+      },
+      {
+        "input": {
+          "nums": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "k": 3
+        },
+        "expected": [
+          1,
+          2,
+          3
+        ]
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: En sık geçen → sayım gerekli. Hangi yapı sayım için en uygun?",
+      "💡 İpucu 2: collections.Counter ile O(n) frekans. Sonra nasıl seçim yapacaksın?",
+      "💡 İpucu 3: heapq.nlargest(k, counter.items(), key=lambda x: x[1]) → O(n log k)"
+    ],
+    "explanation": "Top-K Frequent mülakatlarda sık sorulan heap sorusudur. Temel zorluk: veri yapısı seçimi.\n\nÜç yaklaşım:\n1) Sorting — basit ama O(n log n)\n2) Heap — O(n log k), K küçükse en iyi\n3) Quickselect — O(n) ortalama ama karmaşık\n\nMülakat notu: Counter kullanmak zorunlu değil. Heap yerine sorting yazsan bile doğru sonuç verir; heap tercih edilir çünkü k << n durumunda log k ile log n farkı önemli.",
+    "complexity": "O(n log k) zaman, O(n) bellek",
+    "related_concepts": [
+      "heap",
+      "counter",
+      "priority queue",
+      "top-k pattern"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "intermediate",
+      "heap",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "top-k-frequent"
+  },
+  {
+    "id": 1147,
+    "title": "Kth Largest in Stream",
+    "category": "algorithms",
+    "level": "intermediate",
+    "description": "Bir akıştan (stream) ardışık sayılar gelecek. Her add() çağrısında mevcut K en büyük sayı arasından en küçüğünü döndür.\n\nProblem: Sınıf tasarla. KthLargest(k, nums) constructor, add(val) her eklemede kth largest'ı döndürür.\n\nÖrnek: KthLargest(3, [4,5,8,2]) → add(3)=4, add(5)=5, add(10)=5, add(9)=8\n\nKısıt: Her add() O(log k) olmalı.",
+    "starter_code": "class KthLargest:\n    def __init__(self, k: int, nums: list):\n        # Hangi yapı? n büyük, k küçük → O(log k) erişim gerekli\n        pass\n\n    def add(self, val: int) -> int:\n        # Kth largest = en küçük olan (top K'nın)\n        pass",
+    "test_cases": [
+      {
+        "input": {
+          "k": 3,
+          "nums": [
+            4,
+            5,
+            8,
+            2
+          ],
+          "ops": [
+            3,
+            5,
+            10,
+            9,
+            4
+          ]
+        },
+        "expected": [
+          4,
+          5,
+          5,
+          8,
+          8
+        ]
+      },
+      {
+        "input": {
+          "k": 1,
+          "nums": [],
+          "ops": [
+            1,
+            2,
+            3
+          ]
+        },
+        "expected": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "input": {
+          "k": 2,
+          "nums": [
+            5,
+            6
+          ],
+          "ops": [
+            7,
+            8,
+            9
+          ]
+        },
+        "expected": [
+          6,
+          7,
+          8
+        ]
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: Her eklemede K en büyüğün en küçüğü → min-heap boyut K tut",
+      "💡 İpucu 2: heapq.heappush + heapq.heappop. Heap'in tepesi = Kth largest.",
+      "💡 İpucu 3: Boyut K'yı aştığında heappop at. Tepedeki her zaman cevap."
+    ],
+    "explanation": "Kth Largest klasik bir heap sorusudur. Veri yapısı seçimi çok kritik:\nimport heapq\nclass KthLargest:\n    def __init__(self, k, nums):\n        self.k = k\n        self.heap = nums\n        heapq.heapify(self.heap)\n        while len(self.heap) > k:\n            heapq.heappop(self.heap)\n    def add(self, val):\n        heapq.heappush(self.heap, val)\n        if len(self.heap) > self.k:\n            heapq.heappop(self.heap)\n        return self.heap[0]\n\nNeden min-heap? Kth largest = en büyük K'nın en küçüğü. Min-heap tepesi en küçük = Kth largest.",
+    "complexity": "O(n + log k) init, O(log k) her add",
+    "related_concepts": [
+      "heap",
+      "priority queue",
+      "streaming data",
+      "top-k"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "intermediate",
+      "heap",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "kth-largest-stream"
+  },
+  {
+    "id": 1148,
+    "title": "İki Heap ile Medyan Bulma",
+    "category": "algorithms",
+    "level": "advanced",
+    "description": "Bir veri akışından gelen sayıların medyanını her add() çağrısında O(1) amortized ile döndür.\n\nProblem: MedianFinder() constructor, add_num(num) ve find_median() metodları.\n\nKısıt: add O(log n), find O(1).\n\nİpucu: Hangi veri yapıları? İki yığın (heap) kullanabilirsin.\n\nÖrnek akış: 1, 2, 3 → medyan = 2; 1, 2, 3, 4 → (2+3)/2 = 2.5",
+    "starter_code": "import heapq\n\nclass MedianFinder:\n    def __init__(self):\n        # İki yığın: biri küçük yarı (max-heap), diğeri büyük yarı (min-heap)\n        # Python'da max-heap yok: negatif sayı kullan\n        self.small = []  # max-heap (negatif)\n        self.large = []  # min-heap\n        pass\n\n    def add_num(self, num: int) -> None:\n        # Hangi yığına? Balance nasıl sağlanır?\n        pass\n\n    def find_median(self) -> float:\n        # Tek eleman mı çift eleman mı kontrol et\n        pass",
+    "test_cases": [
+      {
+        "input": {
+          "ops": [
+            "MedianFinder",
+            "add_num",
+            1,
+            "add_num",
+            2,
+            "find_median",
+            "add_num",
+            3,
+            "find_median"
+          ]
+        },
+        "expected": [
+          null,
+          null,
+          null,
+          null,
+          1.5,
+          null,
+          null,
+          2.0
+        ]
+      },
+      {
+        "input": {
+          "ops": [
+            "MedianFinder",
+            "add_num",
+            5,
+            "find_median"
+          ]
+        },
+        "expected": [
+          null,
+          null,
+          null,
+          5.0
+        ]
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: İki heap: biri küçük yarı (max-heap), diğeri büyük yarı (min-heap).",
+      "💡 İpucu 2: Add sırasında: önce small'a at, sonra invariant kontrolü, gerekirse swap.",
+      "💡 İpucu 3: Boyut farkı 2'den büyükse rebalance."
+    ],
+    "explanation": "Median Maintenance Google/Facebook mülakatlarında klasik.\n\nİki heap tasarımı: small (max-heap, sol yarı), large (min-heap, sağ yarı). len(small) >= len(large) ve fark max 1.\n\nimport heapq\nclass MedianFinder:\n    def __init__(self):\n        self.small = []; self.large = []\n    def add_num(self, num):\n        heapq.heappush(self.small, -num)\n        if self.large and -self.small[0] > self.large[0]:\n            heapq.heappush(self.large, -heapq.heappop(self.small))\n        if len(self.small) > len(self.large) + 1:\n            heapq.heappush(self.large, -heapq.heappop(self.small))\n        if len(self.large) > len(self.small):\n            heapq.heappush(self.small, -heapq.heappop(self.large))\n    def find_median(self):\n        if len(self.small) > len(self.large):\n            return -self.small[0]\n        return (-self.small[0] + self.large[0]) / 2.0\n\nNeden iki heap? Lazy deletion + amortized O(1) median sorgusu.",
+    "complexity": "O(log n) add, O(1) find",
+    "related_concepts": [
+      "heap",
+      "two pointers",
+      "median maintenance",
+      "streaming"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "advanced",
+      "heap",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "median-finder"
+  },
+  {
+    "id": 1149,
+    "title": "Kayan Pencere Medyanı",
+    "category": "algorithms",
+    "level": "advanced",
+    "description": "Bir tam sayı listesinde boyut K olan kayan pencerenin her pozisyondaki medyanını hesapla.\n\nÖrnek: median_sliding_window([1,3,-1,-3,5,3,6,7], 3) → [1.0, -1.0, -1.0, 3.0, 5.0, 6.0]\n\nPencere: [1,3,-1] → 1.0, [3,-1,-3] → -1.0, [-1,-3,5] → -1.0, [-3,5,3] → 3.0, [5,3,6] → 5.0, [3,6,7] → 5.0\n\nKısıt: O(n log k).",
+    "starter_code": "def median_sliding_window(nums: list, k: int) -> list:\n    # Kayan pencere + medyan = hangi yapı?\n    # Pencere dışına çıkan eleman nasıl silinir?\n    pass",
+    "test_cases": [
+      {
+        "input": {
+          "nums": [
+            1,
+            3,
+            -1,
+            -3,
+            5,
+            3,
+            6,
+            7
+          ],
+          "k": 3
+        },
+        "expected": [
+          1.0,
+          -1.0,
+          -1.0,
+          3.0,
+          5.0,
+          6.0
+        ]
+      },
+      {
+        "input": {
+          "nums": [
+            1,
+            2,
+            3,
+            4,
+            2,
+            3,
+            1,
+            4,
+            2
+          ],
+          "k": 3
+        },
+        "expected": [
+          2.0,
+          3.0,
+          3.0,
+          2.0,
+          3.0,
+          3.0,
+          2.0
+        ]
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: Kayan pencere = ekle + sil. Lazy deletion (silinecek elemanı görmezden gel)",
+      "💡 İpucu 2: İki heap (small + large) + heapq delayed delete trick'i",
+      "💡 İpucu 3: Her adımda tepedeki geçersiz elemanları at (eşit değilse)."
+    ],
+    "explanation": "Sliding Window Median iki heap + lazy deletion gerektirir.\n\nNeden zor? Heap'ten key silinemez. Trick: silinecek elemanı geçersiz olarak işaretle, tepede görmezden gel.\n\nimport heapq\ndef median_sliding_window(nums, k):\n    small, large = [], []\n    delayed = {}\n    def prune(heap):\n        while heap and heap[0] in delayed and delayed[heap[0]] > 0:\n            delayed[heap[0]] -= 1\n            if delayed[heap[0]] == 0: del delayed[heap[0]]\n            heapq.heappop(heap)\n    # ... BFS over nums with heap maintenance\n\nBu soruyu çözdüğünde lazy deletion pattern'ini biliyorsun demektir. LeetCode Hard ama kalıp çok değerli.",
+    "complexity": "O(n log k)",
+    "related_concepts": [
+      "heap",
+      "sliding window",
+      "lazy deletion",
+      "median"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "advanced",
+      "heap",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "sliding-window-median"
+  },
+  {
+    "id": 1150,
+    "title": "BST Doğrulama",
+    "category": "algorithms",
+    "level": "intermediate",
+    "description": "Bir ikili ağacın Binary Search Tree olup olmadığını kontrol et.\n\nTree formatı: Level-order array. null boş node.\n\nBST kuralı: Sol alt ağaç < node < sağ alt ağaç (tüm ağaç için).\n\nÖrnek:\n[2,1,3] → True\n[5,1,4,null,null,3,6] → False (3 root'un sağında ama 3 < 5)",
+    "starter_code": "def is_valid_bst(root: list) -> bool:\n    # Tree'yi array formatından dict/object'e çevir\n    # Recursive DFS: her node için (min, max) sınırı kontrol et\n    pass",
+    "test_cases": [
+      {
+        "input": [
+          2,
+          1,
+          3
+        ],
+        "expected": true
+      },
+      {
+        "input": [
+          5,
+          1,
+          4,
+          null,
+          null,
+          3,
+          6
+        ],
+        "expected": false
+      },
+      {
+        "input": [
+          1
+        ],
+        "expected": true
+      },
+      {
+        "input": [
+          5,
+          4,
+          6,
+          null,
+          null,
+          3,
+          7
+        ],
+        "expected": false
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: Tüm alt ağaç BST olmalı → recursive DFS",
+      "💡 İpucu 2: Her node'un geçerli (min, max) aralığı olmalı. Başlangıç: (-inf, +inf).",
+      "💡 İpucu 3: Sol subtree'nin max'ı < node.val < sağ subtree'nin min'ı"
+    ],
+    "explanation": "Validate BST LeetCode classic. Veri yapısı seçimi değil, geçiş stratejisi önemli.\n\nÜç yaklaşım:\n1) Recursive DFS — en sezgisel\ndef is_valid_bst(root, lo=float('-inf'), hi=float('inf')):\n    if not root: return True\n    if not (lo < root.val < hi): return False\n    return is_valid_bst(root.left, lo, root.val) and is_valid_bst(root.right, root.val, hi)\n\n2) Inorder traversal — BST'nin inorder'ı sıralı olmalı\n3) Morris traversal — O(1) bellek (ileri seviye)\n\nMülakat notu: Tüm alt ağaç dersen naive çözüm O(n²) olur. O(n) için min/max aralık taşı. Tree'yi array formatından dict/object'e çevirmeyi unutma.",
+    "complexity": "O(n) zaman, O(h) bellek",
+    "related_concepts": [
+      "binary tree",
+      "DFS",
+      "BST property",
+      "inorder traversal"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "intermediate",
+      "tree",
+      "bst",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "validate-bst"
+  },
+  {
+    "id": 1151,
+    "title": "Inorder Traversal (Iterative)",
+    "category": "algorithms",
+    "level": "intermediate",
+    "description": "Bir binary tree'nin inorder traversal'ını iterative olarak döndür (stack kullan, recursion yasak).\n\nInorder: Sol → Node → Sağ\n\nTree formatı: Level-order array. null boş node.\n\nÖrnek: [1, null, 2, 3] → [1, 3, 2]",
+    "starter_code": "def inorder_iterative(root: list) -> list:\n    # Stack ile iterative DFS. Recursion'a izin yok.\n    pass",
+    "test_cases": [
+      {
+        "input": [
+          1,
+          null,
+          2,
+          3
+        ],
+        "expected": [
+          1,
+          3,
+          2
+        ]
+      },
+      {
+        "input": [],
+        "expected": []
+      },
+      {
+        "input": [
+          1
+        ],
+        "expected": [
+          1
+        ]
+      },
+      {
+        "input": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "expected": [
+          4,
+          2,
+          5,
+          1,
+          3
+        ]
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: Sol'a mümkün olduğunca in, stack'e ekle. Stack'ten çıkar, val'i yaz, sağa geç.",
+      "💡 İpucu 2: curr = root. While curr or stack: ...",
+      "💡 İpucu 3: while curr: stack.append(curr); curr = curr.left. Sonra pop, yaz, curr = curr.right."
+    ],
+    "explanation": "Inorder Iterative recursion'ı stack'e çevirmeyi öğretir.\n\ndef inorder_iterative(root):\n    result, stack, curr = [], [], root\n    while curr or stack:\n        while curr:\n            stack.append(curr); curr = curr.left\n        curr = stack.pop()\n        result.append(curr.val)\n        curr = curr.right\n    return result\n\nNeden iterative? Recursion stack overflow yapar (derin ağaç). Mülakatta iterative çözüm daha çok şey öğretir.\n\nBonus: Morris traversal O(1) bellek — threaded tree kullanır.",
+    "complexity": "O(n) zaman, O(h) bellek",
+    "related_concepts": [
+      "binary tree",
+      "DFS",
+      "stack",
+      "traversal"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "intermediate",
+      "tree",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "inorder-iterative"
+  },
+  {
+    "id": 1152,
+    "title": "Seviye Seviye BFS",
+    "category": "algorithms",
+    "level": "intermediate",
+    "description": "Bir binary tree'yi seviye seviye (level order) traverse et, her seviyeyi ayrı liste olarak döndür.\n\nTree formatı: Level-order array. null boş node.\n\nÖrnek: [3, 9, 20, null, null, 15, 7] → [[3], [9, 20], [15, 7]]",
+    "starter_code": "def level_order(root: list) -> list:\n    # BFS — hangi yapı? Level sonu nasıl tespit edilir?\n    pass",
+    "test_cases": [
+      {
+        "input": [
+          3,
+          9,
+          20,
+          null,
+          null,
+          15,
+          7
+        ],
+        "expected": [
+          [
+            3
+          ],
+          [
+            9,
+            20
+          ],
+          [
+            15,
+            7
+          ]
+        ]
+      },
+      {
+        "input": [
+          1
+        ],
+        "expected": [
+          [
+            1
+          ]
+        ]
+      },
+      {
+        "input": [],
+        "expected": []
+      },
+      {
+        "input": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "expected": [
+          [
+            1
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            4,
+            5
+          ]
+        ]
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: BFS = queue (FIFO). Her seviyeyi ayrı grup olarak yaz.",
+      "💡 İpucu 2: collections.deque + her iterasyonda level_size = len(queue) tut.",
+      "💡 İpucu 3: for _ in range(level_size): node = popleft(); node.left/right'ı ekle."
+    ],
+    "explanation": "Level Order BFS mülakatların en sevdiği tree sorusu.\n\nfrom collections import deque\ndef level_order(root):\n    if not root: return []\n    result, queue = [], deque([root])\n    while queue:\n        level = []\n        for _ in range(len(queue)):\n            node = queue.popleft()\n            level.append(node.val)\n            if node.left: queue.append(node.left)\n            if node.right: queue.append(node.right)\n        result.append(level)\n    return result\n\nMülakat notu: Her seviyeyi ayrı liste istiyoruz çünkü zigzag, sağdan-sola gibi sorular için temel. range(len(queue)) trick'i her seviyede node sayısını verir.",
+    "complexity": "O(n) zaman, O(w) bellek",
+    "related_concepts": [
+      "binary tree",
+      "BFS",
+      "queue",
+      "level order"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "intermediate",
+      "tree",
+      "bfs",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "level-order"
+  },
+  {
+    "id": 1153,
+    "title": "Lowest Common Ancestor (BST)",
+    "category": "algorithms",
+    "level": "advanced",
+    "description": "BST'de iki düğümün Lowest Common Ancestor (ortak en yakın atayı) bul.\n\nTree formatı: Level-order array. null boş node. p ve q değerleri input'ta verilir.\n\nÖrnek:\nTree: [6, 2, 8, 0, 4, 7, 9, null, null, 3, 5]\nlowest_common_ancestor(root, p=2, q=8) → 6\nlowest_common_ancestor(root, p=2, q=4) → 2\n\nKısıt: BST özelliği → O(h) çözüm (h=ağaç yüksekliği).",
+    "starter_code": "def lowest_common_ancestor(root: list, p: int, q: int) -> int:\n    # BST'de: p < root < q ise root LCA'dır\n    pass",
+    "test_cases": [
+      {
+        "input": {
+          "root": [
+            6,
+            2,
+            8,
+            0,
+            4,
+            7,
+            9,
+            null,
+            null,
+            3,
+            5
+          ],
+          "p": 2,
+          "q": 8
+        },
+        "expected": 6
+      },
+      {
+        "input": {
+          "root": [
+            6,
+            2,
+            8,
+            0,
+            4,
+            7,
+            9,
+            null,
+            null,
+            3,
+            5
+          ],
+          "p": 2,
+          "q": 4
+        },
+        "expected": 2
+      },
+      {
+        "input": {
+          "root": [
+            2,
+            1
+          ],
+          "p": 2,
+          "q": 1
+        },
+        "expected": 2
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: BST'de inorder sıralı. p < root < q ise root LCA.",
+      "💡 İpucu 2: p ve q ikisi de root'tan küçükse → sola git. İkisi de büyükse → sağa git.",
+      "💡 İpucu 3: Aksi halde root LCA'dır (recursive/iterative)."
+    ],
+    "explanation": "LCA in BST mülakatlarda hem recursive hem iterative sorulur.\n\nBST-specific O(h) çözüm:\ndef lowest_common_ancestor(root, p, q):\n    while root:\n        if p < root.val and q < root.val: root = root.left\n        elif p > root.val and q > root.val: root = root.right\n        else: return root.val\n\nGenel binary tree LCA (BST değilse) O(n) — recursive:\ndef lca(root, p, q):\n    if not root or root.val == p or root.val == q: return root\n    left = lca(root.left, p, q); right = lca(root.right, p, q)\n    if left and right: return root\n    return left or right\n\nMülakat notu: BST'de neden O(h)? BST'de arama yönü belli; her adımda bir alt ağaca gidiyoruz.",
+    "complexity": "O(h) zaman (BST), O(n) genel",
+    "related_concepts": [
+      "binary search tree",
+      "LCA",
+      "DFS",
+      "BST property"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "advanced",
+      "tree",
+      "bst",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "lowest-common-ancestor"
+  },
+  {
+    "id": 1154,
+    "title": "BST Ekleme",
+    "category": "algorithms",
+    "level": "intermediate",
+    "description": "BST'ye yeni değer ekle, kök referansını döndür.\n\nKural: Sol < node < sağ. Eşitlikte sağa ekle (varsayım).\n\nTree formatı: Level-order array. null boş node. Boş ağaç = [] veya [None].\n\nÖrnek: [4, 2, 7, 1, 3] → 5 ekle → [4, 2, 7, 1, 3, 5]",
+    "starter_code": "def bst_insert(root: list, val: int) -> list:\n    # Tree'yi deserialize et → ekleme yap → serialize et\n    pass",
+    "test_cases": [
+      {
+        "input": {
+          "root": [
+            4,
+            2,
+            7,
+            1,
+            3
+          ],
+          "val": 5
+        },
+        "expected": [
+          4,
+          2,
+          7,
+          1,
+          3,
+          5
+        ]
+      },
+      {
+        "input": {
+          "root": [
+            40,
+            20,
+            60,
+            10,
+            30,
+            50,
+            70
+          ],
+          "val": 25
+        },
+        "expected": [
+          40,
+          20,
+          60,
+          10,
+          30,
+          50,
+          70,
+          null,
+          25
+        ]
+      },
+      {
+        "input": {
+          "root": [],
+          "val": 1
+        },
+        "expected": [
+          1
+        ]
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: Önce deserialize (array → tree). Sonra recursive/iterative insert.",
+      "💡 İpucu 2: Recursive: if val < node.val: node.left = insert(node.left, val) else: node.right = insert(node.right, val).",
+      "💡 İpucu 3: Sonra tekrar serialize et (level-order)."
+    ],
+    "explanation": "BST Insert — deserialize, ekleme, serialize üçlüsü.\n\nclass Node:\n    def __init__(self, val, left=None, right=None):\n        self.val = val; self.left = left; self.right = right\n\ndef deserialize(arr):\n    if not arr or arr[0] is None: return None\n    root = Node(arr[0])\n    queue = deque([root])\n    i = 1\n    while queue and i < len(arr):\n        node = queue.popleft()\n        if i < len(arr) and arr[i] is not None:\n            node.left = Node(arr[i]); queue.append(node.left)\n        i += 1\n        if i < len(arr) and arr[i] is not None:\n            node.right = Node(arr[i]); queue.append(node.right)\n        i += 1\n    return root\n\ndef insert(node, val):\n    if not node: return Node(val)\n    if val < node.val: node.left = insert(node.left, val)\n    else: node.right = insert(node.right, val)\n    return node\n\nNeden deserialize/serialize? Test framework düz array bekliyor, kullanıcı kodu ise Node yapısı kullanıyor.",
+    "complexity": "O(n)",
+    "related_concepts": [
+      "binary search tree",
+      "insert",
+      "tree serialize",
+      "BFS"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "intermediate",
+      "tree",
+      "bst",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "bst-insert"
+  },
+  {
+    "id": 1155,
+    "title": "Adjacency List BFS",
+    "category": "algorithms",
+    "level": "intermediate",
+    "description": "Graph BFS traversal: komşuluk listesi (adjacency list) verilen graftan start node'dan başla, BFS sırasını döndür.\n\nGiriş formatı:\nn: node sayısı (0..n-1)\ngraph: dict, her node'un komşu listesi\nstart: başlangıç node\n\nÖrnek: n=5, graph={0:[1,2], 1:[2], 2:[0,3], 3:[3], 4:[]}, start=2 → BFS: [2, 0, 3, 1]",
+    "starter_code": "def bfs_graph(n: int, graph: dict, start: int) -> list:\n    # Hangi yapı? Ziyaret edilen node nasıl takip edilir?\n    pass",
+    "test_cases": [
+      {
+        "input": {
+          "n": 5,
+          "graph": {
+            "0": [
+              1,
+              2
+            ],
+            "1": [
+              2
+            ],
+            "2": [
+              0,
+              3
+            ],
+            "3": [
+              3
+            ],
+            "4": []
+          },
+          "start": 2
+        },
+        "expected": [
+          2,
+          0,
+          3,
+          1
+        ]
+      },
+      {
+        "input": {
+          "n": 3,
+          "graph": {
+            "0": [
+              1
+            ],
+            "1": [
+              0,
+              2
+            ],
+            "2": [
+              1
+            ]
+          },
+          "start": 0
+        },
+        "expected": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "input": {
+          "n": 4,
+          "graph": {
+            "0": [
+              1
+            ],
+            "1": [],
+            "2": [
+              3
+            ],
+            "3": []
+          },
+          "start": 0
+        },
+        "expected": [
+          0,
+          1
+        ]
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: BFS = queue. Ziyaret edilen = set.",
+      "💡 İpucu 2: queue = deque([start]); visited = {start}; while queue: node = popleft(); neighbors...",
+      "💡 İpucu 3: Komşuyu ekle: if n not in visited: visited.add(n); queue.append(n)"
+    ],
+    "explanation": "Graph BFS en temel graph algoritmasıdır.\n\nfrom collections import deque\ndef bfs_graph(n, graph, start):\n    visited = {start}\n    queue = deque([start])\n    order = []\n    while queue:\n        node = queue.popleft()\n        order.append(node)\n        for neighbor in graph.get(node, []):\n            if neighbor not in visited:\n                visited.add(neighbor); queue.append(neighbor)\n    return order\n\nMülakat notu: Adjacency matrix vs list? Sparse graph = list (O(E) vs O(V²)). BFS shortest path (unweighted), connected components, bipartite check için kullanılır.",
+    "complexity": "O(V + E)",
+    "related_concepts": [
+      "graph",
+      "BFS",
+      "queue",
+      "adjacency list"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "intermediate",
+      "graph",
+      "bfs",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "bfs-graph"
+  },
+  {
+    "id": 1156,
+    "title": "Döngü Tespiti (Undirected)",
+    "category": "algorithms",
+    "level": "intermediate",
+    "description": "Undirected (yönsüz) graph'ta döngü var mı tespit et.\n\nGiriş: n (node sayısı) + edges (kenar listesi, her kenar [u, v]).\n\nÖrnek:\nn=4, edges=[[0,1],[1,2],[2,3],[3,1]] → True (1-2-3-1 döngüsü)\nn=3, edges=[[0,1],[1,2]] → False",
+    "starter_code": "def has_cycle_undirected(n: int, edges: list) -> bool:\n    # Union-Find veya DFS. Hangisi daha şık?\n    pass",
+    "test_cases": [
+      {
+        "input": {
+          "n": 4,
+          "edges": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              3,
+              1
+            ]
+          ]
+        },
+        "expected": true
+      },
+      {
+        "input": {
+          "n": 3,
+          "edges": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        "expected": false
+      },
+      {
+        "input": {
+          "n": 5,
+          "edges": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              0
+            ],
+            [
+              3,
+              4
+            ]
+          ]
+        },
+        "expected": true
+      },
+      {
+        "input": {
+          "n": 1,
+          "edges": []
+        },
+        "expected": false
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: DFS + parent takibi. Komşu parent değilse ve visited → döngü.",
+      "💡 İpucu 2: Union-Find: iki node zaten aynı setteyse → kenar eklemek döngü yaratır.",
+      "💡 İpucu 3: DFS: for neighbor in adj[node]: if neighbor != parent and visited → cycle"
+    ],
+    "explanation": "Cycle Detection undirected graph'ta iki yöntem:\n\n1) DFS + parent:\nfrom collections import defaultdict\ndef has_cycle_undirected(n, edges):\n    graph = defaultdict(list)\n    for u, v in edges:\n        graph[u].append(v); graph[v].append(u)\n    visited = set()\n    def dfs(node, parent):\n        visited.add(node)\n        for neighbor in graph[node]:\n            if neighbor not in visited:\n                if dfs(neighbor, node): return True\n            elif neighbor != parent:\n                return True\n        return False\n    for i in range(n):\n        if i not in visited:\n            if dfs(i, -1): return True\n    return False\n\n2) Union-Find (daha kısa).\n\nMülakat notu: Union-Find bazı problemlerde DFS'ten temiz. İkisini de bil.",
+    "complexity": "O(V + E)",
+    "related_concepts": [
+      "graph",
+      "DFS",
+      "union-find",
+      "cycle detection"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "intermediate",
+      "graph",
+      "union-find",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "has-cycle-undirected"
+  },
+  {
+    "id": 1157,
+    "title": "Topological Sort (Kahn)",
+    "category": "algorithms",
+    "level": "advanced",
+    "description": "Directed Acyclic Graph (DAG)'ta topological sort yap. Döngü varsa boş liste döndür.\n\nYöntem: Kahn's algorithm — in-degree 0 olan node'ları BFS ile işle.\n\nÖrnek:\nn=4, edges=[[0,1],[0,2],[1,3],[2,3]] → [0, 1, 2, 3] veya [0, 2, 1, 3]\n\nDöngü örneği:\nn=3, edges=[[0,1],[1,2],[2,0]] → [] (cycle var)",
+    "starter_code": "def topological_sort(n: int, edges: list) -> list:\n    # In-degree hesapla, queue'ya 0 in-degree olanları koy\n    # Kalan varsa → cycle\n    pass",
+    "test_cases": [
+      {
+        "input": {
+          "n": 4,
+          "edges": [
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              1,
+              3
+            ],
+            [
+              2,
+              3
+            ]
+          ]
+        },
+        "expected": [
+          [
+            0,
+            1,
+            2,
+            3
+          ],
+          [
+            0,
+            2,
+            1,
+            3
+          ]
+        ]
+      },
+      {
+        "input": {
+          "n": 3,
+          "edges": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              0
+            ]
+          ]
+        },
+        "expected": []
+      },
+      {
+        "input": {
+          "n": 6,
+          "edges": [
+            [
+              5,
+              2
+            ],
+            [
+              5,
+              0
+            ],
+            [
+              4,
+              0
+            ],
+            [
+              4,
+              1
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              3,
+              1
+            ]
+          ]
+        },
+        "expected": [
+          [
+            5,
+            4,
+            2,
+            3,
+            1,
+            0
+          ],
+          [
+            4,
+            5,
+            2,
+            3,
+            1,
+            0
+          ]
+        ]
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: In-degree hesapla (her node'a kaç kenar geliyor)",
+      "💡 İpucu 2: Queue'ya in-degree 0 olanları koy. Her işlemede komşuların in-degree'ini azalt.",
+      "💡 İpucu 3: Sonuç listenin uzunluğu n değilse → cycle var"
+    ],
+    "explanation": "Topological Sort task scheduling, build systems, dependency resolution için klasik.\n\nKahn's algorithm:\nfrom collections import deque, defaultdict\ndef topological_sort(n, edges):\n    in_degree = [0] * n\n    graph = defaultdict(list)\n    for u, v in edges:\n        graph[u].append(v); in_degree[v] += 1\n    queue = deque([i for i in range(n) if in_degree[i] == 0])\n    result = []\n    while queue:\n        node = queue.popleft()\n        result.append(node)\n        for neighbor in graph[node]:\n            in_degree[neighbor] -= 1\n            if in_degree[neighbor] == 0: queue.append(neighbor)\n    return result if len(result) == n else []\n\nMülakat notu: Topological sort'un birden fazla geçerli sırası olabilir. Test'te expected_any kullanıldı.",
+    "complexity": "O(V + E)",
+    "related_concepts": [
+      "graph",
+      "DAG",
+      "BFS",
+      "Kahn algorithm",
+      "topological sort"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "advanced",
+      "graph",
+      "bfs",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "topological-sort"
+  },
+  {
+    "id": 1158,
+    "title": "Bağlı Bileşen Sayısı",
+    "category": "algorithms",
+    "level": "intermediate",
+    "description": "Undirected graph'taki connected components sayısını bul.\n\nGiriş: n + edges (her kenar [u, v])\n\nÖrnek:\nn=5, edges=[[0,1],[1,2],[3,4]] → 2 ({0,1,2} ve {3,4})\nn=5, edges=[] → 5 (her node kendi başına)",
+    "starter_code": "def count_components(n: int, edges: list) -> int:\n    # Union-Find veya DFS/BFS. Her birinde ne artırılır?\n    pass",
+    "test_cases": [
+      {
+        "input": {
+          "n": 5,
+          "edges": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              4
+            ]
+          ]
+        },
+        "expected": 2
+      },
+      {
+        "input": {
+          "n": 5,
+          "edges": []
+        },
+        "expected": 5
+      },
+      {
+        "input": {
+          "n": 4,
+          "edges": [
+            [
+              0,
+              1
+            ],
+            [
+              2,
+              3
+            ]
+          ]
+        },
+        "expected": 2
+      },
+      {
+        "input": {
+          "n": 7,
+          "edges": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              0
+            ],
+            [
+              3,
+              4
+            ],
+            [
+              5,
+              6
+            ]
+          ]
+        },
+        "expected": 3
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: Union-Find: her edge union yap. Sonra unique parent say.",
+      "💡 İpucu 2: DFS: her unvisited node için sayacı artır ve tüm reachable'ları işaretle.",
+      "💡 İpucu 3: parent.count(i) / set(find(i) for i in range(n))"
+    ],
+    "explanation": "Connected Components Union-Find'in klasik uygulaması.\n\nUnion-Find versiyonu:\ndef count_components(n, edges):\n    parent = list(range(n))\n    def find(x):\n        while parent[x] != x:\n            parent[x] = parent[parent[x]]\n            x = parent[x]\n        return x\n    for u, v in edges:\n        pu, pv = find(u), find(v)\n        if pu != pv:\n            parent[pu] = pv; n -= 1\n    return n\n\nDFS versiyonu: her unvisited node için count artır, DFS ile reachable'ları işaretle.\n\nMülakat notu: Union-Find neredeyse her zaman daha kısa ve daha hızlı.",
+    "complexity": "O(V + E)",
+    "related_concepts": [
+      "graph",
+      "union-find",
+      "DFS",
+      "connected components"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "intermediate",
+      "graph",
+      "union-find",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "count-components"
+  },
+  {
+    "id": 1159,
+    "title": "Dijkstra Shortest Path",
+    "category": "algorithms",
+    "level": "advanced",
+    "description": "Weighted directed graph'ta Dijkstra ile en kısa yolu bul.\n\nGiriş:\nn: node sayısı\nedges: [u, v, w] (u'dan v'ye ağırlık w)\nstart: başlangıç node\n\nÇıktı: start'tan her node'a en kısa mesafe (erişilemezse inf).\n\nÖrnek:\nn=4, edges=[[0,1,1],[1,2,2],[2,3,3],[0,3,10]], start=0 → [0, 1, 3, 6]",
+    "starter_code": "def dijkstra(n: int, edges: list, start: int) -> list:\n    # Hangi yapı? Negatif ağırlık YOK (yoksa Bellman-Ford).\n    pass",
+    "test_cases": [
+      {
+        "input": {
+          "n": 4,
+          "edges": [
+            [
+              0,
+              1,
+              1
+            ],
+            [
+              1,
+              2,
+              2
+            ],
+            [
+              2,
+              3,
+              3
+            ],
+            [
+              0,
+              3,
+              10
+            ]
+          ],
+          "start": 0
+        },
+        "expected": [
+          0,
+          1,
+          3,
+          6
+        ]
+      },
+      {
+        "input": {
+          "n": 3,
+          "edges": [
+            [
+              0,
+              1,
+              2
+            ],
+            [
+              1,
+              2,
+              3
+            ]
+          ],
+          "start": 0
+        },
+        "expected": [
+          0,
+          2,
+          5
+        ]
+      },
+      {
+        "input": {
+          "n": 4,
+          "edges": [
+            [
+              0,
+              1,
+              1
+            ],
+            [
+              2,
+              3,
+              1
+            ]
+          ],
+          "start": 0
+        },
+        "expected": [
+          0,
+          1,
+          "inf",
+          "inf"
+        ]
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: Min-heap (heapq) — her node'un current_distance'ını tut",
+      "💡 İpucu 2: dist[start]=0; heap=[(0,start)]; heap'ten pop, relax edges",
+      "💡 İpucu 3: Yeni mesafe < dist[v] ise güncelle ve heap'e push"
+    ],
+    "explanation": "Dijkstra weighted graph'larda GPS, routing, network optimization için temel.\n\nimport heapq\nfrom collections import defaultdict\ndef dijkstra(n, edges, start):\n    graph = defaultdict(list)\n    for u, v, w in edges: graph[u].append((v, w))\n    dist = [float('inf')] * n\n    dist[start] = 0\n    heap = [(0, start)]\n    while heap:\n        d, u = heapq.heappop(heap)\n        if d > dist[u]: continue\n        for v, w in graph[u]:\n            nd = d + w\n            if nd < dist[v]:\n                dist[v] = nd\n                heapq.heappush(heap, (nd, v))\n    return dist\n\nMülakat notu: Neden min-heap? En küçük mesafeyi O(log n) bulmak için. Negatif ağırlık olursa Bellman-Ford veya SPFA kullanılır.",
+    "complexity": "O((V + E) log V)",
+    "related_concepts": [
+      "graph",
+      "Dijkstra",
+      "priority queue",
+      "shortest path"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "advanced",
+      "graph",
+      "dijkstra",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "dijkstra"
+  },
+  {
+    "id": 1160,
+    "title": "Linked List Ters Çevirme",
+    "category": "algorithms",
+    "level": "beginner",
+    "description": "Bir singly linked list'i yerinde (in-place) ters çevir.\n\nGiriş formatı: Python list — [1, 2, 3, 4, 5]\n\nÖrnek: [1, 2, 3, 4, 5] → [5, 4, 3, 2, 1]\n\nKısıt: O(n) zaman, O(1) bellek.",
+    "starter_code": "class ListNode:\n    def __init__(self, val=0, next=None):\n        self.val = val\n        self.next = next\n\ndef reverse_linked_list(head_arr: list) -> list:\n    # 1) List'i Node'lara çevir\n    # 2) Iterative: prev=None, curr=head. curr.next = prev; prev=curr; curr=next\n    # 3) Node'ları tekrar list'e çevir\n    pass",
+    "test_cases": [
+      {
+        "input": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "expected": [
+          5,
+          4,
+          3,
+          2,
+          1
+        ]
+      },
+      {
+        "input": [
+          1,
+          2
+        ],
+        "expected": [
+          2,
+          1
+        ]
+      },
+      {
+        "input": [
+          1
+        ],
+        "expected": [
+          1
+        ]
+      },
+      {
+        "input": [],
+        "expected": []
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: Three pointers: prev=None, curr=head, while curr: next_node = curr.next; curr.next = prev; prev = curr; curr = next_node",
+      "💡 İpucu 2: List→Node dönüşümü: ilk node head, sonrakiler .next",
+      "💡 İpucu 3: Boş liste veya tek eleman özel durum"
+    ],
+    "explanation": "Reverse Linked List en temel pointer sorusu.\n\nclass ListNode:\n    def __init__(self, val=0, next=None):\n        self.val = val; self.next = next\n\ndef reverse_linked_list(head_arr):\n    # List to nodes\n    if not head_arr: return []\n    head = ListNode(head_arr[0])\n    curr = head\n    for v in head_arr[1:]:\n        curr.next = ListNode(v); curr = curr.next\n    # Reverse\n    prev, curr = None, head\n    while curr:\n        nxt = curr.next\n        curr.next = prev\n        prev = curr\n        curr = nxt\n    # Nodes to list\n    result = []\n    while prev:\n        result.append(prev.val); prev = prev.next\n    return result\n\nMülakat notu: Recursive vs iterative → Iterative O(1) bellek, recursive O(n) call stack.",
+    "complexity": "O(n) zaman, O(1) bellek",
+    "related_concepts": [
+      "linked list",
+      "pointers",
+      "iterative",
+      "recursive"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "beginner",
+      "linked-list",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "reverse-linked-list"
+  },
+  {
+    "id": 1161,
+    "title": "Linked List Döngü Tespiti",
+    "category": "algorithms",
+    "level": "intermediate",
+    "description": "Bir linked list'te döngü var mı tespit et.\n\nFloyd's Tortoise and Hare: İki pointer — biri yavaş (1 adım), biri hızlı (2 adım). Buluşurlarsa döngü var.\n\nGiriş formatı: ListNode'lar + pos (döngünün başladığı index, -1 = döngü yok).\n\nÖrnek: [3, 2, 0, -4], pos=1 → True (3→2→0→-4→2...)",
+    "starter_code": "class ListNode:\n    def __init__(self, val=0, next=None):\n        self.val = val\n        self.next = next\n\ndef has_cycle(head_arr: list, pos: int) -> bool:\n    # 1) List'i Node'lara çevir + pos'a döngü ekle (test için)\n    # 2) Floyd's algorithm\n    pass",
+    "test_cases": [
+      {
+        "input": {
+          "head": [
+            3,
+            2,
+            0,
+            -4
+          ],
+          "pos": 1
+        },
+        "expected": true
+      },
+      {
+        "input": {
+          "head": [
+            1,
+            2
+          ],
+          "pos": 0
+        },
+        "expected": true
+      },
+      {
+        "input": {
+          "head": [
+            1
+          ],
+          "pos": -1
+        },
+        "expected": false
+      },
+      {
+        "input": {
+          "head": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "pos": -1
+        },
+        "expected": false
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: Floyd: slow=head, fast=head. slow=slow.next, fast=fast.next.next. Eşitse döngü.",
+      "💡 İpucu 2: Döngü yoksa fast sonunda None olur → return False",
+      "💡 İpucu 3: pos test için; gerçek uygulamada input olarak verilmez"
+    ],
+    "explanation": "Floyd's Tortoise and Hare döngü tespitinde klasik algoritma.\n\nNeden çalışır? Döngü varsa, hızlı pointer sonunda yavaşı yakalar (yakalama problemi). Döngü yoksa, hızlı None'a ulaşır.\n\ndef has_cycle(head_arr, pos):\n    if not head_arr: return False\n    nodes = [ListNode(v) for v in head_arr]\n    for i in range(len(nodes) - 1):\n        nodes[i].next = nodes[i + 1]\n    if pos >= 0 and pos < len(nodes):\n        nodes[-1].next = nodes[pos]\n    slow = fast = nodes[0] if nodes else None\n    while fast and fast.next:\n        slow = slow.next\n        fast = fast.next.next\n        if slow is fast: return True\n    return False\n\nBonus — döngünün başlangıç noktasını bul: slow'u head'e al, sonra birlikte 1 adım at.\n\nMülakat notu: Hash set ile de yapılabilir ama O(n) bellek. Floyd O(1).",
+    "complexity": "O(n) zaman, O(1) bellek",
+    "related_concepts": [
+      "linked list",
+      "Floyd algorithm",
+      "two pointers",
+      "cycle"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "intermediate",
+      "linked-list",
+      "two-pointers",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "has-cycle-linked-list"
+  },
+  {
+    "id": 1162,
+    "title": "İki Sıralı Linked List Birleştirme",
+    "category": "algorithms",
+    "level": "beginner",
+    "description": "İki sıralı singly linked list'i tek sıralı listeye birleştir.\n\nGiriş: İki array [1, 2, 4] ve [1, 3, 4] → [1, 1, 2, 3, 4, 4]\n\nKısıt: O(n + m) zaman, O(1) bellek.",
+    "starter_code": "class ListNode:\n    def __init__(self, val=0, next=None):\n        self.val = val\n        self.next = next\n\ndef merge_two_lists(l1_arr: list, l2_arr: list) -> list:\n    # 1) Array → Node'lar\n    # 2) Dummy head + iki pointer. Küçük olanu seç, ilerlet.\n    # 3) Kalan varsa ekle\n    pass",
+    "test_cases": [
+      {
+        "input": {
+          "l1": [
+            1,
+            2,
+            4
+          ],
+          "l2": [
+            1,
+            3,
+            4
+          ]
+        },
+        "expected": [
+          1,
+          1,
+          2,
+          3,
+          4,
+          4
+        ]
+      },
+      {
+        "input": {
+          "l1": [],
+          "l2": []
+        },
+        "expected": []
+      },
+      {
+        "input": {
+          "l1": [],
+          "l2": [
+            0
+          ]
+        },
+        "expected": [
+          0
+        ]
+      },
+      {
+        "input": {
+          "l1": [
+            5,
+            10,
+            15
+          ],
+          "l2": [
+            2,
+            6,
+            20
+          ]
+        },
+        "expected": [
+          2,
+          5,
+          6,
+          10,
+          15,
+          20
+        ]
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: Dummy head oluştur. curr=dummy.",
+      "💡 İpucu 2: while l1 and l2: if l1.val < l2.val: curr.next=l1; l1=l1.next else: curr.next=l2; l2=l2.next; curr=curr.next",
+      "💡 İpucu 3: Kalan: curr.next = l1 or l2"
+    ],
+    "explanation": "Merge Two Sorted Lists — klasik merge adımı (merge sort'un temeli).\n\ndef merge_two_lists(l1_arr, l2_arr):\n    l1 = list_to_nodes(l1_arr)\n    l2 = list_to_nodes(l2_arr)\n    dummy = ListNode(0)\n    curr = dummy\n    while l1 and l2:\n        if l1.val < l2.val:\n            curr.next = l1; l1 = l1.next\n        else:\n            curr.next = l2; l2 = l2.next\n        curr = curr.next\n    curr.next = l1 or l2\n    return nodes_to_list(dummy.next)\n\nMülakat notu: Neden dummy head? İlk node'u özel olarak handle etmemek için. Merge sort'taki merge step: O(n+m) iki sıralı listeyi birleştir.",
+    "complexity": "O(n + m) zaman, O(1) bellek",
+    "related_concepts": [
+      "linked list",
+      "merge",
+      "dummy node",
+      "two pointers"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "beginner",
+      "linked-list",
+      "merge",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "merge-two-lists"
+  },
+  {
+    "id": 1163,
+    "title": "Trie: Insert & Search",
+    "category": "algorithms",
+    "level": "intermediate",
+    "description": "Trie (prefix tree) implementasyonu yap.\n\nTrie:\ninsert(word): kelimeyi trie'ye ekle\nsearch(word): kelime tam olarak trie'de var mı? (prefix değil)\nstarts_with(prefix): prefix trie'de var mı?\n\nÖrnek:\ntrie = Trie()\ntrie.insert('apple')\ntrie.search('apple') → True\ntrie.search('app') → False\ntrie.starts_with('app') → True\ntrie.insert('app')\ntrie.search('app') → True",
+    "starter_code": "class Trie:\n    def __init__(self):\n        # Hangi yapı? Her node = dict {char: child_node, is_end: bool}\n        # Ya da her node = [26 children] + is_end flag\n        pass\n\n    def insert(self, word: str) -> None:\n        pass\n\n    def search(self, word: str) -> bool:\n        # Kelime tam olarak var mı?\n        pass\n\n    def starts_with(self, prefix: str) -> bool:\n        # Prefix var mı (kelime olması şart değil)?\n        pass",
+    "test_cases": [
+      {
+        "input": {
+          "ops": [
+            "Trie",
+            "insert",
+            "apple",
+            "search",
+            "apple",
+            "search",
+            "app",
+            "starts_with",
+            "app",
+            "insert",
+            "app",
+            "search",
+            "app"
+          ]
+        },
+        "expected": [
+          null,
+          null,
+          null,
+          true,
+          null,
+          false,
+          null,
+          true,
+          null,
+          null,
+          null,
+          true
+        ]
+      },
+      {
+        "input": {
+          "ops": [
+            "Trie",
+            "insert",
+            "hello",
+            "search",
+            "hell",
+            "starts_with",
+            "hell"
+          ]
+        },
+        "expected": [
+          null,
+          null,
+          null,
+          false,
+          null,
+          true
+        ]
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: Node = {'children': {}, 'is_end': False}. Root = Node().",
+      "💡 İpucu 2: insert: her char için node'u al/yarat. Son node.is_end = True.",
+      "💡 İpucu 3: search: traverse, son node.is_end True olmalı. starts_with: traverse yetmeli."
+    ],
+    "explanation": "Trie (prefix tree) string'leri O(L) zamanda arar (L = kelime uzunluğu).\n\nclass TrieNode:\n    def __init__(self):\n        self.children = {}\n        self.is_end = False\n\nclass Trie:\n    def __init__(self):\n        self.root = TrieNode()\n    def insert(self, word):\n        node = self.root\n        for char in word:\n            if char not in node.children:\n                node.children[char] = TrieNode()\n            node = node.children[char]\n        node.is_end = True\n    def search(self, word):\n        node = self.root\n        for char in word:\n            if char not in node.children: return False\n            node = node.children[char]\n        return node.is_end\n    def starts_with(self, prefix):\n        node = self.root\n        for char in prefix:\n            if char not in node.children: return False\n            node = node.children[char]\n        return True\n\nMülakat notu: Trie vs hash? Trie = prefix sorguları için O(L), hash O(L) tek kelime ama prefix için O(L*N). Trie bellek tradeoff: O(26*L) node vs Hash O(L).",
+    "complexity": "O(L) insert/search/starts_with",
+    "related_concepts": [
+      "trie",
+      "prefix tree",
+      "string",
+      "data structure design"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "intermediate",
+      "trie",
+      "string",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "trie-insert-search"
+  },
+  {
+    "id": 1164,
+    "title": "Trie ile Kelime Arama (Word Search II)",
+    "category": "algorithms",
+    "level": "advanced",
+    "description": "Bir m x n board'da verilen kelimeleri bul. Her kelime komşü hücrelerden (4 yön) oluşturulmalı, aynı hücre iki kez kullanılamaz.\n\nTrie ile optimize et (her kelime için DFS yerine).\n\nGiriş:\nboard: 2D karakter listesi\nwords: aranacak kelimeler\n\nÇıktı: Board'da bulunan kelimeler (sıra önemli değil).\n\nÖrnek: board=[['o','a','a','n'],['e','t','a','e'],['i','h','k','r'],['i','f','l','v']], words=['oath','pea','eat','rain'] → ['eat', 'oath']",
+    "starter_code": "def find_words(board: list, words: list) -> list:\n    # 1) Trie oluştur (tüm words'ü ekle)\n    # 2) Her hücreden başla, DFS ile trie'de ara\n    # 3) Trie'de kelime tamamlandıysa sonucu ekle\n    pass",
+    "test_cases": [
+      {
+        "input": {
+          "board": [
+            [
+              "o",
+              "a",
+              "a",
+              "n"
+            ],
+            [
+              "e",
+              "t",
+              "a",
+              "e"
+            ],
+            [
+              "i",
+              "h",
+              "k",
+              "r"
+            ],
+            [
+              "i",
+              "f",
+              "l",
+              "v"
+            ]
+          ],
+          "words": [
+            "oath",
+            "pea",
+            "eat",
+            "rain"
+          ]
+        },
+        "expected": [
+          "eat",
+          "oath"
+        ]
+      },
+      {
+        "input": {
+          "board": [
+            [
+              "a",
+              "b"
+            ],
+            [
+              "c",
+              "d"
+            ]
+          ],
+          "words": [
+            "abcb"
+          ]
+        },
+        "expected": []
+      }
+    ],
+    "hints": [
+      "💡 İpucu 1: Trie oluştur. Her node = dict + is_end.",
+      "💡 İpucu 2: Her board hücresinden başla. DFS'te trie'de de ilerle.",
+      "💡 İpucu 3: Trie'de path yoksa prune (backtrack). Kelime bulunduysa ekle ve işaretle."
+    ],
+    "explanation": "Word Search II trie + DFS — LeetCode Hard ama pattern çok değerli.\n\nNeden trie? Her kelime için DFS yaparsan O(words * 4^L). Trie ile her hücreden tek DFS — O(m*n*4^L) ama kelime sayısıyla çarpılmaz.\n\nclass TrieNode:\n    def __init__(self):\n        self.children = {}\n        self.is_end = False\n        self.word = None\n\ndef find_words(board, words):\n    root = TrieNode()\n    for word in words:\n        node = root\n        for char in word:\n            if char not in node.children:\n                node.children[char] = TrieNode()\n            node = node.children[char]\n        node.is_end = True\n        node.word = word\n    rows, cols = len(board), len(board[0])\n    result = set()\n    def dfs(r, c, node):\n        char = board[r][c]\n        if char not in node.children: return\n        next_node = node.children[char]\n        if next_node.is_end:\n            result.add(next_node.word)\n            next_node.is_end = False\n        board[r][c] = '#'\n        for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < rows and 0 <= nc < cols and board[nr][nc] != '#':\n                dfs(nr, nc, next_node)\n        board[r][c] = char\n    for r in range(rows):\n        for c in range(cols):\n            dfs(r, c, root)\n    return list(result)\n\nMülakat notu: Trie prune = kelime bulunduktan sonra is_end=False yap. Set kullanma sebebi: aynı kelime birden fazla path'de bulunabilir.",
+    "complexity": "O(m*n*4^L)",
+    "related_concepts": [
+      "trie",
+      "DFS",
+      "backtracking",
+      "grid search"
+    ],
+    "related_question_ids": [],
+    "tags": [
+      "algorithms",
+      "advanced",
+      "trie",
+      "dfs",
+      "backtracking",
+      "interview"
+    ],
+    "tutorial_slug": null,
+    "slug": "word-search-ii"
   }
 ]

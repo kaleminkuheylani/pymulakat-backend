@@ -248,7 +248,7 @@ def sum_digits(n):
         category='python-basics',
         level='beginner',
         description='''İlk n Fibonacci sayısını liste olarak döndür.
-F(0)=0, F(1)=1, F(n)=F(n-1)+F(n-2)''',
+F(0)=0, F(1)=1, F(n)=F(n-1)+F(n-2""",
         starter_code='''def fibonacci(n: int) -> list:
     # İlk n elemanı hesapla
     pass''',
@@ -1151,7 +1151,7 @@ Beginner seviye mülakatlarda veri yapilari bilgisi sınanır. Benzer sorular ay
         category='pandas',
         level='beginner',
         description='''Bir anket sonucu sözlüğü veriliyor. En popüler rengi bul.
-(pandas kullanmadan, saf Python ile yap)''',
+(pandas kullanmadan, saf Python ile yap""",
         starter_code='''def favorite_color(poll_data: dict) -> str:
     # poll_data = {"Ahmet": "Mavi", "Ayşe": "Kırmızı", ...}
     # En çok tekrar eden rengi döndür
@@ -1192,7 +1192,7 @@ Beginner seviye mülakatlarda veri analizi bilgisi sınanır. Benzer sorular ayn
         category='pandas',
         level='beginner',
         description='''Bir sayı listesindeki None değerleri, listenin ortalamasıyla doldur.
-(pandas kullanmadan, saf Python ile)''',
+(pandas kullanmadan, saf Python ile""",
         starter_code='''def fill_missing(numbers: list) -> list:
     # [1, None, 3, None, 5] -> [1, 3.0, 3, 3.0, 5]
     pass''',
@@ -1351,7 +1351,7 @@ Intermediate seviye mülakatlarda veri analizi bilgisi sınanır. Benzer sorular
         category='pandas',
         level='beginner',
         description='''Bir listedeki tekrar eden öğeleri kaldır ve kaç tane kaldırıldığını döndür.
-Sonuç: (temizlenmiş_liste, kaldırılan_sayısı)''',
+Sonuç: (temizlenmiş_liste, kaldırılan_sayısı""",
         starter_code='''def remove_duplicates(items: list) -> list:
     # (temizlenmiş_liste, kaldırılan_sayısı) döndür
     pass''',
@@ -1696,7 +1696,7 @@ Beginner seviye mülakatlarda algoritmalar bilgisi sınanır. Benzer sorular ayn
         category='algorithms',
         level='intermediate',
         description='''n merdiven basamağı var. Her adımda 1 veya 2 basamak çıkabilirsin.
-Kaç farklı yol var? (Dinamik programlama)''',
+Kaç farklı yol var? (Dinamik programlama""",
         starter_code='''def climb_stairs(n: int) -> int:
     # DP ile çöz: dp[i] = dp[i-1] + dp[i-2]
     pass''',
@@ -1779,7 +1779,7 @@ Intermediate seviye mülakatlarda algoritmalar bilgisi sınanır. Benzer sorular
 Birden fazla çözüm varsa, herhangi birini döndürmek yeterli.
 Sonuç: [eleman1, eleman2] şeklinde liste döndür.
 Örnek: [1, 2, 3, 4, 5], hedef = 8 → [3, 5] (toplam 8, tam isabet)
-Örnek: [1, 2, 3, 4], hedef = 10 → [4, 4] veya [1, 4] (en yakın toplam 9)''',
+Örnek: [1, 2, 3, 4], hedef = 10 → [4, 4] veya [1, 4] (en yakın toplam 9""",
         starter_code='''def find_closest_pair(numbers: list, target: int) -> list:
     # İki elemanın toplamı hedefe en yakın olsun
     pass''',
@@ -2228,7 +2228,7 @@ Intermediate seviye mülakatlarda string islemleri bilgisi sınanır. Benzer sor
         category='python-basics',
         level='beginner',
         description='''Bir liste var. Listedeki tekrarlari kaldir, ilk gorunme sirasini koru.
-Ornek: [1, 3, 2, 3, 4, 1, 5] -> [1, 3, 2, 4, 5] (3 ve 1 tekrari atlanir)''',
+Ornek: [1, 3, 2, 3, 4, 1, 5] -> [1, 3, 2, 4, 5] (3 ve 1 tekrari atlanir""",
         starter_code='''def remove_duplicates(items: list) -> list:
     # Yinelenenleri kaldir, ilk gorunme sirasini koru
     pass''',
@@ -2690,7 +2690,7 @@ lst.reverse()
         description='''Bir dizideki en uzun ard arda gelen sayi dizisinin uzunlugunu bul.
 O(n) zaman karmasikligi hedefle.
 Ornek: [100, 4, 200, 1, 3, 2] -> 4 (1,2,3,4 dizisi)
-Ornek: [0,3,7,2,5,8,4,6,0,1] -> 9 (0-8)''',
+Ornek: [0,3,7,2,5,8,4,6,0,1] -> 9 (0-8""",
         starter_code='''def longest_consecutive(nums: list) -> int:
     # En uzun ard arda gelen sayi dizisi
     pass''',
@@ -3703,5 +3703,5 @@ Veri yapısı senin.''',
         related_concepts=['OrderedDict', 'doubly linked list', 'cache eviction'],
         related_question_ids=[125, 110],
         tags=['data_structures', 'intermediate', 'interview'],
-    ),
+    )
 ]
