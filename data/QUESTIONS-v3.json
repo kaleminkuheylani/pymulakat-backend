@@ -5,7 +5,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Bir kelimenin veya cümlenin palindrome olup olmadığını kontrol et.\nBüyük/küçük harf fark etmesin, boşluk ve noktalama işaretlerini yok say.\nÖrnek: 'A man a plan a canal Panama' → True",
-    "starter_code": "def is_palindrome(text: str",
+    "starter_code": "def is_palindrome(text: str) -> bool:\n    pass",
     "test_cases": [
       {
         "input": "radar",
@@ -43,7 +43,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "1'den n'e kadar say.\n3'e bölünüyorsa 'Fizz🎉', 5'e bölünüyorsa 'Buzz🚀',\nher ikisine de bölünüyorsa 'FizzBuzz🎊' yaz.\nDiğer sayıları string olarak ekle.",
-    "starter_code": "def emoji_fizzbuzz(n: int",
+    "starter_code": "def emoji_fizzbuzz(n: int) -> list[str]:\n    pass",
     "test_cases": [
       {
         "input": 5,
@@ -95,7 +95,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Bir cümledeki en uzun kelimeyi ve uzunluğunu döndür.\nBirden fazla aynı uzunlukta kelime varsa ilkini döndür.\nNot: Sonuç [kelime, uzunluk] şeklinde liste olmalı.",
-    "starter_code": "def longest_word(sentence: str",
+    "starter_code": "def longest_word(x: str) -> list[str]:\n    pass",
     "test_cases": [
       {
         "input": "Python çok eğlenceli bir dil",
@@ -138,7 +138,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Verilen 3x3 liste bir sihirli kare mi?\nSatır, sütun ve iki çapraz toplamların hepsi eşit olmalı.",
-    "starter_code": "def is_magic_square(grid: list",
+    "starter_code": "def is_magic_square(arg0: list[int], arg1: list[int], arg2: list[int]) -> bool:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -196,7 +196,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Kullanıcının tahminleri ve gerçek sayı verildiğinde,\nkaç tahminin tam doğru, kaç tahminin ±5 içinde, kaç tahminin uzak olduğunu döndür.",
-    "starter_code": "def score_guesses(guesses: list, secret: int",
+    "starter_code": "def score_guesses(nums: dict) -> dict:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -249,7 +249,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Verilen sayının asal olup olmadığını kontrol et.\n1 ve altındaki sayılar asal değildir.",
-    "starter_code": "def is_prime(n: int",
+    "starter_code": "def is_prime(n: int) -> bool:\n    pass",
     "test_cases": [
       {
         "input": 2,
@@ -287,7 +287,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "İç içe geçmiş listeyi tek seviyeli listeye dönüştür.\nYalnızca bir seviye derinlik garantilidir.",
-    "starter_code": "def flatten(nested: list",
+    "starter_code": "def flatten(arg0: list[int], arg1: list[int], arg2: list[int]) -> list[int]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -355,7 +355,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "İlk n Fibonacci sayısını liste olarak döndür.\nF(0",
-    "starter_code": "def fibonacci(n: int",
+    "starter_code": "def fibonacci(n: int) -> list[int]:\n    pass",
     "test_cases": [
       {
         "input": 7,
@@ -398,7 +398,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "İki kelimenin anagram olup olmadığını kontrol et.\nBüyük/küçük harf ve boşluk fark etmesin.",
-    "starter_code": "def is_anagram(word1: str, word2: str",
+    "starter_code": "def is_anagram(s: dict) -> bool:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -441,7 +441,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Cümledeki kelimelerin sırasını tersine çevir,\nfakat kelimelerin kendisini tersine çevirme.",
-    "starter_code": "def reverse_words(sentence: str",
+    "starter_code": "def reverse_words(x: str) -> str:\n    pass",
     "test_cases": [
       {
         "input": "Merhaba Dünya",
@@ -471,7 +471,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Bir listedeki ikinci en büyük eşsiz sayıyı döndür.\nEğer yoksa None döndür.",
-    "starter_code": "def second_largest(numbers: list",
+    "starter_code": "def second_largest(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int, arg6: int, arg7: int) -> int:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -521,7 +521,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Metni n karakter kaydırarak şifrele (yalnızca İngilizce harfler",
-    "starter_code": "def caesar_cipher(text: str, shift: int",
+    "starter_code": "def caesar_cipher(x: dict) -> str:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -564,7 +564,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "",
-    "starter_code": "def transpose(matrix: list",
+    "starter_code": "def transpose(arg0: list[int], arg1: list[int]) -> list[list[int]]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -642,7 +642,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Verilen bir string'deki parantezlerin dengeli olup olmadığını kontrol et.\n(",
-    "starter_code": "def is_balanced(s: str",
+    "starter_code": "def is_balanced(s: str) -> bool:\n    pass",
     "test_cases": [
       {
         "input": "([]{})",
@@ -676,7 +676,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Bir string'i run-length encoding ile sıkıştır.\n'aaabbc' → '3a2b1c'",
-    "starter_code": "def rle_encode(s: str",
+    "starter_code": "def rle_encode(x: str) -> str:\n    pass",
     "test_cases": [
       {
         "input": "aaabbc",
@@ -710,7 +710,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Bir metindeki en sık geçen k kelimeyi döndür.\nBüyük/küçük harf duyarlı olmasın, noktalama işaretlerini yok say.",
-    "starter_code": "def top_k_words(text: str, k: int",
+    "starter_code": "def top_k_words(x: dict) -> list[str]:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -751,7 +751,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Bir string'i sıkıştır: art arda tekrar eden karakterleri tek karaktere indir.\n'aabbcc' → 'abc', 'aabba' → 'aba'",
-    "starter_code": "def compress(s: str",
+    "starter_code": "def compress(x: str) -> str:\n    pass",
     "test_cases": [
       {
         "input": "aabbcc",
@@ -785,7 +785,7 @@
     "category": "python-basics",
     "level": "intermediate",
     "description": "1-3999 arasındaki bir tam sayıyı Roma rakamlarına çevir.",
-    "starter_code": "def to_roman(num: int",
+    "starter_code": "def to_roman(n: int) -> str:\n    pass",
     "test_cases": [
       {
         "input": 3,
@@ -819,7 +819,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Bir cümle pangram mı? (İngiliz alfabesinin tüm harflerini içeriyor mu?",
-    "starter_code": "def is_pangram(sentence: str",
+    "starter_code": "def is_pangram(x: str) -> bool:\n    pass",
     "test_cases": [
       {
         "input": "The quick brown fox jumps over the lazy dog",
@@ -849,7 +849,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Bir DNA zincirinin tamamlayıcısını bul.\nA↔T, C↔G  kuralını uygula ve sonucu tersine çevir.",
-    "starter_code": "def dna_complement(strand: str",
+    "starter_code": "def dna_complement(x: str) -> str:\n    pass",
     "test_cases": [
       {
         "input": "ATCG",
@@ -879,7 +879,7 @@
     "category": "data-structures",
     "level": "beginner",
     "description": "İki sıralı listeyi birleştirerek yeni bir sıralı liste oluştur.\nsort(",
-    "starter_code": "def merge_sorted(a: list, b: list",
+    "starter_code": "def merge_sorted(nums: dict) -> list[int]:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -956,7 +956,7 @@
     "category": "list-dict",
     "level": "beginner",
     "description": "İki sözlüğü birleştir. Aynı anahtarlar varsa değerlerini topla.",
-    "starter_code": "def merge_dicts(d1: dict, d2: dict",
+    "starter_code": "def merge_dicts(x: dict) -> dict:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -1006,7 +1006,7 @@
     "category": "list-dict",
     "level": "beginner",
     "description": "Bir sayı listesini 'tek' ve 'çift' olarak grupla.\nSonuç: {'tek': [...], 'çift': [...]}",
-    "starter_code": "def group_by_parity(items: list",
+    "starter_code": "def group_by_parity(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int) -> dict:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -1068,7 +1068,7 @@
     "category": "list-dict",
     "level": "beginner",
     "description": "İki liste arasındaki farkları bul: yalnızca A'da, yalnızca B'de ve ikisinde birden olan elemanlar.",
-    "starter_code": "def list_diff(a: list, b: list",
+    "starter_code": "def list_diff(nums: dict) -> dict:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -1120,7 +1120,7 @@
     "category": "data-structures",
     "level": "intermediate",
     "description": "",
-    "starter_code": "def matrix_multiply(a: list, b: list",
+    "starter_code": "def matrix_multiply(x: dict) -> list[list[int]]:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -1176,7 +1176,7 @@
     "category": "list-dict",
     "level": "beginner",
     "description": "Bir mağazanın stok hareketlerini takip et.\nHer hareket '+ürün:miktar' veya '-ürün:miktar' şeklinde.",
-    "starter_code": "def track_inventory(movements: list",
+    "starter_code": "def track_inventory(arg0: str, arg1: str, arg2: str) -> dict:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -1219,7 +1219,7 @@
     "category": "list-dict",
     "level": "beginner",
     "description": "k elemanlı hareketli ortalama hesapla.\nYeterli eleman olmayan başlangıç pencerelerini atla.",
-    "starter_code": "def moving_average(nums: list, k: int",
+    "starter_code": "def moving_average(x: dict) -> list[float]:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -1274,7 +1274,7 @@
     "category": "data-structures",
     "level": "intermediate",
     "description": "Bir dizideki en uzun sürekli artan alt dizinin uzunluğunu bul.",
-    "starter_code": "def longest_increasing_subsequence(nums: list",
+    "starter_code": "def longest_increasing_subsequence(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int) -> int:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -1326,7 +1326,7 @@
     "category": "data-structures",
     "level": "beginner",
     "description": "Ürün fiyatlarının bulunduğu bir sözlükten\nmin, max ve ortalama fiyatı döndür.",
-    "starter_code": "def price_analysis(prices: dict",
+    "starter_code": "def price_analysis(x: dict) -> dict:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -1360,7 +1360,7 @@
     "category": "data-structures",
     "level": "beginner",
     "description": "Bir listenin kümülatif (birikimli",
-    "starter_code": "def cumulative_sum(nums: list",
+    "starter_code": "def cumulative_sum(a: int, b: int, arg2: int, arg3: int) -> list[int]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -1412,7 +1412,7 @@
     "category": "pandas",
     "level": "beginner",
     "description": "Bir anket sonucu sözlüğü veriliyor. En popüler rengi bul.\n(pandas kullanmadan, saf Python ile yap",
-    "starter_code": "def favorite_color(poll_data: dict",
+    "starter_code": "def favorite_color(x: dict) -> str:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -1451,7 +1451,7 @@
     "category": "pandas",
     "level": "beginner",
     "description": "Bir sayı listesindeki None değerleri, listenin ortalamasıyla doldur.\n(pandas kullanmadan, saf Python ile",
-    "starter_code": "def fill_missing(numbers: list",
+    "starter_code": "def fill_missing(arg0: int, arg1: None, arg2: int, arg3: None, arg4: int) -> list[int | float]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -1501,7 +1501,7 @@
     "category": "pandas",
     "level": "beginner",
     "description": "Satış verisini ürün bazında grupla, toplam satışı hesapla ve en çok satan ürünü döndür.",
-    "starter_code": "def top_selling_product(sales_data: list",
+    "starter_code": "def top_selling_product(arg0: dict, arg1: dict, arg2: dict) -> str:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -1540,7 +1540,7 @@
     "category": "pandas",
     "level": "intermediate",
     "description": "Günlük veri sözlüğünden haftalık ortalama hesapla.\nHer hafta 7 günlük gruplara böl ve ortalamasını al.",
-    "starter_code": "def weekly_average(daily_data: dict",
+    "starter_code": "def weekly_average(x: dict) -> list[float]:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -1578,7 +1578,7 @@
     "category": "pandas",
     "level": "intermediate",
     "description": "İki sayı listesi arasındaki Pearson korelasyonunu hesapla ve yorumla.\n0.7+ güçlü, 0.4-0.7 orta, <0.4 zayıf.",
-    "starter_code": "def correlation_analysis(x: list, y: list",
+    "starter_code": "def correlation_analysis(x: dict) -> dict:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -1644,7 +1644,7 @@
     "category": "pandas",
     "level": "beginner",
     "description": "Bir listedeki tekrar eden öğeleri kaldır ve kaç tane kaldırıldığını döndür.\nSonuç: (temizlenmiş_liste, kaldırılan_sayısı",
-    "starter_code": "def remove_duplicates(items: list",
+    "starter_code": "def remove_duplicates(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int, arg6: int) -> list[list[int]] | list[list[str]]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -1702,7 +1702,7 @@
     "category": "pandas",
     "level": "beginner",
     "description": "Yaş listesini gruplara ayır: 0-17 'Genç', 18-64 'Yetişkin', 65+ 'Yaşlı'.",
-    "starter_code": "def age_segment(ages: list",
+    "starter_code": "def age_segment(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int) -> list[str]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -1740,7 +1740,7 @@
     "category": "pandas",
     "level": "intermediate",
     "description": "Satış verisinden bölge bazında toplam satışı hesapla.\nSonuç: {bölge: toplam_satış} sözlüğü",
-    "starter_code": "def region_totals(sales: list",
+    "starter_code": "def region_totals(a: dict, b: dict, arg2: dict, arg3: dict) -> dict:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -1786,7 +1786,7 @@
     "category": "pandas",
     "level": "intermediate",
     "description": "IQR yöntemiyle aykırı değerleri tespit et.\nQ1-1.5*IQR altındakiler veya Q3+1.5*IQR üstündekiler aykırıdır.\nSonuç: aykırı değerlerin indeks listesi.",
-    "starter_code": "def detect_outliers(data: list",
+    "starter_code": "def detect_outliers(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int, arg6: int) -> list | list[int]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -1833,7 +1833,7 @@
     "category": "pandas",
     "level": "intermediate",
     "description": "k pencereli rolling (kayan",
-    "starter_code": "def rolling_average(data: list, k: int",
+    "starter_code": "def rolling_average(x: dict) -> list[None]:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -1887,7 +1887,7 @@
     "category": "algorithms",
     "level": "beginner",
     "description": "Sıralı bir listede binary search ile hedef sayının indeksini döndür.\nBulunamazsa -1 döndür.",
-    "starter_code": "def binary_search(arr: list, target: int",
+    "starter_code": "def binary_search(x: dict) -> int:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -1946,7 +1946,7 @@
     "category": "algorithms",
     "level": "beginner",
     "description": "Bubble sort algoritmasıyla bir listeyi küçükten büyüğe sırala.\nOrijinal listeyi değiştirme, kopyasını döndür.",
-    "starter_code": "def bubble_sort(arr: list",
+    "starter_code": "def bubble_sort(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int, arg6: int) -> list[int]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -2004,7 +2004,7 @@
     "category": "algorithms",
     "level": "beginner",
     "description": "Verilen miktarı en az sayıda bozuk para ile öde.\nKullanılabilir bozukluklar: [100,50,25,10,5,1] kuruş.",
-    "starter_code": "def make_change(amount: int",
+    "starter_code": "def make_change(n: int) -> dict:\n    pass",
     "test_cases": [
       {
         "input": 187,
@@ -2048,7 +2048,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "n merdiven basamağı var. Her adımda 1 veya 2 basamak çıkabilirsin.\nKaç farklı yol var? (Dinamik programlama",
-    "starter_code": "def climb_stairs(n: int",
+    "starter_code": "def climb_stairs(n: int) -> int:\n    pass",
     "test_cases": [
       {
         "input": 2,
@@ -2082,7 +2082,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Bir 2D grid'de (0=geçit, 1=duvar",
-    "starter_code": "def shortest_path(grid: list",
+    "starter_code": "def shortest_path(arg0: list[int], arg1: list[int], arg2: list[int]) -> int:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -2137,7 +2137,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "",
-    "starter_code": "def merge_salaries(engineering: list, marketing: list",
+    "starter_code": "def merge_salaries(x: Any) -> float:\n    pass",
     "test_cases": [],
     "hints": [
       "💡 İpucu 1: İki pointer kullan — biri engineering, biri marketing için. İlk elemanları karşılaştır.",
@@ -2158,7 +2158,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Bir sayı dizisinde, toplamı hedef sayıya en yakın olan iki elemanı bul.\nBirden fazla çözüm varsa, herhangi birini döndürmek yeterli.\nSonuç: [eleman1, eleman2] şeklinde liste döndür.\nÖrnek: [1, 2, 3, 4, 5]",
-    "starter_code": "def find_closest_pair(numbers: list, target: int",
+    "starter_code": "def find_closest_pair(x: dict) -> list[int]:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -2255,7 +2255,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Bir string'de art arda tekrar eden karakterlerden oluşan\nen uzun zinciri bul.\nSonuç: (karakter, zincir uzunluğu",
-    "starter_code": "def longest_char_chain(s: str",
+    "starter_code": "def longest_char_chain(nums: str) -> list[str]:\n    pass",
     "test_cases": [
       {
         "input": "aabbbcccddaaa",
@@ -2319,7 +2319,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Bir sayı listesi ve bir hedef sayı veriliyor.\nListedeki herhangi bir alt dizinin (continuous subsequence",
-    "starter_code": "def has_subarray_with_sum(nums: list, target: int",
+    "starter_code": "def has_subarray_with_sum(x: dict) -> bool:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -2401,7 +2401,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Bir string'deki tüm benzersiz alt dizgilerin (substring",
-    "starter_code": "def count_unique_substrings(s: str",
+    "starter_code": "def count_unique_substrings(x: str) -> int:\n    pass",
     "test_cases": [
       {
         "input": "abc",
@@ -2443,7 +2443,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Bir sayi listesi var. Listedeki SADECE cift sayilarin karelerini al ve topla.\nTek sayilar yok sayilir (sadece ciftler",
-    "starter_code": "def sum_of_even_squares(nums: list",
+    "starter_code": "def sum_of_even_squares(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int) -> int:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -2494,7 +2494,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "",
-    "starter_code": "def common_chars(a: str, b: str",
+    "starter_code": "def common_chars(arg0: str, arg1: str) -> list | list[str]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -2551,7 +2551,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Bir liste var. En sik gecen elemani dondur.\nBirden fazla esit siklik varsa en kucuk sayiyi veya alfabetik ilk olani dondur.\nOrnek: [1, 3, 2, 3, 4, 1, 1] -> 1 (4 kez",
-    "starter_code": "def most_frequent(items: list",
+    "starter_code": "def most_frequent(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int, arg6: int) -> int | str:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -2610,7 +2610,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Bir liste veriliyor. Liste dondurulmus (rotated",
-    "starter_code": "def is_rotated_sorted(nums: list",
+    "starter_code": "def is_rotated_sorted(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int) -> bool:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -2677,7 +2677,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Bir liste ve bir hedef sayi var. Listedeki hangi iki sayinin toplami hedefe esit?\nTum benzersiz ciftleri (kucuk, buyuk",
-    "starter_code": "def two_sum_pairs(nums: list, target: int",
+    "starter_code": "def two_sum_pairs(a: list[int], b: int) -> list | list[list[int]]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -2782,7 +2782,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Bir liste veriliyor. Bu liste sirali bir dizinin rotasyonu.\nRotasyon adimini bul (kac kez sola donduruldu",
-    "starter_code": "def rotation_count(nums: list",
+    "starter_code": "def rotation_count(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int) -> int:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -2850,7 +2850,7 @@
     "category": "python-basics",
     "level": "intermediate",
     "description": "Bir cumle var. Kelime sirasini tersine cevir, kelime icindeki harfler ayni kalsin.\nOrnek: 'Merhaba dunya nasilsin' -> 'nasilsin dunya Merhaba'\nFazla bosluklari tek bosluga indir.",
-    "starter_code": "def reverse_words(s: str",
+    "starter_code": "def reverse_words(x: str) -> str:\n    pass",
     "test_cases": [
       {
         "input": "Merhaba dunya nasilsin",
@@ -2888,7 +2888,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Bir liste var. Listedeki tekrarlari kaldir, ilk gorunme sirasini koru.\nOrnek: [1, 3, 2, 3, 4, 1, 5] -> [1, 3, 2, 4, 5] (3 ve 1 tekrari atlanir",
-    "starter_code": "def remove_duplicates(items: list",
+    "starter_code": "def remove_duplicates(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int, arg6: int) -> list | list[int] | list[str]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -2968,7 +2968,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Bir 2D matris var. Satirlari sutun, sutunlari satir yap.\nOrnek: [[1,2,3], [4,5,6]] -> [[1,4], [2,5], [3,6]]\nDikdortgen matrisler icin calissin (tum satirlar ayni uzunlukta",
-    "starter_code": "def transpose(matrix: list",
+    "starter_code": "def transpose(arg0: list[int], arg1: list[int]) -> list[list[int]]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -3074,7 +3074,7 @@
     "category": "python-basics",
     "level": "intermediate",
     "description": "Bir string veriliyor. Ilk kez tekrarlanMAYAN (unique",
-    "starter_code": "def first_unique_char(s: str",
+    "starter_code": "def first_unique_char(nums: str) -> str:\n    pass",
     "test_cases": [
       {
         "input": "swiss",
@@ -3116,7 +3116,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Sirali bir dizide target degerin ILK ve SON indeksini bul.\nYoksa [-1, -1] dondur.\nfind_first = lower bound",
-    "starter_code": "def search_range(nums: list, target: int",
+    "starter_code": "def search_range(arg0: list[int], arg1: int) -> list[int]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -3210,7 +3210,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Dondurulmus (rotated",
-    "starter_code": "def search_rotated(nums: list, target: int",
+    "starter_code": "def search_rotated(arg0: list[int], arg1: int) -> int:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -3292,7 +3292,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Bir dizide peak element: nums[i-1] < nums[i] > nums[i+1].\nSadece komusuna bakarak (O(log n",
-    "starter_code": "def find_peak(nums: list",
+    "starter_code": "def find_peak(arg0: int, arg1: int, arg2: int, arg3: int) -> int:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -3355,7 +3355,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Bir string'in palindrom olup olmadigini iki isaretci ile kontrol et.\nAlfabetik olmayan karakterleri (bosluk, noktalama, buyuk/kucuk harf",
-    "starter_code": "def is_palindrome_two_pointer(s: str",
+    "starter_code": "def is_palindrome_two_pointer(x: str) -> bool:\n    pass",
     "test_cases": [
       {
         "input": "A man, a plan, a canal: Panama",
@@ -3397,7 +3397,7 @@
     "category": "python-basics",
     "level": "intermediate",
     "description": "Bir string var. En uzun benzersiz (tekrarsiz",
-    "starter_code": "def length_of_longest_substring(s: str",
+    "starter_code": "def length_of_longest_substring(x: str) -> int:\n    pass",
     "test_cases": [
       {
         "input": "abcabcbb",
@@ -3439,7 +3439,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Bir dizide, dizideki elemanlarin toplami daha buyuk olan (ters",
-    "starter_code": "def count_inversions(nums: list",
+    "starter_code": "def count_inversions(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int) -> int:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -3501,7 +3501,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Bir dizide en sik gecen K elemani bul.\nSiralama onemli degil.\nOrnek: nums=[1,1,1,2,2,3]",
-    "starter_code": "def top_k_frequent(nums: list, k: int",
+    "starter_code": "def top_k_frequent(arg0: list[int], arg1: int) -> list[int]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -3586,7 +3586,7 @@
     "category": "algorithms",
     "level": "beginner",
     "description": "Iki dizinin kesisimini (ortak elemanlar",
-    "starter_code": "def intersection(nums1: list, nums2: list",
+    "starter_code": "def intersection(x: Any) -> float:\n    pass",
     "test_cases": [],
     "hints": [
       "💡 Ipucu 1: set(nums1) & set(nums2) -> Pythonic cozum.",
@@ -3607,7 +3607,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Bir dizideki en uzun ard arda gelen sayi dizisinin uzunlugunu bul.\nO(n",
-    "starter_code": "def longest_consecutive(nums: list",
+    "starter_code": "def longest_consecutive(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int) -> int:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -3674,7 +3674,7 @@
     "category": "algorithms",
     "level": "beginner",
     "description": "Iki string'in anagram olup olmadigini kontrol et (harfler ayni, siralama farkli",
-    "starter_code": "def is_anagram(s: str, t: str",
+    "starter_code": "def is_anagram(arg0: str, arg1: str) -> bool:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -3731,7 +3731,7 @@
     "category": "data-structures",
     "level": "beginner",
     "description": "Bir koleksiyonda birden fazla geçen elemanları bulun.\nKoleksiyon tipini sen seç: hangi yapı en verimli?",
-    "starter_code": "def find_duplicates(items",
+    "starter_code": "def find_duplicates(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int, arg6: int) -> list | list[int] | list[str]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -3789,7 +3789,7 @@
     "category": "data-structures",
     "level": "beginner",
     "description": "İki koleksiyondaki ortak elemanları bul.\nPerformans senin kararın: O(n²",
-    "starter_code": "def intersection(a, b",
+    "starter_code": "def intersection(nums: dict) -> list | list[int] | list[str]:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -3859,7 +3859,7 @@
     "category": "data-structures",
     "level": "beginner",
     "description": "Bir koleksiyonda en çok geçen elemanı bul.\nBirden fazla aynı frekansta varsa ilkini döndür.",
-    "starter_code": "def most_frequent(items",
+    "starter_code": "def most_frequent(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int, arg6: int) -> int | str:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -3909,7 +3909,7 @@
     "category": "data-structures",
     "level": "intermediate",
     "description": "FIFO (queue",
-    "starter_code": "def container(mode='queue'",
+    "starter_code": "def container(x: Any) -> float:\n    pass",
     "test_cases": [],
     "hints": [
       "💡 İpucu 1: Closure kullan — dıştaki 'storage' korunur.",
@@ -3930,7 +3930,7 @@
     "category": "data-structures",
     "level": "intermediate",
     "description": "Çiftlerden (key, value",
-    "starter_code": "def group_pairs(pairs",
+    "starter_code": "def group_pairs(arg0: list[str], arg1: list[str], arg2: list[str]) -> dict:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -3990,7 +3990,7 @@
     "category": "data-structures",
     "level": "beginner",
     "description": "İç içe 1 seviye listeyi düzleştir.\n[[1,2], [3,4], [5]] → [1, 2, 3, 4, 5]\nHangi yol daha okunur?",
-    "starter_code": "def flatten(nested",
+    "starter_code": "def flatten(arg0: list[int], arg1: list[int], arg2: list[int]) -> list[int] | list[str]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -4050,7 +4050,7 @@
     "category": "data-structures",
     "level": "intermediate",
     "description": "Bellek tasarrufu için generator (yield",
-    "starter_code": "def range_gen(n",
+    "starter_code": "def range_gen(n: int) -> list | list[int]:\n    pass",
     "test_cases": [
       {
         "input": 5,
@@ -4086,7 +4086,7 @@
     "category": "data-structures",
     "level": "intermediate",
     "description": "Sıralı bir koleksiyonda belirli bir değeri hızlıca bul.\nO(n",
-    "starter_code": "def in_sorted(sorted_items, value",
+    "starter_code": "def in_sorted(x: dict) -> bool:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -4141,7 +4141,7 @@
     "category": "data-structures",
     "level": "intermediate",
     "description": "Bir koleksiyondaki en küçük K elemanı döndür.\nListeyi tam sıralama (O(n log n",
-    "starter_code": "def top_k_smallest(items, k",
+    "starter_code": "def top_k_smallest(nums: dict) -> list[int]:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -4196,7 +4196,7 @@
     "category": "data-structures",
     "level": "beginner",
     "description": "Bir metindeki kelime frekanslarını dict olarak döndür.\nNoktalama ve büyük/küçük harf duyarlı olmasın.",
-    "starter_code": "def word_frequency(text",
+    "starter_code": "def word_frequency(text: str) -> dict:\n    pass",
     "test_cases": [
       {
         "input": "Python çok güzel. Python mülakat için.",
@@ -4228,7 +4228,7 @@
     "category": "data-structures",
     "level": "beginner",
     "description": "Aynı uzunluktaki birden fazla listeyi tek bir liste oluştur.\nListe-içinde-liste yap.\n[(1, 'a', 'x'",
-    "starter_code": "def cols_to_rows(*columns",
+    "starter_code": "def cols_to_rows(arg0: list[int], arg1: list[str]) -> list[list[int | float]] | list[list[int]]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -4306,7 +4306,7 @@
     "category": "data-structures",
     "level": "intermediate",
     "description": "Bir sözlük listesini çoklu anahtara göre sırala.\nÖnce yaşa göre artan, sonra ada göre alfabetik.\nYapıyı sen seç.",
-    "starter_code": "def sort_people(people",
+    "starter_code": "def sort_people(arg0: dict, arg1: dict, arg2: dict, arg3: dict) -> list[dict]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -4362,7 +4362,7 @@
     "category": "list-dict",
     "level": "beginner",
     "description": "İki listeyi parametre al. Yalnızca bir listede bulunan elemanları\n(simetrik fark",
-    "starter_code": "def symmetric_diff(a, b",
+    "starter_code": "def symmetric_diff(arg0: list[int], arg1: list[int]) -> list[int]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -4437,7 +4437,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Bir cümleyi kelimelere ayır ama noktalama işaretlerini kelimeye\nyapıştırarak bırak. Örn: \"Merhaba, dünya!\" -> [\"Merhaba,\", \"dünya!\"]\nYapıyı sen seç.",
-    "starter_code": "def split_keep_punct(sentence",
+    "starter_code": "def split_keep_punct(x: str) -> list[str]:\n    pass",
     "test_cases": [
       {
         "input": "Merhaba, dünya!",
@@ -4484,7 +4484,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Bir dizide n/2'den fazla geçen elemanı bul. Her zaman böyle bir\neleman var. Veri yapısı kullanmadan, O(1",
-    "starter_code": "def majority_element(nums",
+    "starter_code": "def majority_element(arg0: int, arg1: int, arg2: int) -> int:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -4535,7 +4535,7 @@
     "category": "data-structures",
     "level": "beginner",
     "description": "Bir dict ver. Anahtarlarını value'ya göre artan sırala.\nValue eşitse alfabetik olarak anahtara göre sırala.\nSonuç: [(key, value",
-    "starter_code": "def sort_by_value(d",
+    "starter_code": "def sort_by_value(x: dict) -> list | list[list[str]]:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -4597,7 +4597,7 @@
     "category": "python-basics",
     "level": "intermediate",
     "description": "İki tam sayının ortalamasını hesapla. (a + b",
-    "starter_code": "def average(a, b",
+    "starter_code": "def average(arg0: int, arg1: int) -> int:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -4643,7 +4643,7 @@
     "category": "pandas",
     "level": "intermediate",
     "description": "Bir DataFrame\\'in sayısal sütunlarını satır bazlı normalize et.\nYani her satır için: (x - min",
-    "starter_code": "def row_normalize(df",
+    "starter_code": "def row_normalize(arg0: list[int], arg1: list[int]) -> list[list[float]] | list[list[int]]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -4720,7 +4720,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Bir dizideki en uzun kesin artan altdizinin uzunluğunu bul.\nÖrn: [10, 9, 2, 5, 3, 7, 101, 18] -> 4 (2, 3, 7, 18 veya 2, 5, 7, 101",
-    "starter_code": "def length_of_lis(nums",
+    "starter_code": "def length_of_lis(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int, arg6: int, arg7: int) -> int:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -4778,7 +4778,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Çakışan aralıkları birleştir. Sonuç: çakışmayan, sıralı aralıklar.\nGirdi: [[1,3],[2,6],[8,10],[15,18]] -> [[1,6],[8,10],[15,18]]\nYapıyı sen seç.",
-    "starter_code": "def merge_intervals(intervals",
+    "starter_code": "def merge_intervals(arg0: list[int], arg1: list[int], arg2: list[int], arg3: list[int]) -> list | list[list[int]]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -4859,7 +4859,7 @@
     "category": "pandas",
     "level": "intermediate",
     "description": "DataFrame\\'deki kategorik sütunlarda NaN değerleri en sık geçen\ndeğerle (mode",
-    "starter_code": "def fill_categorical_nan(df",
+    "starter_code": "def fill_categorical_nan(x: str) -> str:\n    pass",
     "test_cases": [
       {
         "input": "df with NaN in 'city' column",
@@ -4892,7 +4892,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "Bir listedeki elemanların kaç kez geçtiğini dict olarak döndür.\nSıra önemsiz. Yapıyı sen seç.",
-    "starter_code": "def count_items(items",
+    "starter_code": "def count_items(arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int) -> dict:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -4947,7 +4947,7 @@
     "category": "data-structures",
     "level": "intermediate",
     "description": "Bir dizide k boyutunda kayan pencere ile her pencerenin maksimumunu bul.\nO(n",
-    "starter_code": "def max_sliding_window(nums, k",
+    "starter_code": "def max_sliding_window(arg0: list[int], arg1: int) -> list[int]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -5018,7 +5018,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "İki listenin ortak elemanlarını, ilk listenin sırası koruyarak döndür.\nYapıyı sen seç.",
-    "starter_code": "def common_in_order(a, b",
+    "starter_code": "def common_in_order(arg0: list[int], arg1: list[int]) -> list | list[int]:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -5091,7 +5091,7 @@
     "category": "list-dict",
     "level": "beginner",
     "description": "Bir dict\\'in anahtarları ile değerlerini yer değiştir.\nDeğerler benzersiz olmalı. Yapıyı sen seç.",
-    "starter_code": "def invert_dict(d",
+    "starter_code": "def invert_dict(x: dict) -> dict:\n    pass",
     "test_cases": [
       {
         "input": {
@@ -5140,7 +5140,7 @@
     "category": "data-structures",
     "level": "beginner",
     "description": "Bir string\\'deki parantezlerin (",
-    "starter_code": "def is_balanced(s",
+    "starter_code": "def is_balanced(s: str) -> bool:\n    pass",
     "test_cases": [
       {
         "input": "()[]{}",
@@ -5182,7 +5182,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Bir linked list\\'te döngü var mı? Tortoise-Hare (Floyd",
-    "starter_code": "def has_cycle(head",
+    "starter_code": "def has_cycle(nums: str) -> bool:\n    pass",
     "test_cases": [
       {
         "input": "linked list with cycle",
@@ -5219,7 +5219,7 @@
     "category": "list-dict",
     "level": "intermediate",
     "description": "İki dict\\'i birleştir. Çakışan anahtarlarda ikincinin değeri kazansın.\nYapıyı sen seç.",
-    "starter_code": "def merge_dicts(a, b",
+    "starter_code": "def merge_dicts(arg0: dict, arg1: dict) -> dict:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -5286,7 +5286,7 @@
     "category": "algorithms",
     "level": "intermediate",
     "description": "Döndürülmüş sıralı dizide bir hedef değeri bul. Varsa index, yoksa -1.\n[4,5,6,7,0,1,2] target=0 -> 4. O(log n",
-    "starter_code": "def search_rotated(nums, target",
+    "starter_code": "def search_rotated(arg0: list[int], arg1: int) -> int:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -5350,7 +5350,7 @@
     "category": "pandas",
     "level": "beginner",
     "description": "Her sütun için NaN sayısını hesapla ve dict olarak döndür.\n{column_name: nan_count}. Veri yapısı senin.",
-    "starter_code": "def nan_counts(df",
+    "starter_code": "def nan_counts(x: str) -> str:\n    pass",
     "test_cases": [
       {
         "input": "df with NaN in 2 cols",
@@ -5387,7 +5387,7 @@
     "category": "python-basics",
     "level": "beginner",
     "description": "İki string birbirinin permütasyonu mu? (aynı karakterler farklı sırada",
-    "starter_code": "def is_permutation(a, b",
+    "starter_code": "def is_permutation(arg0: str, arg1: str) -> bool:\n    pass",
     "test_cases": [
       {
         "input": [
@@ -5441,7 +5441,7 @@
     "category": "data-structures",
     "level": "intermediate",
     "description": "En az kullanılan elemanı (LRU",
-    "starter_code": "class LRUCache:\n    def __init__(self, capacity",
+    "starter_code": "def __init__(x: str) -> str:\n    pass",
     "test_cases": [
       {
         "input": "[put(1,1),put(2,2),get(1),put(3,3),get(2)]",
