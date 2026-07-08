@@ -156,10 +156,12 @@ def _load_questions_fallback() -> List[Question]:
     """DB boş/başarısız olduğunda soruları yerleşik kaynaklardan yükle.
 
     Öncelik sırası:
-      1. data/QUESTIONS-v3.json   (PRIMARY: statik soru seti, 67 soru, 5 kategori)
-      2. data/QUESTIONS-v3.py     (LEGACY: eski dataclass formati, syntax bozuk olabilir)
+      1. data/QUESTIONS-v3.json       (build artifact — runtime primary)
+      2. data/QUESTIONS_FACTORY.csv   (kaynak dosyası — runtime parse)
+      3. data/QUESTIONS-v3.py         (LEGACY: eski dataclass, syntax bozuk olabilir)
 
     Her adım sessizce başarısız olursa bir sonrakine düşer.
+    CSV → JSON pipeline: scripts/csv_to_json.py kullanılır.
     V4 dosyalari (.json.disabled / .py.disabled) devre dişi.
     """
     import importlib.util
@@ -227,7 +229,68 @@ def _load_questions_fallback() -> List[Question]:
         except Exception as e:
             print(f"⚠️ Fallback V3.json okunamadı: {e}")
 
-    # ── 2. V2.py — LEGACY (syntax hatalı olabilir) ───────────────
+    # ── 2. FACTORY.csv — Runtime parse (kaynak dosyası) ────────────────
+    factory_csv = data_dir / "QUESTIONS_FACTORY.csv"
+    if factory_csv.exists():
+        try:
+            import csv as _csv
+            with open(factory_csv, encoding="utf-8", newline="") as _f:
+                reader = _csv.DictReader(_f)
+                raw_csv = list(reader)
+            if not raw_csv:
+                raise ValueError("FACTORY.csv boş")
+
+            used_csv: set = set()
+            def _ensure_slug_csv(title: str, qid: int) -> str:
+                base = _slugify(title or f"question-{qid}")
+                cand = base
+                n = 2
+                while cand in used_csv:
+                    cand = f"{base}-{n}"
+                    n += 1
+                used_csv.add(cand)
+                return cand
+
+            result_csv: List[Question] = []
+            for q in raw_csv:
+                # test_cases / hints CSV'de JSON string olarak duruyor
+                try:
+                    tc = _json.loads(q.get("test_cases", "") or "[]")
+                except Exception:
+                    tc = []
+                try:
+                    ht = _json.loads(q.get("hints", "") or "[]")
+                except Exception:
+                    ht = []
+                slug_val = q.get("slug") or _ensure_slug_csv(q.get("title", ""), int(q.get("id", 0) or 0))
+                result_csv.append(Question(
+                    id=int(q["id"]),
+                    title=q.get("title", ""),
+                    category=q.get("category", "python-basics"),
+                    level=q.get("level", "beginner"),
+                    description=q.get("description", ""),
+                    starter_code=q.get("starter_code"),
+                    test_cases=tc,
+                    hints=ht,
+                    slug=slug_val,
+                    related_question_ids=[],
+                    explanation=None,
+                    complexity=None,
+                    tags=[],
+                    function_name=None,
+                    topic=None,
+                    tutorial_slug=None,
+                    related_concepts=[],
+                    meta_title=None,
+                    meta_description=None,
+                    meta_keywords=[],
+                ))
+            print(f"✅ Fallback: FACTORY.csv'den {len(result_csv)} soru yüklendi")
+            return result_csv
+        except Exception as e:
+            print(f"⚠️ Fallback FACTORY.csv okunamadı: {e}")
+
+    # ── 3. V2.py — LEGACY (syntax hatalı olabilir) ───────────────
     v3_py = data_dir / "QUESTIONS-v3.py"
     if not v3_py.exists():
         return []
