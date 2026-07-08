@@ -1,5 +1,12 @@
 # data/ — Soru seti mimarisi
 
+## Mevcut CSV'ler
+
+| Dosya | Kaynak | Soru | Kategori | Durum |
+|---|---|---|---|---|
+| `QUESTIONS_FACTORY.csv` | Manuel eklenen yeni set | 67 | 5 (python-basics, strings, list-dict, pandas, algorithms) | aktif runtime |
+| `QUESTIONS-v3.csv` | Eski QUESTIONS-v3.py'den donusturuldu | 102 | 5 (python-basics, list-dict, pandas, algorithms, data-structures) | yedek / opsiyonel |
+
 ## CSV mimarisi
 
 ```
@@ -7,8 +14,14 @@ data/QUESTIONS_FACTORY.csv    ← İnsan kaynağı (edit-friendly)
         ↓ (scripts/csv_to_json.py)
 data/QUESTIONS-v3.json        ← Runtime artifact (build output)
         ↓ (question_loader.py)
-Backend API (DB-first mimari)
+Backend API (fallback zinciri)
 ```
+
+Fallback zinciri (question_loader.py):
+1. DB (Supabase) — primary, DB dolu ise
+2. data/QUESTIONS-v3.json — build artifact
+3. data/QUESTIONS_FACTORY.csv — CSV runtime parse
+4. data/QUESTIONS-v3.py — LEGACY (eski dataclass, syntax bozuk olabilir)
 
 **Neden CSV?**
 - Excel / Google Sheets / Numbers'ta açılır

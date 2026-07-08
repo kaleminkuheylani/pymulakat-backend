@@ -31,7 +31,7 @@ REQUIRED_FIELDS = {
     "starter_code", "test_cases", "hints", "id",
 }
 
-VALID_CATEGORIES = {"python-basics", "strings", "list-dict", "pandas", "algorithms"}
+VALID_CATEGORIES = {"python-basics", "strings", "list-dict", "pandas", "algorithms", "data-structures"}
 VALID_LEVELS = {"beginner", "intermediate", "advanced"}
 
 
