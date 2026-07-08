@@ -4,10 +4,10 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "sh -c 'echo \"==> Background migrate (fire-and-forget)\" && nohup python3 scripts/migrate_to_db.py --v4-only --fix-schema > /tmp/migrate.log 2>&1 & echo \"  PID: $!\"; echo \"==> Uvicorn başlatılıyor\"; exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-3000} --log-level info'",
+    "startCommand": "uvicorn main:app --host 0.0.0.0 --port ${PORT:-3000} --log-level info",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10,
-    "healthcheckPath": "/admin/health",
+    "healthcheckPath": "/health",
     "healthcheckTimeout": 10
   }
 }

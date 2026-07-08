@@ -139,7 +139,7 @@ def _db_questions() -> List[Question]:
 
     # DB bağlantısı kurulamadıysa VEYA boş döndüyse fallback'e geç
     if db_error or not db_questions:
-        fallback = _load_questions_v3_fallback()
+        fallback = _load_questions_fallback()
         if fallback:
             print(f"🔄 Fallback: data/QUESTIONS-v3.py'den {len(fallback)} soru yüklendi (db_error={bool(db_error)}, db_empty={not db_questions})")
             _CACHE["data"] = fallback
@@ -152,26 +152,135 @@ def _db_questions() -> List[Question]:
     return []
 
 
-def _load_questions_v3_fallback() -> List[Question]:
-    """data/QUESTIONS-v3.py'den soru yükle (DB fallback).
+def _load_questions_fallback() -> List[Question]:
+    """DB boş/başarısız olduğunda soruları yerleşik kaynaklardan yükle.
 
-    dataclass → DB row dataclass dönüşümü.
-    CATEGORY_META'dan label/description/icon al.
+    Öncelik sırası:
+      1. data/QUESTIONS-v4.json   (PRIMARY: syntax-clean, 165 soru, 13 kategori)
+      2. data/QUESTIONS-v4.py     (loader facade)
+      3. data/QUESTIONS-v3.py     (LEGACY: syntax hataları içerir, sadece kısmi çalışır)
+
+    Her adım sessizce başarısız olursa bir sonrakine düşer.
     """
     import importlib.util
     from pathlib import Path
 
-    data_path = Path(__file__).resolve().parent / "data" / "QUESTIONS-v3.py"
-    if not data_path.exists():
-        print(f"⚠️ Fallback dosyası yok: {data_path}")
+    data_dir = Path(__file__).resolve().parent / "data"
+
+    def _slugify(t: str) -> str:
+        import re as _re, unicodedata as _u
+        s = t.lower()
+        tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
+        s = s.translate(tr)
+        s = _u.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+        s = _re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+        return s[:80] or "question"
+
+    # ── 1. V4.json — ÖNCELİKLİ ─────────────────────────────────
+    v4_json = data_dir / "QUESTIONS-v4.json"
+    if v4_json.exists():
+        try:
+            import json as _json
+            with open(v4_json, encoding="utf-8") as _f:
+                raw = _json.load(_f)
+            if not isinstance(raw, list) or not raw:
+                raise ValueError("V4.json boş veya yanlış format")
+
+            used: set = set()
+            def _ensure_slug(title: str, qid: int) -> str:
+                base = _slugify(title or f"question-{qid}")
+                cand = base
+                n = 2
+                while cand in used:
+                    cand = f"{base}-{n}"
+                    n += 1
+                used.add(cand)
+                return cand
+
+            result: List[Question] = []
+            for q in raw:
+                slug_val = q.get("slug") or _ensure_slug(q.get("title", ""), q.get("id", 0))
+                result.append(Question(
+                    id=q["id"],
+                    title=q.get("title", ""),
+                    category=q.get("category", "python-basics"),
+                    level=q.get("level", "beginner"),
+                    description=q.get("description", ""),
+                    starter_code=q.get("starter_code"),
+                    test_cases=q.get("test_cases", []) or [],
+                    hints=q.get("hints", []) or [],
+                    slug=slug_val,
+                    related_question_ids=list(q.get("related_question_ids", []) or []),
+                    explanation=q.get("explanation"),
+                    complexity=q.get("complexity"),
+                    tags=list(q.get("tags", []) or []),
+                    function_name=None,
+                    topic=None,
+                    tutorial_slug=q.get("tutorial_slug"),
+                    related_concepts=list(q.get("related_concepts", []) or []),
+                    meta_title=None,
+                    meta_description=None,
+                    meta_keywords=[],
+                ))
+            print(f"✅ Fallback: V4.json'dan {len(result)} soru yüklendi")
+            return result
+        except Exception as e:
+            print(f"⚠️ Fallback V4.json okunamadı: {e}")
+
+    # ── 2. V4.py loader facade ─────────────────────────────────
+    v4_py = data_dir / "QUESTIONS-v4.py"
+    if v4_py.exists():
+        try:
+            spec = importlib.util.spec_from_file_location("questions_v4_fallback", v4_py)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            raw = mod.load_questions_v4() if hasattr(mod, "load_questions_v4") else []
+            if raw:
+                used: set = set()
+                result: List[Question] = []
+                for q in raw:
+                    slug_val = q.get("slug") or _slugify(q.get("title", f"q{q.get('id')}"))
+                    if slug_val in used:
+                        slug_val = f"{slug_val}-{len(used)}"
+                    used.add(slug_val)
+                    result.append(Question(
+                        id=q["id"],
+                        title=q.get("title", ""),
+                        category=q.get("category", "python-basics"),
+                        level=q.get("level", "beginner"),
+                        description=q.get("description", ""),
+                        starter_code=q.get("starter_code"),
+                        test_cases=q.get("test_cases", []) or [],
+                        hints=q.get("hints", []) or [],
+                        slug=slug_val,
+                        related_question_ids=list(q.get("related_question_ids", []) or []),
+                        explanation=q.get("explanation"),
+                        complexity=q.get("complexity"),
+                        tags=list(q.get("tags", []) or []),
+                        function_name=None,
+                        topic=None,
+                        tutorial_slug=q.get("tutorial_slug"),
+                        related_concepts=list(q.get("related_concepts", []) or []),
+                        meta_title=None,
+                        meta_description=None,
+                        meta_keywords=[],
+                    ))
+                print(f"✅ Fallback: V4.py loader'dan {len(result)} soru yüklendi")
+                return result
+        except Exception as e:
+            print(f"⚠️ Fallback V4.py okunamadı: {e}")
+
+    # ── 3. V3.py — LEGACY (syntax hatalı olabilir) ───────────────
+    v3_py = data_dir / "QUESTIONS-v3.py"
+    if not v3_py.exists():
         return []
 
     try:
-        spec = importlib.util.spec_from_file_location("questions_v3_fallback", data_path)
+        spec = importlib.util.spec_from_file_location("questions_v3_fallback", v3_py)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
     except Exception as e:
-        print(f"⚠️ Fallback import hatası: {e}")
+        print(f"⚠️ Fallback V3.py import hatası (legacy): {e}")
         return []
 
     # SEO_CONTENT merge (varsa)
