@@ -126,9 +126,14 @@ def question_to_db_row(q, source: str = "v3") -> dict:
     # Explanation text (Q-v4'te footer eklenmiş olabilir, olduğu gibi al)
     explanation = getattr(q, "explanation", None) or None
 
+    # 📌 Schema uyumu (migrate_questions.sql):
+    #   DB kolon adları: slug, source_id, title, description, explanation, complexity,
+    #   level, category, function_name, function_signature, starter_code, test_cases,
+    #   hints, related_concepts, related_question_ids, tags, is_published.
+    #   tutorial_slug kolonu DB'de YOK — INSERT etmiyoruz.
     return {
         "slug": slugify(title),
-        "legacy_id": raw_id,
+        "source_id": raw_id,  # 📌 Schema'da unique constraint (was: legacy_id)
         "title": title,
         "description": getattr(q, "description", "") or "",
         "explanation": explanation,
@@ -143,7 +148,6 @@ def question_to_db_row(q, source: str = "v3") -> dict:
         "related_concepts": list(getattr(q, "related_concepts", []) or []),
         "related_question_ids": [int(x) for x in (getattr(q, "related_question_ids", []) or [])],
         "tags": list(getattr(q, "tags", []) or []),
-        "tutorial_slug": getattr(q, "tutorial_slug", None),
         "is_published": True,
         "source": source,  # v3 veya v4 (audit için)
     }
@@ -174,12 +178,12 @@ def log_migration(sb, status: str, action: str, details: dict) -> None:
 
 
 def build_diff(existing: list, rows: list) -> dict:
-    db_by_legacy = {r["legacy_id"]: r for r in existing if r.get("legacy_id")}
-    new_by_legacy = {r["legacy_id"]: r for r in rows}
+    db_by_source = {r["source_id"]: r for r in existing if r.get("source_id")}
+    new_by_source = {r["source_id"]: r for r in rows}
     return {
-        "in_db_only": set(db_by_legacy.keys()) - set(new_by_legacy.keys()),
-        "in_source_only": set(new_by_legacy.keys()) - set(db_by_legacy.keys()),
-        "in_both": set(db_by_legacy.keys()) & set(new_by_legacy.keys()),
+        "in_db_only": set(db_by_source.keys()) - set(new_by_source.keys()),
+        "in_source_only": set(new_by_source.keys()) - set(db_by_source.keys()),
+        "in_both": set(db_by_source.keys()) & set(new_by_source.keys()),
     }
 
 
@@ -258,7 +262,7 @@ def main():
     # DB'de mevcut slugları çek
     print(f"\n[4/5] DB mevcut state")
     try:
-        existing = sb.table("questions").select("id, slug, legacy_id, source").execute()
+        existing = sb.table("questions").select("id, slug, source_id, source").execute()
         existing_list = existing.data or []
         print(f"   DB'de {len(existing_list)} soru var")
     except Exception as e:
@@ -273,7 +277,7 @@ def main():
         new_slug = original_slug
         n = 2
         # Sadece aynı row değil, DB'de zaten varsa rename
-        is_already_in_db = any(r.get("legacy_id") == row["legacy_id"] for r in existing_list)
+        is_already_in_db = any(r.get("source_id") == row["source_id"] for r in existing_list)
         if not is_already_in_db and new_slug in db_slugs:
             while new_slug in db_slugs:
                 new_slug = f"{original_slug}-{n}"
@@ -284,7 +288,7 @@ def main():
 
     # Diff raporu
     diff = build_diff(existing_list, rows)
-    print(f"\n   📊 DIFF (legacy_id bazında):")
+    print(f"\n   📊 DIFF (source_id bazında):")
     print(f"      DB-only orphans:       {len(diff['in_db_only'])}")
     print(f"      Source-only new:       {len(diff['in_source_only'])}")
     print(f"      Both (güncellenen):    {len(diff['in_both'])}")
@@ -311,7 +315,7 @@ def main():
             for r in batch:
                 r.pop("source", None)
 
-            result = sb.table("questions").upsert(batch, on_conflict="legacy_id").execute()
+            result = sb.table("questions").upsert(batch, on_conflict="source_id").execute()
             s = len(result.data) if result.data else 0
             success += s
             print(f"   Batch {batch_num}: {s}/{len(batch)} OK")
