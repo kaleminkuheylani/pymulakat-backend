@@ -23,6 +23,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import unicodedata
 import importlib.util
@@ -192,6 +193,51 @@ def build_diff(existing: list, rows: list) -> dict:
 # ═══════════════════════════════════════════════════════════════════════════
 
 
+def ensure_schema() -> bool:
+    """fix_questions_schema.sql dosyasını çalıştır (idempotent).
+    Schema cache miss (PGRST204) sorunlarını çözer.
+    """
+    sql_path = ROOT / "scripts" / "fix_questions_schema.sql"
+    if not sql_path.exists():
+        print(f"   ⚠️  {sql_path} bulunamadı, schema fix atlandı")
+        return False
+
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        print("   ⚠️  DATABASE_URL yok, schema fix atlandı (Supabase client ile devam)")
+        return False
+
+    print(f"   🔧 Schema fix uygulanıyor: {sql_path.name}")
+    sql = sql_path.read_text(encoding="utf-8")
+
+    # psql varsa tercih et
+    try:
+        result = subprocess.run(
+            ["psql", db_url, "-v", "ON_ERROR_STOP=1", "-f", str(sql_path)],
+            capture_output=True, text=True, timeout=60,
+        )
+        if result.returncode == 0:
+            print(f"   ✅ psql ile schema fix OK")
+            return True
+    except FileNotFoundError:
+        pass
+
+    # psycopg2 fallback
+    try:
+        import psycopg2
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute(sql)
+        cur.close()
+        conn.close()
+        print(f"   ✅ psycopg2 ile schema fix OK")
+        return True
+    except Exception as e:
+        print(f"   ⚠️  Schema fix başarısız: {e}")
+        return False
+
+
 def main():
     parser = argparse.ArgumentParser(description="Migrate Q-v3 + Q-v4 → Supabase DB")
     parser.add_argument("--dry-run", action="store_true", help="DB'ye yazma, sadece rapor")
@@ -199,11 +245,17 @@ def main():
     parser.add_argument("--backup", action="store_true", help="DB dump al (JSON)")
     parser.add_argument("--v3-only", action="store_true", help="Sadece Q-v3")
     parser.add_argument("--v4-only", action="store_true", help="Sadece Q-v4")
+    parser.add_argument("--fix-schema", action="store_true", help="Önce fix_questions_schema.sql çalıştır (idempotent)")
     args = parser.parse_args()
 
     print("=" * 70)
     print("QUESTIONS → DB MIGRATION (Q-v3 + Q-v4)")
     print("=" * 70)
+
+    # 0. Schema fix (opsiyonel)
+    if args.fix_schema:
+        print("\n[0/5] Schema fix (fix_questions_schema.sql)")
+        ensure_schema()
 
     # 1. Source dosyalarını yükle
     print("\n[1/5] Source dosyalar yükleniyor...")
