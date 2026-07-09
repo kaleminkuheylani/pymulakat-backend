@@ -62,3 +62,6 @@ data/*.bak
 # Local scripts (goreceli scriptler)
 .scratch/
 
+
+# Local CSV backups (timestamped)
+data/*.csv.bak-*
