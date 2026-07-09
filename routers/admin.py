@@ -81,78 +81,100 @@ async def invalidate_cache_endpoint(request: Request):
 # ─── Soru Seed (DB ilk doldurma) ────────────────────────────
 # ═══════════════════════════════════════════════════════════════
 
-class SeedRequest(BaseModel):
-    dry_run: bool = True
-
-
 @router.post("/seed-questions")
-async def seed_questions_endpoint(req: SeedRequest, request: Request):
-    """scripts/seed_questions.py'yi uzaktan çalıştır (DB'yi doldur).
+async def seed_questions_endpoint(request: Request):
+    """CSV'den DB 'questions' tablosuna inline yazma (parametresiz).
 
-    Body (opsiyonel): {"dry_run": true/false}
-    Query (alternatif): ?dry_run=true&limit=102
-    Headers: X-Admin-Secret
+    CSV'den sadece şu alanlar yazılır:
+      - description, starter_code, test_cases, hints,
+      - function_name, title, level, category
+    Diğer kolonlar (slug, meta_*, related_question_ids, related_concepts, tags,
+    topic, tutorial_slug, complexity, explanation, meta_title, meta_description,
+    meta_keywords) DB-side YÖNETİLİR ve korunur.
+
+    id → legacy_id olarak yazılır (DB'de primary key değişmez, upload edilen
+    sorular orijinal id'lerini taşımaya devam eder).
+
+    DB'de aynı legacy_id yoksa satır INSERT edilir; varsa UPDATE.
+    Endpoint idempotent: tekrar tekrar çağrılabilir.
+
+    Headers: X-Admin-Secret (= ADMIN_SECRET env)
     """
     admin_secret = os.getenv("ADMIN_SECRET", "")
     if not admin_secret or request.headers.get("X-Admin-Secret", "") != admin_secret:
         raise HTTPException(403, "admin yetkisi gerekli (X-Admin-Secret header)")
 
-    # Öncelik: body, sonra query, default false (admin endpointleri genelde yazma yapar)
-    if request.headers.get("content-type", "").startswith("application/json"):
-        try:
-            body = await request.json()
-            if isinstance(body, dict) and "dry_run" in body:
-                dry_run = bool(body["dry_run"])
-            else:
-                dry_run = request.query_params.get("dry_run", "false").lower() == "true"
-        except Exception:
-            dry_run = request.query_params.get("dry_run", "false").lower() == "true"
-    else:
-        dry_run = request.query_params.get("dry_run", "false").lower() == "true"
+    if not os.getenv("SUPABASE_URL") or not os.getenv("SUPABASE_SERVICE_ROLE_KEY"):
+        raise HTTPException(400, "Supabase env (SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY) tanımlı değil")
 
-    env = os.environ.copy()
-    env["DRY_RUN"] = "true" if dry_run else "false"
+    csv_path = os.path.join(os.path.dirname(__file__), "..", "data", "QUESTIONS-v3.csv")
+    if not os.path.exists(csv_path):
+        raise HTTPException(500, f"CSV yok: {csv_path}")
 
-    if not env.get("SUPABASE_URL"):
-        raise HTTPException(400, "SUPABASE_URL env tanımlı değil")
-    if not env.get("SUPABASE_SERVICE_ROLE_KEY"):
-        raise HTTPException(400, "SUPABASE_SERVICE_ROLE_KEY env tanımlı değil (Railway Variables)")
-
-    script_path = os.path.join(
-        os.path.dirname(__file__), "..", "scripts", "seed_questions.py"
+    csv_only_fields = (
+        "description", "starter_code", "test_cases", "hints",
+        "function_name", "title", "level", "category",
     )
-    if not os.path.exists(script_path):
-        raise HTTPException(500, f"Script yok: {script_path}")
 
-    log.warning(f"seed başlatıldı: dry_run={dry_run}")
+    import csv as _csv
+    rows_to_write = []
+    with open(csv_path, encoding="utf-8", newline="") as f:
+        reader = _csv.DictReader(f)
+        for row in reader:
+            raw_id = row.get("id", "").strip()
+            if not raw_id:
+                continue
+            try:
+                legacy_id = int(raw_id)
+            except ValueError:
+                continue
+            payload = {"legacy_id": legacy_id}
+            for fld in csv_only_fields:
+                val = row.get(fld, "")
+                if val.startswith('"') and val.endswith('"'):
+                    val = val[1:-1]
+                payload[fld] = val.replace('""', '"')
+            rows_to_write.append(payload)
 
-    try:
-        result = subprocess.run(
-            [sys.executable, script_path],
-            capture_output=True, text=True, env=env, timeout=600,  # 10 dk
-        )
-        return {
-            "ok": result.returncode == 0,
-            "dry_run": dry_run,
-            "exit_code": result.returncode,
-            "stdout_tail": result.stdout[-4000:],
-            "stderr_tail": result.stderr[-2000:],
-            "next_step": (
-                "dry_run=true ise aynı isteği dry_run=false ile tekrarla"
-                if dry_run else
-                "/api/v2/questions/all ile kontrol et"
-            ),
-        }
-    except subprocess.TimeoutExpired:
-        raise HTTPException(504, "10 dk timeout — sorular fazla olabilir")
-    except Exception as e:
-        raise HTTPException(500, f"subprocess error: {e}")
+    from supabase_client import get_supabase
+    sb = get_supabase()
+
+    succeeded = []
+    failed = []
+    for payload in rows_to_write:
+        lid = payload["legacy_id"]
+        try:
+            result = (
+                sb.table("questions")
+                .upsert(payload, on_conflict="legacy_id")
+                .execute()
+            )
+            if result.data:
+                succeeded.append(lid)
+            else:
+                failed.append({"legacy_id": lid, "reason": "no row upserted"})
+        except Exception as e:
+            failed.append({"legacy_id": lid, "reason": str(e)[:200]})
+
+    log.warning(f"seed-questions: {len(succeeded)}/{len(rows_to_write)} upserted")
+
+    return {
+        "ok": True,
+        "rows_planned": len(rows_to_write),
+        "upserted": len(succeeded),
+        "failed": len(failed),
+        "failed_detail": failed[:20],
+        "csv_fields_written": list(csv_only_fields),
+        "preserved_db_fields": [
+            "slug", "complexity", "explanation", "meta_title",
+            "meta_description", "meta_keywords", "related_concepts",
+            "related_question_ids", "tags", "topic", "tutorial_slug",
+        ],
+        "next_step": "/admin/invalidate-cache çağırıp cache temizle, sonra /api/v2/questions/{id} ile doğrula",
+    }
 
 
-@router.post("/seed-questions/dry-run")
-async def seed_questions_dry_run_endpoint(request: Request):
-    """dry_run=true shortcut (body göndermeden önizleme)."""
-    return await seed_questions_endpoint(SeedRequest(dry_run=True), request)
+# (dry-run shortcut kaldırıldı: parametresiz, idempotent endpoint yeterli)
     dry_run: bool = True
     old_supabase_url: Optional[str] = None
     old_service_role_key: Optional[str] = None

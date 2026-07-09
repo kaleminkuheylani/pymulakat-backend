@@ -30,6 +30,8 @@ uvicorn main:app --reload --port 8000
 API: http://localhost:8000
 Docs: http://localhost:8000/docs
 
+📘 **[CSV → DB Seed Operasyonu](docs/SEED_QUESTIONS.md)** — `POST /admin/seed-questions` (CSV'yi Supabase `questions` tablosuna inline upsert eder, kuru çalıştırma destekli).
+
 ## 🏗️ Stack
 
 | Teknoloji | Versiyon |
