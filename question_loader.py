@@ -133,7 +133,9 @@ def _db_questions() -> List[Question]:
     try:
         from supabase_client import get_supabase
         sb = get_supabase()
-        result = sb.table("questions").select("*").eq("is_published", True).execute()
+        # DB-FIRST: tüm soruları çek (is_published filtresi KALDIRILDI —
+        # CSV-FIRST mimaride unpublished ayrımı yoktu, DB-FIRST de aynı)
+        result = sb.table("questions").select("*").execute()
         rows = result.data or []
         db_questions = [_row_to_question(r) for r in rows]
         db_questions.sort(key=lambda x: x.id)
