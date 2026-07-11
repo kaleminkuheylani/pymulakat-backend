@@ -5,6 +5,14 @@
 -- yapılıyor (kullanıcı "questions olarak değiştir" dedi). Bir daha bu column
 -- dışında ekleme YAPILMAYACAK.
 --
+-- 📋 ÇALIŞTIRMA SIRASI (Supabase SQL Editor):
+--  1) ÖNCE: scripts/slugify_title.sql    (function oluştur)
+--  2) SONRA: scripts/add_questions_slug.sql  (bu dosya — column + UPDATE)
+--
+-- ⚠️ DEPLOYMENT: Bu SQL ASLA Railway üzerinden çalıştırılmaz.
+-- Sadece Supabase Dashboard → SQL Editor'de kullanıcı elle çalıştırır.
+-- Railway sadece API deploy eder, migration yapmaz.
+--
 -- Önceki commit (e112938) yanlış tablo adıyla (interviews) yazılmıştı.
 -- Doğru tablo: public.questions
 --
