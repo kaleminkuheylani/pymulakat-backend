@@ -1,17 +1,20 @@
 -- scripts/add_questions_slug.sql
--- questions tablosuna slug column geri ekle (slugify_title dahili).
+-- questions tablosuna slug column ekle, DB'deki title'dan slugify et.
+-- CSV'YE DOKUNMA. Sadece Supabase SQL Editor'de çalıştır.
 --
--- ⚠️ MEMORY KURALI: Column freeze! Bu migration TEK SEFERLİK.
--- questions tablosuna bir daha ALTER YAPILMAYACAK.
+-- ⚠️ MEMORY KURALI:
+--  - questions tablosuna bir daha ALTER YAPILMAYACAK
+--  - CSV = TEK kaynak (frontend), DB = arşiv
+--  - Sadece Supabase SQL Editor'de çalıştır, ASLA Railway
 --
--- ⚠️ DEPLOYMENT: ASLA Railway. Sadece Supabase SQL Editor (kullanıcı elle).
---
--- 📋 TEK DOSYA — Supabase SQL Editor'de sadece bunu çalıştır.
+-- 📋 Bu script idempotent: birden fazla çalıştırılabilir.
 
 BEGIN;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
 -- ║ 1) slugify_title() FUNCTION                                       ║
+-- ║    DB'deki title'dan URL-friendly slug üretir.                    ║
+-- ║    Frontend lib/questionMeta.ts:slugifyTitle() ile uyumlu.        ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 CREATE OR REPLACE FUNCTION public.slugify_title(input TEXT)
@@ -37,7 +40,7 @@ BEGIN
     s := REPLACE(s, 'ö', 'o'); s := REPLACE(s, 'Ö', 'o');
     s := REPLACE(s, 'ü', 'u'); s := REPLACE(s, 'Ü', 'u');
 
-    -- Apostrof kaldır
+    -- Apostrof/tırnak kaldır
     s := REPLACE(s, '''', '');
     s := REPLACE(s, '"', '');
     s := REPLACE(s, '`', '');
@@ -57,14 +60,14 @@ END;
 $$;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 2) Slug column ekle                                                ║
+-- ║ 2) Slug column ekle (idempotent)                                   ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 ALTER TABLE public.questions
     ADD COLUMN IF NOT EXISTS slug TEXT;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 3) UNIQUE constraint                                               ║
+-- ║ 3) UNIQUE constraint (idempotent)                                 ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 DO $$
@@ -79,14 +82,15 @@ BEGIN
 END $$;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 4) Index                                                           ║
+-- ║ 4) Index (idempotent)                                              ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 CREATE INDEX IF NOT EXISTS idx_questions_slug
     ON public.questions (slug);
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 5) Mevcut satırları doldur (slugify_title ile)                    ║
+-- ║ 5) Slug NULL olanları title'dan üret (DB'deki title ile)          ║
+-- ║    Bu adım collision'ları ortaya çıkarır.                         ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 UPDATE public.questions
@@ -94,21 +98,47 @@ SET slug = public.slugify_title(title)
 WHERE slug IS NULL OR slug = '';
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 6) Collision çözümü (DataFrame x3 — kullanıcı onayı ile)         ║
--- ║                                                                    ║
--- ║ 3 soru aynı title 'DataFrame\'a sahip. CSV title değiştirildiği  ║
--- ║ için bu satırlara manuel slug atandı. id=127/130/139.            ║
--- ║                                                                    ║
--- ║ Idempotent: AND slug = 'dataframe' koşulu, zaten düzeltilmişse   ║
--- ║ etki etmez.                                                        ║
+-- ║ 6) Collision raporu (bilgi amaçlı)                                ║
+-- ║    Hangi id'lerin title'ı çakışıyor gösterir.                    ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
-UPDATE public.questions SET slug = 'dataframe-satir-normalizasyonu' WHERE id = 127 AND slug = 'dataframe';
-UPDATE public.questions SET slug = 'dataframe-nan-doldurma'         WHERE id = 130 AND slug = 'dataframe';
-UPDATE public.questions SET slug = 'dataframe-nan-sayimi'           WHERE id = 139 AND slug = 'dataframe';
+DO $$
+DECLARE
+    dup_record RECORD;
+BEGIN
+    FOR dup_record IN
+        SELECT id, title, slug
+        FROM public.questions
+        WHERE slug IN (
+            SELECT slug FROM public.questions
+            WHERE slug IS NOT NULL
+            GROUP BY slug
+            HAVING COUNT(*) > 1
+        )
+        ORDER BY slug, id
+    LOOP
+        RAISE NOTICE 'COLLISION: id=%, title=%, slug=%',
+            dup_record.id, dup_record.title, dup_record.slug;
+    END LOOP;
+END $$;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 7) Collision kontrolü (final)                                      ║
+-- ║ 7) Collision çözümü: DB'deki title'ı güncelle (CSV DOKUNULMAZ)   ║
+-- ║    id=127/130/139 hepsi 'DataFrame\' → anlamlı title'lar         ║
+-- ║    CSV'Yİ ETKİLEMEZ. Sadece DB'deki title rename + slug yenile.  ║
+-- ╚═══════════════════════════════════════════════════════════════════╝
+
+UPDATE public.questions SET title = 'DataFrame Satır Normalizasyonu' WHERE id = 127;
+UPDATE public.questions SET title = 'DataFrame NaN Doldurma'         WHERE id = 130;
+UPDATE public.questions SET title = 'DataFrame NaN Sayımı'           WHERE id = 139;
+
+-- Slug'ları yeni title'dan yeniden üret (collision row'lar)
+UPDATE public.questions SET slug = 'dataframe-satir-normalizasyonu' WHERE id = 127;
+UPDATE public.questions SET slug = 'dataframe-nan-doldurma'         WHERE id = 130;
+UPDATE public.questions SET slug = 'dataframe-nan-sayimi'           WHERE id = 139;
+
+-- ╔═══════════════════════════════════════════════════════════════════╗
+-- ║ 8) Final collision kontrolü (RAISE EXCEPTION hâlâ varsa)          ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 DO $$
@@ -125,21 +155,21 @@ BEGIN
     ) t;
 
     IF dup_count > 0 THEN
-        RAISE EXCEPTION '❌ HÂLÂ % duplicate slug var! Manuel çöz gerekli.', dup_count;
+        RAISE EXCEPTION '❌ HÂLÂ % duplicate slug var!', dup_count;
     ELSE
-        RAISE NOTICE '✓ Tüm slug unique — collision yok';
+        RAISE NOTICE '✓ Tüm slug unique';
     END IF;
 END $$;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 8) NOT NULL constraint                                            ║
+-- ║ 9) NOT NULL constraint (tüm slug dolu, güvenli)                   ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 ALTER TABLE public.questions
     ALTER COLUMN slug SET NOT NULL;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 9) Schema reload (PostgREST)                                      ║
+-- ║ 10) Schema reload (PostgREST)                                     ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 NOTIFY pgrst, 'reload schema';
@@ -150,16 +180,27 @@ COMMIT;
 -- ║ DOĞRULAMA                                                          ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
--- SELECT id, title, slug FROM public.questions ORDER BY id LIMIT 5;
--- SELECT id, title, slug FROM public.questions WHERE id IN (127, 130, 139);
+-- 1) Toplam + dolu say
 -- SELECT COUNT(*) total, COUNT(slug) with_slug FROM public.questions;
--- SELECT slug, COUNT(*) FROM public.questions GROUP BY slug HAVING COUNT(*) > 1;
+-- Beklenen: total == with_slug
+
+-- 2) Collision row'lar
+-- SELECT id, title, slug FROM public.questions
+-- WHERE id IN (127, 130, 139);
+
+-- 3) Collision kontrolü (0 satır olmalı)
+-- SELECT slug, COUNT(*) FROM public.questions
+-- GROUP BY slug HAVING COUNT(*) > 1;
+
+-- 4) Schema bilgisi
 -- SELECT column_name, is_nullable, data_type
 --   FROM information_schema.columns
 --  WHERE table_name = 'questions' AND column_name = 'slug';
+-- Beklenen: NOT NULL, text
 
--- ⚠️ ROLLBACK:
+-- ⚠️ ROLLBACK (gerekirse):
 -- ALTER TABLE public.questions DROP CONSTRAINT IF EXISTS questions_slug_key;
 -- DROP INDEX IF EXISTS idx_questions_slug;
 -- ALTER TABLE public.questions DROP COLUMN IF EXISTS slug;
 -- DROP FUNCTION IF EXISTS public.slugify_title(TEXT);
+-- (Title rename'leri geri almak istersen: yedekten veya commit'ten önceki title'lar)
