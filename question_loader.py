@@ -1,9 +1,9 @@
 # backend/question_loader.py
-# DB-only source of truth.
+# DB-FIRST mimari: sorular SADECE Supabase 'questions' tablosundan okunur.
 #
-# Sorular SADECE Supabase 'questions' tablosundan okunur.
-# Kod içinde veri yok — eklemek/silmek için DB kullan, yoksa seed script'i çalıştır:
-#   python scripts/seed_questions.py
+# CSV-FALLBACK KALDIRILDI (2026-07-11, commit 1/5).
+# DB bağlantısı başarısız olursa hata fırlatılır (sessizce CSV'ye düşmez).
+# CSV artık sadece bulk seed + local development için (data/QUESTIONS-v3.csv).
 #
 # API contract aynı: Question dataclass + to_public_dict.
 
@@ -113,17 +113,23 @@ _CACHE_TTL_SEC = int(os.getenv("QUESTION_CACHE_TTL", "60"))
 def _db_questions() -> List[Question]:
     """Tüm published soruları DB'den çek (60s in-memory cache).
 
-    DB bağlantısı başarısız veya boş dönerse data/QUESTIONS-v3.py fallback kullan.
-    Bu sayede deploy/URL hatası olsa bile API yanıt verir.
+    DB-FIRST mimari (2026-07-11):
+    - CSV-FALLBACK YOK. Hata olursa exception raise.
+    - Sessizce CSV'ye düşmeyiz (memory kuralı: production-ready only).
+    - Hata ayıklama: Railway log'undan gerçek hatayı gör.
+
+    Returns:
+        DB'den çekilen Question listesi (boş olabilir, DB'de henüz published
+        soru yoksa).
+
+    Raises:
+        RuntimeError: DB bağlantısı başarısız veya sorgu hatası.
     """
     import time
     now = time.time()
     if _CACHE["data"] is not None and (now - _CACHE["ts"]) < _CACHE_TTL_SEC:
         return _CACHE["data"]
 
-    # Önce DB'den dene
-    db_questions: List[Question] = []
-    db_error: Optional[str] = None
     try:
         from supabase_client import get_supabase
         sb = get_supabase()
@@ -132,256 +138,25 @@ def _db_questions() -> List[Question]:
         db_questions = [_row_to_question(r) for r in rows]
         db_questions.sort(key=lambda x: x.id)
     except Exception as e:
-        db_error = str(e)
-        print(f"⚠️ DB'den soru yüklenemedi: {e}")
+        # ❌ ÖNCE: fallback ile sessizce CSV'ye düşüyordu
+        # ✅ ŞIMDI: hatayı yukarı fırlat, log'a yaz, sessizce devam etme
+        print(f"❌ DB'den soru yüklenemedi (csv-fallback KALDIRILDI): {e}")
+        raise RuntimeError(f"DB sorgu hatası: {e}") from e
 
-    # DB'den veri geldiyse onu kullan
-    if db_questions:
-        _CACHE["data"] = db_questions
-        _CACHE["ts"] = now
-        return db_questions
+    if not db_questions:
+        # DB boş döndü. Bu hata değil, uyarı.
+        print(f"⚠️ DB'de published soru yok (0 row). DB seed gerekli mi?")
 
-    # DB bağlantısı kurulamadıysa VEYA boş döndüyse fallback'e geç
-    if db_error or not db_questions:
-        fallback = _load_questions_fallback()
-        if fallback:
-            print(f"🔄 Fallback: data/QUESTIONS-v3.py'den {len(fallback)} soru yüklendi (db_error={bool(db_error)}, db_empty={not db_questions})")
-            _CACHE["data"] = fallback
-            _CACHE["ts"] = now
-            return fallback
-
-    # Hem DB hem fallback boş
-    if _CACHE["data"] is not None:
-        return _CACHE["data"]
-    return []
+    _CACHE["data"] = db_questions
+    _CACHE["ts"] = now
+    return db_questions
 
 
-def _load_questions_fallback() -> List[Question]:
-    """DB boş/başarısız olduğunda soruları yerleşik kaynaklardan yükle.
-
-    Öncelik sırası:
-      1. data/QUESTIONS-v3.json       (build artifact — runtime primary)
-      2. data/QUESTIONS_FACTORY.csv   (kaynak dosyası — runtime parse)
-      3. data/QUESTIONS-v3.py         (LEGACY: eski dataclass, syntax bozuk olabilir)
-
-    Her adım sessizce başarısız olursa bir sonrakine düşer.
-    CSV → JSON pipeline: scripts/csv_to_json.py kullanılır.
-    V4 dosyalari (.json.disabled / .py.disabled) devre dişi.
-    """
-    import importlib.util
-    from pathlib import Path
-
-    data_dir = Path(__file__).resolve().parent / "data"
-
-    def _slugify(t: str) -> str:
-        import re as _re, unicodedata as _u
-        s = t.lower()
-        tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
-        s = s.translate(tr)
-        s = _u.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
-        s = _re.sub(r"[^a-z0-9]+", "-", s).strip("-")
-        return s[:80] or "question"
-
-    # ── 1. V3.json — ÖNCELİKLİ ─────────────────────────────────
-    v4_json = data_dir / "QUESTIONS-v3.json"
-    if v4_json.exists():
-        try:
-            import json as _json
-            with open(v4_json, encoding="utf-8") as _f:
-                raw = _json.load(_f)
-            if not isinstance(raw, list) or not raw:
-                raise ValueError("V3.json boş veya yanlış format")
-
-            used: set = set()
-            def _ensure_slug(title: str, qid: int) -> str:
-                base = _slugify(title or f"question-{qid}")
-                cand = base
-                n = 2
-                while cand in used:
-                    cand = f"{base}-{n}"
-                    n += 1
-                used.add(cand)
-                return cand
-
-            result: List[Question] = []
-            for q in raw:
-                slug_val = q.get("slug") or _ensure_slug(q.get("title", ""), q.get("id", 0))
-                result.append(Question(
-                    id=q["id"],
-                    title=q.get("title", ""),
-                    category=q.get("category", "python-basics"),
-                    level=q.get("level", "beginner"),
-                    description=q.get("description", ""),
-                    starter_code=q.get("starter_code"),
-                    test_cases=q.get("test_cases", []) or [],
-                    hints=q.get("hints", []) or [],
-                    slug=slug_val,
-                    related_question_ids=list(q.get("related_question_ids", []) or []),
-                    explanation=q.get("explanation"),
-                    complexity=q.get("complexity"),
-                    tags=list(q.get("tags", []) or []),
-                    function_name=None,
-                    topic=None,
-                    tutorial_slug=q.get("tutorial_slug"),
-                    related_concepts=list(q.get("related_concepts", []) or []),
-                    meta_title=None,
-                    meta_description=None,
-                    meta_keywords=[],
-                ))
-            print(f"✅ Fallback: V3.json'dan {len(result)} soru yüklendi")
-            return result
-        except Exception as e:
-            print(f"⚠️ Fallback V3.json okunamadı: {e}")
-
-    # ── 2. FACTORY.csv — Runtime parse (kaynak dosyası) ────────────────
-    factory_csv = data_dir / "QUESTIONS_FACTORY.csv"
-    if factory_csv.exists():
-        try:
-            import csv as _csv
-            with open(factory_csv, encoding="utf-8", newline="") as _f:
-                reader = _csv.DictReader(_f)
-                raw_csv = list(reader)
-            if not raw_csv:
-                raise ValueError("FACTORY.csv boş")
-
-            used_csv: set = set()
-            def _ensure_slug_csv(title: str, qid: int) -> str:
-                base = _slugify(title or f"question-{qid}")
-                cand = base
-                n = 2
-                while cand in used_csv:
-                    cand = f"{base}-{n}"
-                    n += 1
-                used_csv.add(cand)
-                return cand
-
-            result_csv: List[Question] = []
-            for q in raw_csv:
-                # test_cases / hints CSV'de JSON string olarak duruyor
-                try:
-                    tc = _json.loads(q.get("test_cases", "") or "[]")
-                except Exception:
-                    tc = []
-                try:
-                    ht = _json.loads(q.get("hints", "") or "[]")
-                except Exception:
-                    ht = []
-                slug_val = q.get("slug") or _ensure_slug_csv(q.get("title", ""), int(q.get("id", 0) or 0))
-                result_csv.append(Question(
-                    id=int(q["id"]),
-                    title=q.get("title", ""),
-                    category=q.get("category", "python-basics"),
-                    level=q.get("level", "beginner"),
-                    description=q.get("description", ""),
-                    starter_code=q.get("starter_code"),
-                    test_cases=tc,
-                    hints=ht,
-                    slug=slug_val,
-                    related_question_ids=[],
-                    explanation=None,
-                    complexity=None,
-                    tags=[],
-                    function_name=None,
-                    topic=None,
-                    tutorial_slug=None,
-                    related_concepts=[],
-                    meta_title=None,
-                    meta_description=None,
-                    meta_keywords=[],
-                ))
-            print(f"✅ Fallback: FACTORY.csv'den {len(result_csv)} soru yüklendi")
-            return result_csv
-        except Exception as e:
-            print(f"⚠️ Fallback FACTORY.csv okunamadı: {e}")
-
-    # ── 3. V2.py — LEGACY (syntax hatalı olabilir) ───────────────
-    v3_py = data_dir / "QUESTIONS-v3.py"
-    if not v3_py.exists():
-        return []
-
-    try:
-        spec = importlib.util.spec_from_file_location("questions_v3_fallback", v3_py)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-    except Exception as e:
-        print(f"⚠️ Fallback V3.py import hatası (legacy): {e}")
-        return []
-
-    # SEO_CONTENT merge (varsa)
-    seo_path = data_path.parent / "SEO_CONTENT.py"
-    if seo_path.exists():
-        try:
-            spec_seo = importlib.util.spec_from_file_location("seo_content_fallback", seo_path)
-            seo_mod = importlib.util.module_from_spec(spec_seo)
-            spec_seo.loader.exec_module(seo_mod)
-            seo_mod.apply_seo_content()
-        except Exception:
-            pass  # SEO merge başarısız, devam et
-
-    questions_raw = getattr(mod, "QUESTIONS", [])
-
-    # Slug üret (data'da slug alanları None olabilir)
-    used_slugs: set = set()
-    def _slugify(t: str) -> str:
-        import re as _re, unicodedata as _u
-        s = t.lower()
-        tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
-        s = s.translate(tr)
-        s = _u.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
-        s = _re.sub(r"[^a-z0-9]+", "-", s).strip("-")
-        return s[:80] or "question"
-
-    def _ensure_slug(title: str) -> str:
-        base = _slugify(title or "question")
-        candidate = base
-        n = 2
-        while candidate in used_slugs:
-            candidate = f"{base}-{n}"
-            n += 1
-        used_slugs.add(candidate)
-        return candidate
-
-    # Question dataclass → DB row dict → Question dataclass (loader)
-    result: List[Question] = []
-    for q in questions_raw:
-        # Slug None ise title'dan üret (slug benzersizliği DB UNIQUE ile uyumlu)
-        slug_val = getattr(q, "slug", None)
-        if not slug_val:
-            slug_val = _ensure_slug(q.title or f"question-{q.id}")
-
-        result.append(Question(
-            id=q.id,
-            title=q.title,
-            category=q.category,
-            level=q.level,
-            description=getattr(q, "description", "") or "",
-            starter_code=getattr(q, "starter_code", None),
-            test_cases=getattr(q, "test_cases", []) or [],
-            hints=getattr(q, "hints", []) or [],
-            slug=slug_val,
-            related_question_ids=list(getattr(q, "related_question_ids", []) or []),
-            explanation=getattr(q, "explanation", None),
-            complexity=getattr(q, "complexity", None),
-            tags=list(getattr(q, "tags", []) or []),
-            function_name=None,
-            topic=None,
-            tutorial_slug=getattr(q, "tutorial_slug", None),
-            related_concepts=list(getattr(q, "related_concepts", []) or []),
-            meta_title=None,
-            meta_description=None,
-            meta_keywords=[],
-        ))
-
-    return result
+# CSV-FALLBACK KALDIRILDI (DB-FIRST mimari, 2026-07-11).
+# Soru verisi yalnızca Supabase 'questions' tablosundan okunur.
+# CSV sadece bulk seed + local development için (data/QUESTIONS-v3.csv).
 
 
-def invalidate_cache():
-    """Cache'i temizle (seed veya admin update sonrası)."""
-    _CACHE["data"] = None
-    _CACHE["ts"] = 0.0
-
-
-# ═══════════════════════════════════════════════════════════════
 # ─── Public API ────────────────────────────────────────────
 # ═══════════════════════════════════════════════════════════════
 
