@@ -131,11 +131,10 @@ def _db_questions() -> List[Question]:
         return _CACHE["data"]
 
     try:
-        from supabase_client import get_supabase
-        sb = get_supabase()
-        # DB-FIRST: tüm soruları çek
-        # DB-FIRST: tüm soruları çek (is_published filtresi KALDIRILDI —
-        # sıkıntı RLS veya filter uyumsuzluğu olabilir, tüm row çek)
+        from supabase_client import get_supabase_admin
+        sb = get_supabase_admin()
+        # DB-FIRST: service_role kullan (RLS bypass, backend trusted).
+        # is_published filtresi YOK (CSV-FIRST ile uyumlu).
         result = sb.table("questions").select("*").execute()
         rows = result.data or []
         db_questions = [_row_to_question(r) for r in rows]
