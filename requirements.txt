@@ -14,3 +14,4 @@ python-multipart>=0.0.6
 pyjwt>=2.8.0
 gunicorn>=21.2.0
 psycopg2-binary>=2.9.9
+openai>=1.40.0  # Mavis API (OpenAI-uyumlu) ile yeni soru üretimi
