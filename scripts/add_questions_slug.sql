@@ -105,6 +105,15 @@ SET slug = public.slugify_title(title)
 WHERE slug IS NULL OR slug = '';
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
+-- ║ 5b) Collision düzeltme (DataFrame x3 — title değiştirildi)        ║
+-- ║     CSV düzeltmesi commit'i ile senkron.                          ║
+-- ╚═══════════════════════════════════════════════════════════════════╝
+
+UPDATE public.questions SET slug = 'dataframe-satir-normalizasyonu' WHERE id = 127 AND slug = 'dataframe';
+UPDATE public.questions SET slug = 'dataframe-nan-doldurma'         WHERE id = 130 AND slug = 'dataframe';
+UPDATE public.questions SET slug = 'dataframe-nan-sayimi'           WHERE id = 139 AND slug = 'dataframe';
+
+-- ╔═══════════════════════════════════════════════════════════════════╗
 -- ║ 6) Slug collision kontrolü                                        ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
