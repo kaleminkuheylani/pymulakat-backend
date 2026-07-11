@@ -134,14 +134,10 @@ def _db_questions() -> List[Question]:
         from supabase_client import get_supabase
         sb = get_supabase()
         # DB-FIRST: tüm soruları çek
-        result = sb.table("questions").select("*").execute()
+        result = sb.table("questions").select("*").eq("is_published", True).execute()
         rows = result.data or []
-        # DEBUG (gecici): DB raw response logla
-        print(f"🔍 DEBUG: DB questions response — rows={len(rows)}, "
-              f"first_row_keys={list(rows[0].keys())[:5] if rows else 'EMPTY'}")
         db_questions = [_row_to_question(r) for r in rows]
         db_questions.sort(key=lambda x: x.id)
-        print(f"🔍 DEBUG: parsed {len(db_questions)} Question objects")
     except Exception as e:
         # ❌ ÖNCE: fallback ile sessizce CSV'ye düşüyordu
         # ✅ ŞIMDI: hatayı yukarı fırlat, log'a yaz, sessizce devam etme
@@ -149,8 +145,8 @@ def _db_questions() -> List[Question]:
         raise RuntimeError(f"DB sorgu hatası: {e}") from e
 
     if not db_questions:
-        # DB boş döndü. Bu hata değil, uyarı.
-        print(f"⚠️ DB'de published soru yok (0 row). DB seed gerekli mi?")
+        # DB'de published soru yok. Uyarı.
+        print("⚠️ DB'de published soru yok (0 row)")
 
     _CACHE["data"] = db_questions
     _CACHE["ts"] = now
