@@ -1,19 +1,17 @@
 -- scripts/add_questions_slug.sql
 -- questions tablosuna slug column geri ekle (slugify_title dahili).
 --
--- ⚠️ MEMORY KURALI: Column freeze! Bu migration SADECE kullanıcı isteği üzerine.
--- Bir daha questions tablosuna ALTER YAPILMAYACAK.
+-- ⚠️ MEMORY KURALI: Column freeze! Bu migration TEK SEFERLİK.
+-- questions tablosuna bir daha ALTER YAPILMAYACAK.
 --
--- ⚠️ DEPLOYMENT: ASLA Railway üzerinden çalıştırılmaz. Sadece Supabase
--- SQL Editor'de kullanıcı elle çalıştırır.
+-- ⚠️ DEPLOYMENT: ASLA Railway. Sadece Supabase SQL Editor (kullanıcı elle).
 --
--- 📋 TEK DOSYA: slugify_title() function + column ekleme tek transaction'da.
--- Supabase SQL Editor'de sadece bu dosyayı çalıştırman yeterli.
+-- 📋 TEK DOSYA — Supabase SQL Editor'de sadece bunu çalıştır.
 
 BEGIN;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 1) slugify_title() FUNCTION (slug üretici)                       ║
+-- ║ 1) slugify_title() FUNCTION                                       ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 CREATE OR REPLACE FUNCTION public.slugify_title(input TEXT)
@@ -29,38 +27,29 @@ BEGIN
         RETURN '';
     END IF;
 
-    s := input;
+    s := LOWER(input);
 
-    -- 1) Lowercase
-    s := LOWER(s);
+    -- Türkçe karakterler
+    s := REPLACE(s, 'ı', 'i'); s := REPLACE(s, 'İ', 'i');
+    s := REPLACE(s, 'ş', 's'); s := REPLACE(s, 'Ş', 's');
+    s := REPLACE(s, 'ç', 'c'); s := REPLACE(s, 'Ç', 'c');
+    s := REPLACE(s, 'ğ', 'g'); s := REPLACE(s, 'Ğ', 'g');
+    s := REPLACE(s, 'ö', 'o'); s := REPLACE(s, 'Ö', 'o');
+    s := REPLACE(s, 'ü', 'u'); s := REPLACE(s, 'Ü', 'u');
 
-    -- 2) Türkçe karakter → ASCII
-    s := REPLACE(s, 'ı', 'i');
-    s := REPLACE(s, 'İ', 'i');
-    s := REPLACE(s, 'ş', 's');
-    s := REPLACE(s, 'Ş', 's');
-    s := REPLACE(s, 'ç', 'c');
-    s := REPLACE(s, 'Ç', 'c');
-    s := REPLACE(s, 'ğ', 'g');
-    s := REPLACE(s, 'Ğ', 'g');
-    s := REPLACE(s, 'ö', 'o');
-    s := REPLACE(s, 'Ö', 'o');
-    s := REPLACE(s, 'ü', 'u');
-    s := REPLACE(s, 'Ü', 'u');
-
-    -- 3) Apostrof ve tırnak kaldır (TİRE DEĞİL)
+    -- Apostrof kaldır
     s := REPLACE(s, '''', '');
     s := REPLACE(s, '"', '');
     s := REPLACE(s, '`', '');
 
-    -- 4) Non-alphanumeric (boşluk/tire hariç) kaldır
+    -- Non-alphanumeric (boşluk/tire hariç) kaldır
     s := REGEXP_REPLACE(s, '[^a-z0-9\s-]', '', 'g');
 
-    -- 5) Çoklu boşluk → tire
+    -- Çoklu boşluk/tire → tek tire
     s := REGEXP_REPLACE(s, '\s+', '-', 'g');
     s := REGEXP_REPLACE(s, '-+', '-', 'g');
 
-    -- 6) Baştaki/sondaki tire kırp
+    -- Baştaki/sondaki tire kırp
     s := TRIM(BOTH '-' FROM s);
 
     RETURN s;
@@ -90,7 +79,7 @@ BEGIN
 END $$;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 4) Index (slug lookup için)                                       ║
+-- ║ 4) Index                                                           ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 CREATE INDEX IF NOT EXISTS idx_questions_slug
@@ -105,8 +94,13 @@ SET slug = public.slugify_title(title)
 WHERE slug IS NULL OR slug = '';
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 5b) Collision düzeltme (DataFrame x3 — title değiştirildi)        ║
--- ║     CSV düzeltmesi commit'i ile senkron.                          ║
+-- ║ 6) Collision çözümü (DataFrame x3 — kullanıcı onayı ile)         ║
+-- ║                                                                    ║
+-- ║ 3 soru aynı title 'DataFrame\'a sahip. CSV title değiştirildiği  ║
+-- ║ için bu satırlara manuel slug atandı. id=127/130/139.            ║
+-- ║                                                                    ║
+-- ║ Idempotent: AND slug = 'dataframe' koşulu, zaten düzeltilmişse   ║
+-- ║ etki etmez.                                                        ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 UPDATE public.questions SET slug = 'dataframe-satir-normalizasyonu' WHERE id = 127 AND slug = 'dataframe';
@@ -114,7 +108,7 @@ UPDATE public.questions SET slug = 'dataframe-nan-doldurma'         WHERE id = 1
 UPDATE public.questions SET slug = 'dataframe-nan-sayimi'           WHERE id = 139 AND slug = 'dataframe';
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 6) Slug collision kontrolü                                        ║
+-- ║ 7) Collision kontrolü (final)                                      ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 DO $$
@@ -123,7 +117,7 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO dup_count
     FROM (
-        SELECT slug, COUNT(*) as c
+        SELECT slug, COUNT(*) c
         FROM public.questions
         WHERE slug IS NOT NULL
         GROUP BY slug
@@ -131,22 +125,21 @@ BEGIN
     ) t;
 
     IF dup_count > 0 THEN
-        RAISE WARNING 'Slug collision: % duplicate slug(lar) bulundu. '
-                      'Bunlar manuel -2, -3 suffix ile çözülmeli.', dup_count;
+        RAISE EXCEPTION '❌ HÂLÂ % duplicate slug var! Manuel çöz gerekli.', dup_count;
     ELSE
-        RAISE NOTICE '✓ Slug collision yok — tüm slug unique';
+        RAISE NOTICE '✓ Tüm slug unique — collision yok';
     END IF;
 END $$;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 7) NOT NULL constraint                                            ║
+-- ║ 8) NOT NULL constraint                                            ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 ALTER TABLE public.questions
     ALTER COLUMN slug SET NOT NULL;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 8) Schema reload (PostgREST)                                      ║
+-- ║ 9) Schema reload (PostgREST)                                      ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 NOTIFY pgrst, 'reload schema';
@@ -154,17 +147,18 @@ NOTIFY pgrst, 'reload schema';
 COMMIT;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ DOĞRULAMA (çalıştır, sonuçları kontrol et)                       ║
+-- ║ DOĞRULAMA                                                          ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 -- SELECT id, title, slug FROM public.questions ORDER BY id LIMIT 5;
--- SELECT COUNT(*) AS total, COUNT(slug) AS with_slug FROM public.questions;
+-- SELECT id, title, slug FROM public.questions WHERE id IN (127, 130, 139);
+-- SELECT COUNT(*) total, COUNT(slug) with_slug FROM public.questions;
 -- SELECT slug, COUNT(*) FROM public.questions GROUP BY slug HAVING COUNT(*) > 1;
 -- SELECT column_name, is_nullable, data_type
 --   FROM information_schema.columns
 --  WHERE table_name = 'questions' AND column_name = 'slug';
 
--- ⚠️ ROLLBACK (gerekirse):
+-- ⚠️ ROLLBACK:
 -- ALTER TABLE public.questions DROP CONSTRAINT IF EXISTS questions_slug_key;
 -- DROP INDEX IF EXISTS idx_questions_slug;
 -- ALTER TABLE public.questions DROP COLUMN IF EXISTS slug;
