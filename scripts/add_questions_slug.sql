@@ -1,35 +1,81 @@
 -- scripts/add_questions_slug.sql
--- questions tablosuna slug column geri ekle.
+-- questions tablosuna slug column geri ekle (slugify_title dahili).
 --
--- ⚠️ MEMORY KURALI: Column freeze! Bu migration SADECE kullanıcı isteği üzerine
--- yapılıyor (kullanıcı "questions olarak değiştir" dedi). Bir daha bu column
--- dışında ekleme YAPILMAYACAK.
+-- ⚠️ MEMORY KURALI: Column freeze! Bu migration SADECE kullanıcı isteği üzerine.
+-- Bir daha questions tablosuna ALTER YAPILMAYACAK.
 --
--- 📋 ÇALIŞTIRMA SIRASI (Supabase SQL Editor):
---  1) ÖNCE: scripts/slugify_title.sql    (function oluştur)
---  2) SONRA: scripts/add_questions_slug.sql  (bu dosya — column + UPDATE)
+-- ⚠️ DEPLOYMENT: ASLA Railway üzerinden çalıştırılmaz. Sadece Supabase
+-- SQL Editor'de kullanıcı elle çalıştırır.
 --
--- ⚠️ DEPLOYMENT: Bu SQL ASLA Railway üzerinden çalıştırılmaz.
--- Sadece Supabase Dashboard → SQL Editor'de kullanıcı elle çalıştırır.
--- Railway sadece API deploy eder, migration yapmaz.
---
--- Önceki commit (e112938) yanlış tablo adıyla (interviews) yazılmıştı.
--- Doğru tablo: public.questions
---
--- ⚠️ BU MIGRATION TEK SEFERLİK:
--- - Çalıştır, doğrula, bir daha bu tabloya ALTER yapma.
+-- 📋 TEK DOSYA: slugify_title() function + column ekleme tek transaction'da.
+-- Supabase SQL Editor'de sadece bu dosyayı çalıştırman yeterli.
 
 BEGIN;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 1) Slug column ekle                                                ║
+-- ║ 1) slugify_title() FUNCTION (slug üretici)                       ║
+-- ╚═══════════════════════════════════════════════════════════════════╝
+
+CREATE OR REPLACE FUNCTION public.slugify_title(input TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+IMMUTABLE
+PARALLEL SAFE
+AS $$
+DECLARE
+    s TEXT;
+BEGIN
+    IF input IS NULL OR input = '' THEN
+        RETURN '';
+    END IF;
+
+    s := input;
+
+    -- 1) Lowercase
+    s := LOWER(s);
+
+    -- 2) Türkçe karakter → ASCII
+    s := REPLACE(s, 'ı', 'i');
+    s := REPLACE(s, 'İ', 'i');
+    s := REPLACE(s, 'ş', 's');
+    s := REPLACE(s, 'Ş', 's');
+    s := REPLACE(s, 'ç', 'c');
+    s := REPLACE(s, 'Ç', 'c');
+    s := REPLACE(s, 'ğ', 'g');
+    s := REPLACE(s, 'Ğ', 'g');
+    s := REPLACE(s, 'ö', 'o');
+    s := REPLACE(s, 'Ö', 'o');
+    s := REPLACE(s, 'ü', 'u');
+    s := REPLACE(s, 'Ü', 'u');
+
+    -- 3) Apostrof ve tırnak kaldır (TİRE DEĞİL)
+    s := REPLACE(s, '''', '');
+    s := REPLACE(s, '"', '');
+    s := REPLACE(s, '`', '');
+
+    -- 4) Non-alphanumeric (boşluk/tire hariç) kaldır
+    s := REGEXP_REPLACE(s, '[^a-z0-9\s-]', '', 'g');
+
+    -- 5) Çoklu boşluk → tire
+    s := REGEXP_REPLACE(s, '\s+', '-', 'g');
+    s := REGEXP_REPLACE(s, '-+', '-', 'g');
+
+    -- 6) Baştaki/sondaki tire kırp
+    s := TRIM(BOTH '-' FROM s);
+
+    RETURN s;
+END;
+$$;
+
+-- ╔═══════════════════════════════════════════════════════════════════╗
+-- ║ 2) Slug column ekle                                                ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 ALTER TABLE public.questions
     ADD COLUMN IF NOT EXISTS slug TEXT;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 2) UNIQUE constraint                                               ║
+-- ║ 3) UNIQUE constraint                                               ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 DO $$
@@ -44,23 +90,22 @@ BEGIN
 END $$;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 3) Index (slug lookup için)                                       ║
+-- ║ 4) Index (slug lookup için)                                       ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 CREATE INDEX IF NOT EXISTS idx_questions_slug
     ON public.questions (slug);
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 4) Mevcut satırları doldur (slugify_title ile)                    ║
+-- ║ 5) Mevcut satırları doldur (slugify_title ile)                    ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
--- NULL olan tüm slug'ları title'dan üret
 UPDATE public.questions
 SET slug = public.slugify_title(title)
 WHERE slug IS NULL OR slug = '';
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 5) Slug collision kontrolü (nadir ama mümkün)                    ║
+-- ║ 6) Slug collision kontrolü                                        ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 DO $$
@@ -85,16 +130,14 @@ BEGIN
 END $$;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 6) NOT NULL constraint (güvenlik)                                 ║
+-- ║ 7) NOT NULL constraint                                            ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
--- NOT NULL eklemek için önce tüm satırlarda dolu olmalı
--- (yukarıdaki UPDATE ile dolu)
 ALTER TABLE public.questions
     ALTER COLUMN slug SET NOT NULL;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ 7) Schema reload (PostgREST)                                      ║
+-- ║ 8) Schema reload (PostgREST)                                      ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 NOTIFY pgrst, 'reload schema';
@@ -102,28 +145,18 @@ NOTIFY pgrst, 'reload schema';
 COMMIT;
 
 -- ╔═══════════════════════════════════════════════════════════════════╗
--- ║ DOĞRULAMA                                                          ║
+-- ║ DOĞRULAMA (çalıştır, sonuçları kontrol et)                       ║
 -- ╚═══════════════════════════════════════════════════════════════════╝
 
 -- SELECT id, title, slug FROM public.questions ORDER BY id LIMIT 5;
--- Beklenen:
---  1 | Two Sum            | two-sum
---  2 | Fibonacci          | fibonacci
---  3 | 0/1 Knapsack       | 01-knapsack
---  ...
-
 -- SELECT COUNT(*) AS total, COUNT(slug) AS with_slug FROM public.questions;
--- Beklenen: total == with_slug (hepsi dolu)
-
 -- SELECT slug, COUNT(*) FROM public.questions GROUP BY slug HAVING COUNT(*) > 1;
--- Beklenen: 0 satır (collision yok)
-
 -- SELECT column_name, is_nullable, data_type
--- FROM information_schema.columns
--- WHERE table_name = 'questions' AND column_name = 'slug';
--- Beklenen: is_nullable = 'NO', data_type = 'text'
+--   FROM information_schema.columns
+--  WHERE table_name = 'questions' AND column_name = 'slug';
 
--- ⚠️ ROLLBACK (GEREKEKSE):
+-- ⚠️ ROLLBACK (gerekirse):
 -- ALTER TABLE public.questions DROP CONSTRAINT IF EXISTS questions_slug_key;
 -- DROP INDEX IF EXISTS idx_questions_slug;
 -- ALTER TABLE public.questions DROP COLUMN IF EXISTS slug;
+-- DROP FUNCTION IF EXISTS public.slugify_title(TEXT);
