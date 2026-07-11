@@ -133,12 +133,15 @@ def _db_questions() -> List[Question]:
     try:
         from supabase_client import get_supabase
         sb = get_supabase()
-        # DB-FIRST: tüm soruları çek (is_published filtresi KALDIRILDI —
-        # CSV-FIRST mimaride unpublished ayrımı yoktu, DB-FIRST de aynı)
+        # DB-FIRST: tüm soruları çek
         result = sb.table("questions").select("*").execute()
         rows = result.data or []
+        # DEBUG (gecici): DB raw response logla
+        print(f"🔍 DEBUG: DB questions response — rows={len(rows)}, "
+              f"first_row_keys={list(rows[0].keys())[:5] if rows else 'EMPTY'}")
         db_questions = [_row_to_question(r) for r in rows]
         db_questions.sort(key=lambda x: x.id)
+        print(f"🔍 DEBUG: parsed {len(db_questions)} Question objects")
     except Exception as e:
         # ❌ ÖNCE: fallback ile sessizce CSV'ye düşüyordu
         # ✅ ŞIMDI: hatayı yukarı fırlat, log'a yaz, sessizce devam etme
