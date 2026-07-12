@@ -658,12 +658,60 @@ def set_user_role(user_id: str, req: SetRoleRequest):
 
 @router.get("/users/me")
 def get_current_user_info(request: Request):
-    """Token'dan user bilgisi (debug icin)."""
-    auth = request.headers.get("authorization", "")
-    if not auth.startswith("Bearer "):
-        raise HTTPException(401, "Token gerekli")
+    """Token veya Supabase cookie'den user bilgisi (debug + admin guard icin).
     
-    token = auth[7:]
+    Frontend admin guard bu endpoint'i "fresh role" kontrolu icin cagirir
+    (Supabase JWT cache'li olabilir, logout-login sonrasi bile).
+    """
+    import base64
+    import json
+    
+    token = ""
+    
+    # 1) Authorization header (Bearer)
+    auth = request.headers.get("authorization", "")
+    if auth.startswith("Bearer "):
+        token = auth[7:]
+    
+    # 2) Supabase cookie'lerden access_token cek
+    if not token:
+        cookies = request.cookies
+        for name, value in cookies.items():
+            if name.endswith("-auth-token") and value:
+                # Supabase cookie base64url encoded JSON
+                # Bazen chunked: 0, 1, ... veya direkt JSON
+                try:
+                    if value.startswith("base64-"):
+                        decoded = base64.b64decode(value[7:] + "==").decode("utf-8", errors="ignore")
+                    else:
+                        decoded = value
+                    # JSON parse dene
+                    parsed = json.loads(decoded)
+                    if isinstance(parsed, list):
+                        # chunked: [chunk1, chunk2, ...]
+                        decoded = "".join(str(c) for c in parsed)
+                        # Tekrar JSON parse
+                        try:
+                            parsed = json.loads(decoded)
+                        except:
+                            pass
+                    if isinstance(parsed, dict):
+                        if "access_token" in parsed:
+                            token = parsed["access_token"]
+                            break
+                        if "currentSession" in parsed and "access_token" in parsed["currentSession"]:
+                            token = parsed["currentSession"]["access_token"]
+                            break
+                except Exception:
+                    # Bazen direkt JWT token olarak da olabilir
+                    if value.count(".") == 2:
+                        token = value
+                        break
+                    continue
+    
+    if not token:
+        raise HTTPException(401, "Token gerekli (Authorization header veya Supabase cookie)")
+    
     sb = get_supabase()
     try:
         result = sb.auth.get_user(token)
