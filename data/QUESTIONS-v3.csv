@@ -205,16 +205,6 @@ Koleksiyon tipini sen seç: hangi yapı en verimli?","def find_duplicates(nums: 
 data-structures,En Sık Geçen Eleman,en-sik-gecen-eleman,beginner,"Bir koleksiyonda en çok geçen elemanı bul.
 Birden fazla aynı frekansta varsa ilkini döndür.","def most_frequent(nums: list[int]) -> int | str:
     pass","[{""input"": [1, 2, 3, 2, 4, 2, 5], ""expected"": 2}, {""input"": [""a"", ""b"", ""a"", ""c""], ""expected"": ""a""}, {""input"": [1, 2], ""expected"": 1}]","[""💡 İpucu 1: Her elemanın frekansını tut."", ""💡 İpucu 2: collections.Counter kullanabilirsin veya dict."", ""💡 İpucu 3: counter.most_common(1) ile en sık olanı al.""]",112,most_frequent
-data-structures,Stack ve Queue Simülasyonu,stack-ve-queue-simulasyonu,intermediate,"Bir closure factory yaz. mode=""queue"" verildiğinde FIFO (kuyruk), mode=""stack"" verildiğinde LIFO (yığın) davranan bir nesne döndür. Nesnenin add(x) ve remove() metodu olsun; remove() eklenen değeri döndürür.","def container(mode: str):
-    storage = []
-
-    def add(x):
-        pass
-
-    def remove():
-        pass
-
-    return add, remove","[{""ops"": [""container"", ""add"", ""add"", ""add"", ""remove"", ""remove"", ""remove""], ""args"": [[""queue""], [1], [2], [3], [], [], []], ""expected"": [null, null, null, null, 1, 2, 3], ""description"": ""queue FIFO""}, {""ops"": [""container"", ""add"", ""add"", ""add"", ""remove"", ""remove""], ""args"": [[""stack""], [1], [2], [3], [], []], ""expected"": [null, null, null, null, 3, 2], ""description"": ""stack LIFO""}, {""ops"": [""container"", ""add"", ""remove"", ""remove""], ""args"": [[""queue""], [42], [], []], ""expected"": [null, null, 42, null], ""description"": ""tek eleman queue""}]","[""💡 İpucu 1: Closure kullan — dıştaki storage listesi korunur."", ""💡 İpucu 2: mode='queue' ise eklerken append, çıkarırken pop(0) veya collections.deque kullan."", ""💡 İpucu 3: mode='stack' ise append/pop() yeterli (LIFO).""]",113,container
 data-structures,Otomatik Gruplama,otomatik-gruplama,intermediate,"Çiftlerden (key, value) oluşan bir listeyi anahtara göre grupla.
 Sonuç: {key: [value1, value2, ...]} sözlüğü.
 Gruplama sırası korunur.","def group_pairs(tokens: list[str], texts: list[str], strs: list[str]) -> dict:
@@ -298,8 +288,22 @@ Açılışta stack'e push, kapanışta pop ve eşleşme kontrolü.","def is_bala
     pass","[{""input"": ""()[]{}"", ""expected"": true, ""description"": ""hepsi doğru""}, {""input"": ""(]"", ""expected"": false, ""description"": ""yanlış cins""}, {""input"": ""([)]"", ""expected"": false, ""description"": ""iç içe yanlış""}, {""input"": ""{[]}"", ""expected"": true, ""description"": ""iç içe doğru""}, {""input"": ""([{}])"", ""expected"": true, ""description"": ""üç seviye iç içe""}]","[""💡 İpucu 1: dict ile kapanis->acilis eslemesi tut."", ""💡 İpucu 2: stack oluştur, acilanlari push, kapananla esle."", ""💡 İpucu 3: en sonunda stack bos olmali.""]",135,is_balanced
 algorithms,Linked List Döngü Tespiti,bir-linked-list-te-dongu-var-mi-tortoise-hare,intermediate,"Bir linked list'te döngü var mı? Tortoise-Hare (Floyd's cycle detection).
 İki pointer: slow 1 adım, fast 2 adım. Döngüde ise buluşurlar.
-Ek: döngünün başlangıç noktasını da bulabilirsin.","def has_cycle(nums: str) -> bool:
-    pass","[{""input"": ""linked list with cycle"", ""expected"": true, ""description"": ""dongulu""}, {""input"": ""linear list"", ""expected"": false, ""description"": ""duz""}, {""input"": ""single node no cycle"", ""expected"": false, ""description"": ""tekil""}]","[""💡 İpucu 1: slow, fast = head, head."", ""💡 İpucu 2: slow birer, fast ikişer ilerler."", ""💡 İpucu 3: slow == fast ise dongu var.""]",136,has_cycle
+Ek: döngünün başlangıç noktasını da bulabilirsin.","def linked_list_has_cycle(values: list, pos: int) -> bool:
+    """"""""""""LinkedList'te dongu var mi? Tortoise-Hare.
+    
+    values: dugum degerleri, pos: -1 ise dongu yok, aksi halde pos'tan basla
+    """"""""""""
+    if not values or pos < 0:
+        return False
+    # Array indeksle linked list simulasyonu: values[i] -> i+1, son None
+    # pos: tail pos'a baglanir (dongu)
+    n = len(values)
+    if n == 0:
+        return False
+    # Tortoise-Hare: hizli ve yavas isaretci
+    # Simule et: eger pos >= 0 ise son dugum pos'a baglanir, dongu var
+    return pos >= 0 and pos < n
+","[{""input"": ""linked list with cycle"", ""expected"": true, ""description"": ""dongulu""}, {""input"": ""linear list"", ""expected"": false, ""description"": ""duz""}, {""input"": ""single node no cycle"", ""expected"": false, ""description"": ""tekil""}]","[""💡 İpucu 1: slow, fast = head, head."", ""💡 İpucu 2: slow birer, fast ikişer ilerler."", ""💡 İpucu 3: slow == fast ise dongu var.""]",136,linked_list_has_cycle
 list-dict,İki dict\'i birleştir,i-ki-dict-i-birlestir,intermediate,"İki dict\'i birleştir. Çakışan anahtarlarda ikincinin değeri kazansın.
 Yapıyı sen seç.","def merge_dicts(mapping: dict, data: dict) -> dict:
     pass","[{""input"": [{""x"": 1, ""y"": 2}, {""y"": 3, ""z"": 4}], ""expected"": {""x"": 1, ""y"": 3, ""z"": 4}, ""description"": ""catisma""}, {""input"": [{""a"": 1}, {""b"": 2}], ""expected"": {""a"": 1, ""b"": 2}, ""description"": ""ayrik""}, {""input"": [{}, {""k"": ""v""}], ""expected"": {""k"": ""v""}, ""description"": ""bos a""}]","[""💡 İpucu 1: {**a, **b} Python 3.5+ syntax."", ""💡 İpucu 2: a | b Python 3.9+ operatörü."", ""💡 İpucu 3: dict(b.items() + a.items()) eski yöntem.""]",137,merge_dicts_override
@@ -311,8 +315,40 @@ pandas,DataFrame NaN Sayımı,dataframe-nan-sayimi,beginner,"Her sütun için Na
     pass","[{""input"": ""df with NaN in 2 cols"", ""expected"": ""{'a': 1, 'b': 2}"", ""description"": ""NaN var""}, {""input"": ""df no NaN"", ""expected"": ""{}"", ""description"": ""temiz""}, {""input"": ""df all NaN"", ""expected"": ""{'a': 5}"", ""description"": ""hepsi NaN""}]","[""💡 İpucu 1: df.isna().sum().to_dict() tek satırda çözer."", ""💡 İpucu 2: dict comprehension ile: {c: df[c].isna().sum() for c in df.columns}."", ""💡 İpucu 3: Series.sum() NaN'leri 0 sayar.""]",139,nan_counts
 data-structures,LRU Cache Uygulaması,lru-cache-uygulamasi,intermediate,"En az kullanılan (LRU) elemanı çıkaran bir cache sınıfı yaz.
 get(key) ve put(key, value) operasyonları O(1) olmalı.
-Kapasite dolduğunda en az kullanılan eleman çıkarılır.","def __init__(x: str) -> str:
-    pass","[{""ops"": [""LRUCache"", ""put"", ""put"", ""get"", ""put"", ""get""], ""args"": [[2], [1, 1], [2, 2], [1], [3, 3], [2]], ""expected"": [null, null, null, 1, null, -1], ""description"": ""klasik LRU""}, {""ops"": [""LRUCache"", ""put"", ""get""], ""args"": [[1], [2, 1], [2]], ""expected"": [null, null, 1], ""description"": ""basit get""}, {""ops"": [""LRUCache"", ""put"", ""put"", ""put"", ""get""], ""args"": [[2], [1, 1], [2, 2], [3, 3], [1]], ""expected"": [null, null, null, null, -1], ""description"": ""1 çıkarıldı""}, {""ops"": [""LRUCache"", ""get"", ""put"", ""get""], ""args"": [[2], [2], [2, 6], [2]], ""expected"": [null, -1, null, 6], ""description"": ""overwrite""}]","[""💡 İpucu 1: collections.OrderedDict.move_to_end."", ""💡 İpucu 2: dict + doubly linked list (Node sınıfı)."", ""💡 İpucu 3: get hit ettiğinde sırayı sona taşı.""]",141,__init__
+Kapasite dolduğunda en az kullanılan eleman çıkarılır.","def lru_cache_operations(ops: list, capacity: int = 2) -> list:
+    """"""""""""LRU Cache implementasyonu (ops tabanlı).
+    
+    ops: [('LRUCache', capacity), ('put', key, val), ('get', key), ...]
+    
+    Returns: Her op'in sonucu listesi
+    """"""""""""
+    cache = {}
+    order = []  # en eski solda
+    results = []
+    for op in ops:
+        if op[0] == 'LRUCache':
+            capacity = op[1]
+            results.append(None)
+        elif op[0] == 'put':
+            key, val = op[1], op[2]
+            if key in cache:
+                order.remove(key)
+            elif len(cache) >= capacity:
+                oldest = order.pop(0)
+                del cache[oldest]
+            cache[key] = val
+            order.append(key)
+            results.append(None)
+        elif op[0] == 'get':
+            key = op[1]
+            if key in cache:
+                order.remove(key)
+                order.append(key)
+                results.append(cache[key])
+            else:
+                results.append(-1)
+    return results
+","[{""ops"": [""LRUCache"", ""put"", ""put"", ""get"", ""put"", ""get""], ""args"": [[2], [1, 1], [2, 2], [1], [3, 3], [2]], ""expected"": [null, null, null, 1, null, -1], ""description"": ""klasik LRU""}, {""ops"": [""LRUCache"", ""put"", ""get""], ""args"": [[1], [2, 1], [2]], ""expected"": [null, null, 1], ""description"": ""basit get""}, {""ops"": [""LRUCache"", ""put"", ""put"", ""put"", ""get""], ""args"": [[2], [1, 1], [2, 2], [3, 3], [1]], ""expected"": [null, null, null, null, -1], ""description"": ""1 çıkarıldı""}, {""ops"": [""LRUCache"", ""get"", ""put"", ""get""], ""args"": [[2], [2], [2, 6], [2]], ""expected"": [null, -1, null, 6], ""description"": ""overwrite""}]","[""💡 İpucu 1: collections.OrderedDict.move_to_end."", ""💡 İpucu 2: dict + doubly linked list (Node sınıfı)."", ""💡 İpucu 3: get hit ettiğinde sırayı sona taşı.""]",141,lru_cache_operations
 dynamic-programming,Climbing Stairs,climbing-stairs,beginner,"n basamaklı bir merdiven var. Her adımda 1 veya 2 basamak çıkabilirsin.
 Kaç farklı yol var?
 Temel DP: dp[i] = dp[i-1] + dp[i-2] (Fibonacci).","def climb_stairs(n: int) -> int:
@@ -380,14 +416,38 @@ List[list[int]] input olarak gelir.","def merge_k_sorted_lists(lists: list) -> l
     # heapq yasak, manuel merge (k kere merge_two_sorted_lists)
     pass","[{""input"": [[1, 4, 5], [1, 3, 4], [2, 6]], ""expected"": [1, 1, 2, 3, 4, 4, 5, 6], ""description"": ""klasik 3 liste""}, {""input"": [[], [1, 2], []], ""expected"": [1, 2], ""description"": ""boş listeler var""}, {""input"": [[1]], ""expected"": [1], ""description"": ""tek liste tek eleman""}, {""input"": [], ""expected"": [], ""description"": ""boş input""}]","[""💡 heapq.merge(*lists) kullan"", ""💡 Veya manuel: (val, idx, list_idx) tuple heap'le"", ""💡 Her adımda en küçük elemanı al""]",156,merge_k_sorted_lists
 heap,Find Median from Data Stream,find-median-from-data-stream,advanced,"Veri akışından medyanı bul.
-İki heap: max-heap (küçük yarı) + min-heap (büyük yarı).","class MedianFinder:
-    def __init__(self):
-        # self.small = [], self.large = []
-        pass
-    def add_num(self, num: int) -> None:
-        pass
-    def find_median(self) -> float:
-        pass","[{""ops"": [""MedianFinder"", ""addNum"", ""addNum"", ""findMedian"", ""addNum"", ""findMedian""], ""args"": [[], [1], [2], [], [3], []], ""expected"": [null, null, null, 1.5, null, 2.0], ""description"": ""klasik""}, {""ops"": [""MedianFinder"", ""addNum"", ""findMedian""], ""args"": [[], [5], []], ""expected"": [null, null, 5.0], ""description"": ""tek eleman""}, {""ops"": [""MedianFinder"", ""addNum"", ""addNum"", ""addNum"", ""addNum"", ""findMedian""], ""args"": [[], [2], [3], [4], [5], []], ""expected"": [null, null, null, null, 3.5], ""description"": ""4 eleman sonra medyan""}, {""ops"": [""MedianFinder"", ""addNum"", ""addNum"", ""addNum""], ""args"": [[], [1], [2], [3], []], ""expected"": [null, null, null, 2.0], ""description"": ""3 eleman sonra medyan 2""}]","[""💡 small (max-heap) ≤ large (min-heap)"", ""💡 len(small) >= len(large), fark max 1"", ""💡 Medyan: small[0] veya (small[0]+large[0])/2""]",157,__init__
+İki heap: max-heap (küçük yarı) + min-heap (büyük yarı).","def median_finder_operations(ops: list) -> list:
+    """"""""""""MedianFinder implementasyonu.
+    
+    ops: [('MedianFinder',), ('addNum', num), ('findMedian',), ...]
+    
+    Returns: Her op'in sonucu listesi (findMedian: median değer)
+    """"""""""""
+    nums = []
+    results = []
+    for op in ops:
+        if op[0] == 'MedianFinder':
+            results.append(None)
+        elif op[0] == 'addNum':
+            num = op[1]
+            # Siralı ekleme (bisect ile)
+            lo, hi = 0, len(nums)
+            while lo < hi:
+                mid = (lo + hi) // 2
+                if nums[mid] < num:
+                    lo = mid + 1
+                else:
+                    hi = mid
+            nums.insert(lo, num)
+            results.append(None)
+        elif op[0] == 'findMedian':
+            n = len(nums)
+            if n % 2 == 1:
+                results.append(float(nums[n // 2]))
+            else:
+                results.append((nums[n // 2 - 1] + nums[n // 2]) / 2.0)
+    return results
+","[{""ops"": [""MedianFinder"", ""addNum"", ""addNum"", ""findMedian"", ""addNum"", ""findMedian""], ""args"": [[], [1], [2], [], [3], []], ""expected"": [null, null, null, 1.5, null, 2.0], ""description"": ""klasik""}, {""ops"": [""MedianFinder"", ""addNum"", ""findMedian""], ""args"": [[], [5], []], ""expected"": [null, null, 5.0], ""description"": ""tek eleman""}, {""ops"": [""MedianFinder"", ""addNum"", ""addNum"", ""addNum"", ""addNum"", ""findMedian""], ""args"": [[], [2], [3], [4], [5], []], ""expected"": [null, null, null, null, 3.5], ""description"": ""4 eleman sonra medyan""}, {""ops"": [""MedianFinder"", ""addNum"", ""addNum"", ""addNum""], ""args"": [[], [1], [2], [3], []], ""expected"": [null, null, null, 2.0], ""description"": ""3 eleman sonra medyan 2""}]","[""💡 small (max-heap) ≤ large (min-heap)"", ""💡 len(small) >= len(large), fark max 1"", ""💡 Medyan: small[0] veya (small[0]+large[0])/2""]",157,median_finder_operations
 heap,Task Scheduler,task-scheduler,intermediate,"Aynı task arasında en az n boşluk olmalı. Minimum süre?
 Örnek: tasks=['A','A','A','B','B','B'], n=2 → 8.
 En sık task sayısı max_count, frame = (max_count-1)*(n+1), toplam = max(frame, len(tasks)).","def least_interval(tasks: list, n: int) -> int:
@@ -406,20 +466,60 @@ Son kalan taşın ağırlığı?
 heap,Smallest Number Range,smallest-number-range,advanced,"K sıralı dizide hepsinden en az 1 eleman içeren en küçük aralık.
 Örnek: [[4,10,15,20,24], [0,9,12,20], [5,18,22,30]] → [20,24] (aralık 4).
 Heap ile: her dizinin ilk elemanını heap'e at, min/max takip et.","def smallest_range(nums: list) -> list:
-    # heap ile (max, idx, list_idx) takip
-    pass","[{""input"": [[4, 10, 15, 24, 26], [0, 9, 12, 20], [5, 18, 22, 30]], ""expected"": [20, 24], ""description"": ""klasik örnek""}, {""input"": [[1, 2, 3], [4, 5], [6, 7, 8, 9]], ""expected"": [4, 6], ""description"": ""basit""}, {""input"": [[1], [2], [3]], ""expected"": [1, 3], ""description"": ""her listeden birer eleman""}, {""input"": [[1, 2, 3, 4], [5, 6, 7, 8]], ""expected"": [1, 5], ""description"": ""iki liste""}]","[""💡 Her diziden ilk elemanı al, heap'e koy"", ""💡 Min'i pop, max'i tut, aralık güncelle"", ""💡 Pop edilen listeden sonraki elemana bak""]",161,smallest_range
+    if not nums: return []
+    # En az 1 eleman iceren en kucuk range
+    if len(nums) == 1:
+        if nums[0]: return [min(nums[0]), max(nums[0])]
+        return []
+    ranges = []
+    for lst in nums:
+        if lst: ranges.append((min(lst), max(lst)))
+    if not ranges: return []
+    ranges.sort()
+    # Tum listeleri kapsayan en kucuk aralik
+    lo = max(r[0] for r in ranges)
+    hi = min(r[1] for r in ranges)
+    if lo <= hi: return [lo, hi]
+    # Overlap yoksa en genis aralik
+    return [ranges[0][0], ranges[-1][1]]
+","[{""input"": [[4, 10, 15, 24, 26], [0, 9, 12, 20], [5, 18, 22, 30]], ""expected"": [20, 24], ""description"": ""klasik örnek""}, {""input"": [[1, 2, 3], [4, 5], [6, 7, 8, 9]], ""expected"": [4, 6], ""description"": ""basit""}, {""input"": [[1], [2], [3]], ""expected"": [1, 3], ""description"": ""her listeden birer eleman""}, {""input"": [[1, 2, 3, 4], [5, 6, 7, 8]], ""expected"": [1, 5], ""description"": ""iki liste""}]","[""💡 Her diziden ilk elemanı al, heap'e koy"", ""💡 Min'i pop, max'i tut, aralık güncelle"", ""💡 Pop edilen listeden sonraki elemana bak""]",161,smallest_range
 stack,Valid Parentheses,valid-parentheses,beginner,"Bir string'de parantezler dengeli mi kontrol et. Sadece () [] {} karakterleri.
 Açılışta stack push, kapanışta pop ve eşleşme kontrolü.
 Kapanışta stack boşsa False döndür.","def valid_parentheses(s: str) -> bool:
     # Manuel stack, balanced parentheses
     pass","[{""input"": ""()"", ""expected"": true, ""description"": ""en basit""}, {""input"": ""()[]{}"", ""expected"": true, ""description"": ""üç tip doğru""}, {""input"": ""(]"", ""expected"": false, ""description"": ""yanlış cins eşleşme""}, {""input"": ""([)]"", ""expected"": false, ""description"": ""yanlış sıralama""}, {""input"": ""{[]}"", ""expected"": true, ""description"": ""iç içe doğru""}]","[""💡 Stack'te son açılan parantezi tut"", ""💡 Kapanış gelince stack'ten pop, eşleşmeli"", ""💡 String sonunda stack boş olmalı""]",162,valid_parentheses
 stack,Min Stack,min-stack,intermediate,"Stack O(1)'de push, pop, top, getMin.
-Her değer için şu ana kadarki min'i sakla.","class MinStack:
-    def __init__(self): pass
-    def push(self, val: int) -> None: pass
-    def pop(self) -> None: pass
-    def top(self) -> int: pass
-    def get_min(self) -> int: pass","[{""ops"": [""MinStack"", ""push"", ""push"", ""push"", ""getMin"", ""pop"", ""getMin""], ""args"": [[], [-2], [0], [-3], [], [], []], ""expected"": [null, null, null, null, -3, null, -2], ""description"": ""klasik""}, {""ops"": [""MinStack"", ""push"", ""getMin""], ""args"": [[], [5], []], ""expected"": [null, null, 5], ""description"": ""tek push""}, {""ops"": [""MinStack"", ""push"", ""push"", ""top"", ""getMin""], ""args"": [[], [1], [2], [], []], ""expected"": [null, null, 2, 1], ""description"": ""top + getMin""}, {""ops"": [""MinStack"", ""push"", ""push"", ""push"", ""pop"", ""pop"", ""getMin""], ""args"": [[], [2], [0], [3], [], [], []], ""expected"": [null, null, null, null, null, null, 2], ""description"": ""pop sonrası min""}]","[""💡 Tuple stack: (val, current_min)"", ""💡 Her push'ta min(val, son_min)"", ""💡 Pop'ta tuple'ı sil, top eski tuple'dan""]",163,__init__
+Her değer için şu ana kadarki min'i sakla.","def min_stack_operations(ops: list) -> list:
+    """"""""""""MinStack implementasyonu.
+    
+    ops: [('MinStack',), ('push', val), ('pop',), ('top',), ('getMin',), ...]
+    
+    Returns: Her op'in sonucu listesi
+    """"""""""""
+    stack = []
+    min_stack = []
+    results = []
+    for op in ops:
+        if op[0] == 'MinStack':
+            results.append(None)
+        elif op[0] == 'push':
+            val = op[1]
+            stack.append(val)
+            if not min_stack or val <= min_stack[-1]:
+                min_stack.append(val)
+            results.append(None)
+        elif op[0] == 'pop':
+            if stack:
+                val = stack.pop()
+                if val == min_stack[-1]:
+                    min_stack.pop()
+                results.append(None)
+        elif op[0] == 'top':
+            results.append(stack[-1] if stack else None)
+        elif op[0] == 'getMin':
+            results.append(min_stack[-1] if min_stack else None)
+    return results
+","[{""ops"": [""MinStack"", ""push"", ""push"", ""push"", ""getMin"", ""pop"", ""getMin""], ""args"": [[], [-2], [0], [-3], [], [], []], ""expected"": [null, null, null, null, -3, null, -2], ""description"": ""klasik""}, {""ops"": [""MinStack"", ""push"", ""getMin""], ""args"": [[], [5], []], ""expected"": [null, null, 5], ""description"": ""tek push""}, {""ops"": [""MinStack"", ""push"", ""push"", ""top"", ""getMin""], ""args"": [[], [1], [2], [], []], ""expected"": [null, null, 2, 1], ""description"": ""top + getMin""}, {""ops"": [""MinStack"", ""push"", ""push"", ""push"", ""pop"", ""pop"", ""getMin""], ""args"": [[], [2], [0], [3], [], [], []], ""expected"": [null, null, null, null, null, null, 2], ""description"": ""pop sonrası min""}]","[""💡 Tuple stack: (val, current_min)"", ""💡 Her push'ta min(val, son_min)"", ""💡 Pop'ta tuple'ı sil, top eski tuple'dan""]",163,min_stack_operations
 stack,Daily Temperatures,daily-temperatures,intermediate,"Her gün için, sonraki daha sıcak günü kaç gün sonra? Yoksa 0.
 Örnek: [73,74,75,71,69,72,76,73] → [1,1,4,2,1,1,0,0].
 Stack (monotonic decreasing) ile O(n) çözüm: indeksleri tut.","def daily_temperatures(temps: list) -> list:
@@ -436,36 +536,121 @@ Monotonik stack ile O(n).","def largest_rectangle(heights: list) -> int:
     # stack'te index tut, artan heights
     pass","[{""input"": [2, 1, 5, 6, 2, 3], ""expected"": 10, ""description"": ""klasik""}, {""input"": [2, 4], ""expected"": 4, ""description"": ""iki bar""}, {""input"": [1], ""expected"": 1, ""description"": ""tek bar""}, {""input"": [0, 0, 0], ""expected"": 0, ""description"": ""sıfır yükseklik""}]","[""💡 Stack'te artan yüksekliklerin indexleri"", ""💡 heights[i] < stack top: genişlik = i - stack[-2] - 1"", ""💡 Sonda sentinel -1 ile stack boşalt""]",166,largest_rectangle
 queue,Implement Queue with Stacks,implement-queue-with-stacks,beginner,"Sadece stack kullanarak queue implement et. Amortized O(1) enqueue/dequeue.
-push: input stack'e ekle. pop: output stack boşsa input'tan aktar, sonra output'tan pop. Amortized O(1) çünkü her eleman en fazla 2 transfer.","class MyQueue:
-    def __init__(self): pass
-    def push(self, x: int) -> None: pass
-    def pop(self) -> int: pass
-    def peek(self) -> int: pass
-    def empty(self) -> bool: pass","[{""ops"": [""MyQueue"", ""push"", ""push"", ""peek"", ""pop"", ""empty""], ""args"": [[], [1], [2], [], [], []], ""expected"": [null, null, null, 1, 1, false], ""description"": ""klasik""}, {""ops"": [""MyQueue"", ""push"", ""pop"", ""empty""], ""args"": [[], [5], [], []], ""expected"": [null, null, 5, true], ""description"": ""tek push pop""}, {""ops"": [""MyQueue"", ""empty""], ""args"": [[]], ""expected"": [null, true], ""description"": ""boş queue kontrolü""}, {""ops"": [""MyQueue"", ""push"", ""push"", ""push"", ""pop"", ""pop"", ""pop"", ""empty""], ""args"": [[], [1], [2], [3], [], [], [], []], ""expected"": [null, null, null, null, 1, 2, 3, true], ""description"": ""FIFO sıra""}]","[""💡 İki stack: input + output"", ""💡 Pop/peek'te output boşsa input'tan aktar"", ""💡 Amortized O(1): her eleman max 2 kez taşınır""]",167,__init__
+push: input stack'e ekle. pop: output stack boşsa input'tan aktar, sonra output'tan pop. Amortized O(1) çünkü her eleman en fazla 2 transfer.","def my_queue_operations(ops: list) -> list:
+    """"""""""""Queue implementasyonu (stack'lerle).
+    
+    ops: [('MyQueue',), ('push', x), ('pop',), ('peek',), ('empty',), ...]
+    """"""""""""
+    in_stack = []
+    out_stack = []
+    results = []
+    for op in ops:
+        if op[0] == 'MyQueue':
+            results.append(None)
+        elif op[0] == 'push':
+            in_stack.append(op[1])
+            results.append(None)
+        elif op[0] == 'pop':
+            if not out_stack:
+                while in_stack:
+                    out_stack.append(in_stack.pop())
+            results.append(out_stack.pop() if out_stack else None)
+        elif op[0] == 'peek':
+            if not out_stack:
+                while in_stack:
+                    out_stack.append(in_stack.pop())
+            results.append(out_stack[-1] if out_stack else None)
+        elif op[0] == 'empty':
+            results.append(len(in_stack) == 0 and len(out_stack) == 0)
+    return results
+","[{""ops"": [""MyQueue"", ""push"", ""push"", ""peek"", ""pop"", ""empty""], ""args"": [[], [1], [2], [], [], []], ""expected"": [null, null, null, 1, 1, false], ""description"": ""klasik""}, {""ops"": [""MyQueue"", ""push"", ""pop"", ""empty""], ""args"": [[], [5], [], []], ""expected"": [null, null, 5, true], ""description"": ""tek push pop""}, {""ops"": [""MyQueue"", ""empty""], ""args"": [[]], ""expected"": [null, true], ""description"": ""boş queue kontrolü""}, {""ops"": [""MyQueue"", ""push"", ""push"", ""push"", ""pop"", ""pop"", ""pop"", ""empty""], ""args"": [[], [1], [2], [3], [], [], [], []], ""expected"": [null, null, null, null, 1, 2, 3, true], ""description"": ""FIFO sıra""}]","[""💡 İki stack: input + output"", ""💡 Pop/peek'te output boşsa input'tan aktar"", ""💡 Amortized O(1): her eleman max 2 kez taşınır""]",167,my_queue_operations
 queue,Design Circular Queue,design-circular-queue,intermediate,"Sabit boyutlu circular queue tasarla.
 FIFO, front/rear wrap around (modular). O(1) enqueue/dequeue.
-Dolu vs boş kontrolü: count veya bir slot boş bırak (capacity vs max_size).","class CircularQueue:
-    def __init__(self, k: int): pass
-    def en_queue(self, value: int) -> bool: pass
-    def de_queue(self) -> bool: pass
-    def front(self) -> int: pass
-    def rear(self) -> int: pass
-    def is_empty(self) -> bool: pass
-    def is_full(self) -> bool: pass","[{""ops"": [""CircularQueue"", ""enQueue"", ""enQueue"", ""enQueue"", ""enQueue"", ""rear"", ""isFull"", ""deQueue"", ""enQueue"", ""front""], ""args"": [[3], [1], [2], [3], [4], [], [], [], [4], []], ""expected"": [null, true, true, true, false, 3, true, true, true, 4], ""description"": ""klasik LeetCode""}, {""ops"": [""CircularQueue"", ""enQueue"", ""deQueue"", ""front""], ""args"": [[2], [1], [], []], ""expected"": [null, true, true, -1], ""description"": ""dequeue sonrası boş""}, {""ops"": [""CircularQueue"", ""enQueue"", ""rear"", ""isFull""], ""args"": [[1], [1], [], []], ""expected"": [null, true, 1, true], ""description"": ""kapasite 1 dolu""}, {""ops"": [""CircularQueue"", ""enQueue"", ""enQueue"", ""deQueue"", ""deQueue"", ""isEmpty""], ""args"": [[2], [1], [2], [], [], []], ""expected"": [null, true, true, true, true, true], ""description"": ""boşaldıktan sonra isEmpty""}]","[""💡 head/tail index, modulo ile wrap"", ""💡 count ile boş/dolu takibi"", ""💡 Veya bir slot boş bırak (head==tail → boş)""]",169,__init__
+Dolu vs boş kontrolü: count veya bir slot boş bırak (capacity vs max_size).","def circular_queue_operations(ops: list) -> list:
+    """"""""""""Circular Queue implementasyonu.
+    
+    ops: [('CircularQueue', k), ('enQueue', val), ('deQueue',), ('Front',), ('Rear',), ('isEmpty',), ('isFull',), ...]
+    """"""""""""
+    queue = []
+    capacity = 0
+    results = []
+    for op in ops:
+        if op[0] == 'CircularQueue':
+            capacity = op[1]
+            queue = []
+            results.append(None)
+        elif op[0] == 'enQueue':
+            if len(queue) < capacity:
+                queue.append(op[1])
+                results.append(True)
+            else:
+                results.append(False)
+        elif op[0] == 'deQueue':
+            if queue:
+                queue.pop(0)
+                results.append(True)
+            else:
+                results.append(False)
+        elif op[0] == 'Front':
+            results.append(queue[0] if queue else -1)
+        elif op[0] == 'Rear':
+            results.append(queue[-1] if queue else -1)
+        elif op[0] == 'isEmpty':
+            results.append(len(queue) == 0)
+        elif op[0] == 'isFull':
+            results.append(len(queue) == capacity)
+    return results
+","[{""ops"": [""CircularQueue"", ""enQueue"", ""enQueue"", ""enQueue"", ""enQueue"", ""rear"", ""isFull"", ""deQueue"", ""enQueue"", ""front""], ""args"": [[3], [1], [2], [3], [4], [], [], [], [4], []], ""expected"": [null, true, true, true, false, 3, true, true, true, 4], ""description"": ""klasik LeetCode""}, {""ops"": [""CircularQueue"", ""enQueue"", ""deQueue"", ""front""], ""args"": [[2], [1], [], []], ""expected"": [null, true, true, -1], ""description"": ""dequeue sonrası boş""}, {""ops"": [""CircularQueue"", ""enQueue"", ""rear"", ""isFull""], ""args"": [[1], [1], [], []], ""expected"": [null, true, 1, true], ""description"": ""kapasite 1 dolu""}, {""ops"": [""CircularQueue"", ""enQueue"", ""enQueue"", ""deQueue"", ""deQueue"", ""isEmpty""], ""args"": [[2], [1], [2], [], [], []], ""expected"": [null, true, true, true, true, true], ""description"": ""boşaldıktan sonra isEmpty""}]","[""💡 head/tail index, modulo ile wrap"", ""💡 count ile boş/dolu takibi"", ""💡 Veya bir slot boş bırak (head==tail → boş)""]",169,circular_queue_operations
 queue,Number of Recent Calls,number-of-recent-calls,beginner,"Son 3000 ms içindeki ping sayısı. Her ping() çağrısı için.
 Deque (queue) ile: eski pings'leri (t-3000'den küçük) öne at, yeni ping'i arkaya ekle, len(deque) döndür.
-Örnek: ping(1), ping(300), ping(3000) → 3; ping(3002) → 3 (300 düşer).","class RecentCounter:
-    def __init__(self): pass
-    def ping(self, t: int) -> int:
-        # deque, t-3000'den küçükleri at
-        pass","[{""ops"": [""RecentCounter"", ""ping"", ""ping"", ""ping"", ""ping""], ""args"": [[], [1], [100], [3001], [3002]], ""expected"": [null, 1, 2, 3, 3], ""description"": ""klasik""}, {""ops"": [""RecentCounter"", ""ping"", ""ping""], ""args"": [[], [1], [3001]], ""expected"": [null, 1, 1], ""description"": ""3001'den düşen""}, {""ops"": [""RecentCounter"", ""ping""], ""args"": [[], [5000]], ""expected"": [null, 1], ""description"": ""tek ping""}, {""ops"": [""RecentCounter"", ""ping"", ""ping"", ""ping""], ""args"": [[], [1], [2000], [5000]], ""expected"": [null, 1, 2, 1], ""description"": ""ardışık pencereler""}]","[""💡 deque'ya t ekle"", ""💡 deque[0] < t-3000 ise pop"", ""💡 len(deque) = cevap""]",170,__init__
+Örnek: ping(1), ping(300), ping(3000) → 3; ping(3002) → 3 (300 düşer).","def recent_counter_operations(ops: list) -> list:
+    """"""""""""RecentCounter (son 3000ms ping'ler).
+    
+    ops: [('RecentCounter',), ('ping', t), ...]
+    """"""""""""
+    pings = []
+    results = []
+    for op in ops:
+        if op[0] == 'RecentCounter':
+            pings = []
+            results.append(None)
+        elif op[0] == 'ping':
+            t = op[1]
+            pings.append(t)
+            # Son 3000ms penceresi
+            cutoff = t - 3000
+            # Eski ping'leri at (siralı olduğu icin soldan)
+            while pings and pings[0] < cutoff:
+                pings.pop(0)
+            results.append(len(pings))
+    return results
+","[{""ops"": [""RecentCounter"", ""ping"", ""ping"", ""ping"", ""ping""], ""args"": [[], [1], [100], [3001], [3002]], ""expected"": [null, 1, 2, 3, 3], ""description"": ""klasik""}, {""ops"": [""RecentCounter"", ""ping"", ""ping""], ""args"": [[], [1], [3001]], ""expected"": [null, 1, 1], ""description"": ""3001'den düşen""}, {""ops"": [""RecentCounter"", ""ping""], ""args"": [[], [5000]], ""expected"": [null, 1], ""description"": ""tek ping""}, {""ops"": [""RecentCounter"", ""ping"", ""ping"", ""ping""], ""args"": [[], [1], [2000], [5000]], ""expected"": [null, 1, 2, 1], ""description"": ""ardışık pencereler""}]","[""💡 deque'ya t ekle"", ""💡 deque[0] < t-3000 ise pop"", ""💡 len(deque) = cevap""]",170,recent_counter_operations
 queue,Moving Average from Data Stream,moving-average-from-data-stream,intermediate,"Son N değerin hareketli ortalamasını (sliding window) hesapla.
 next(val) çağrıldıkça queue'nun son N değerinin ortalamasını döndür.
-N'den az eleman varsa mevcut elemanların ortalamasını al.","class MovingAverage:
-    def __init__(self, size: int): pass
-    def next(self, val: float) -> float:
-        # queue, sum, window dolunca eskiyi cikar
-        pass","[{""ops"": [""MovingAverage"", ""next"", ""next"", ""next"", ""next""], ""args"": [[3], [1], [10], [3], [5]], ""expected"": [null, 1.0, 5.5, 4.666666666666667, 6.0], ""description"": ""klasik LeetCode""}, {""ops"": [""MovingAverage"", ""next""], ""args"": [[2], [5]], ""expected"": [null, 5.0], ""description"": ""tek değer""}, {""ops"": [""MovingAverage"", ""next"", ""next"", ""next""], ""args"": [[2], [1], [2], [3]], ""expected"": [null, 1.0, 1.5, 2.5], ""description"": ""sliding window""}, {""ops"": [""MovingAverage"", ""next"", ""next""], ""args"": [[1], [10], [20]], ""expected"": [null, 10.0, 20.0], ""description"": ""pencere boyutu 1""}]","[""💡 deque maxlen=size"", ""💡 sum tut"", ""💡 Her next: push + sum güncelle""]",171,__init__
+N'den az eleman varsa mevcut elemanların ortalamasını al.","def moving_average_operations(ops: list) -> list:
+    """"""""""""MovingAverage (son N degerin ortalamasi).
+    
+    ops: [('MovingAverage', size), ('next', val), ...]
+    """"""""""""
+    window = []
+    size = 0
+    total = 0
+    results = []
+    for op in ops:
+        if op[0] == 'MovingAverage':
+            size = op[1]
+            window = []
+            total = 0
+            results.append(None)
+        elif op[0] == 'next':
+            val = op[1]
+            window.append(val)
+            total += val
+            if len(window) > size:
+                total -= window.pop(0)
+            results.append(total / len(window))
+    return results
+","[{""ops"": [""MovingAverage"", ""next"", ""next"", ""next"", ""next""], ""args"": [[3], [1], [10], [3], [5]], ""expected"": [null, 1.0, 5.5, 4.666666666666667, 6.0], ""description"": ""klasik LeetCode""}, {""ops"": [""MovingAverage"", ""next""], ""args"": [[2], [5]], ""expected"": [null, 5.0], ""description"": ""tek değer""}, {""ops"": [""MovingAverage"", ""next"", ""next"", ""next""], ""args"": [[2], [1], [2], [3]], ""expected"": [null, 1.0, 1.5, 2.5], ""description"": ""sliding window""}, {""ops"": [""MovingAverage"", ""next"", ""next""], ""args"": [[1], [10], [20]], ""expected"": [null, 10.0, 20.0], ""description"": ""pencere boyutu 1""}]","[""💡 deque maxlen=size"", ""💡 sum tut"", ""💡 Her next: push + sum güncelle""]",171,moving_average_operations
 dynamic-programming,Longest Palindromic Subsequence,longest-palindromic-subsequence,intermediate,"Bir string'in en uzun palindromik alt-dizisinin (subsequence) uzunluğunu bul. Karakterler arası karakter atlanabilir, sıra korunmalı.
 Örnek: 'bbbab' → 4 ('bbbb').","def longest_palindromic_subsequence(text: str) -> int:
     pass","[{""input"": ""bbbab"", ""expected"": 4}, {""input"": ""cbbd"", ""expected"": 2}, {""input"": ""a"", ""expected"": 1}, {""input"": ""racecar"", ""expected"": 7}]","[""💡 İpucu 1: dp[i][j] = i..j aralığındaki en uzun palindromik subsequence uzunluğu."", ""💡 İpucu 2: text[i] == text[j] ise dp[i][j] = dp[i+1][j-1] + 2, değilse max(dp[i+1][j], dp[i][j-1])."", ""💡 İpucu 3: text ve text[::-1] için LCS problemine indirgenebilir.""]",172,longest_palindromic_subsequence
