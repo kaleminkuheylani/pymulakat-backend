@@ -461,3 +461,97 @@ def bulk_seed_test():
     except Exception as e:
         log.exception("bulk-seed-test failed")
         return {"error": str(e)[:500]}
+
+class BulkSeedResponse(BaseModel):
+    total: int
+    inserted: int
+    updated: int
+    failed: int
+    errors: List[Dict[str, Any]] = []
+
+
+@router.post("/bulk-seed-questions")
+def bulk_seed_questions(batch_size: int = 20):
+    """data/QUESTIONS-v3.csv -> Supabase batch upsert (PostgREST 42601 icin)."""
+    sb = get_supabase_admin()
+
+    csv_paths = ["data/QUESTIONS-v3.csv", "/app/data/QUESTIONS-v3.csv"]
+    csv_path = None
+    for p_path in csv_paths:
+        if Path(p_path).exists():
+            csv_path = p_path
+            break
+    if not csv_path:
+        raise HTTPException(status_code=404, detail="QUESTIONS-v3.csv not found")
+
+    # Once CSV'yi oku ve parse et
+    rows = []
+    with open(csv_path, encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            sid = int(row.get("id", "0") or 0)
+            if not sid:
+                continue
+            tc_raw = row.get("test_cases", "[]")
+            hints_raw = row.get("hints", "[]")
+            try:
+                test_cases = json.loads(tc_raw) if tc_raw.startswith("[") else tc_raw
+            except Exception:
+                test_cases = tc_raw
+            try:
+                hints = json.loads(hints_raw) if hints_raw.startswith("[") else hints_raw
+            except Exception:
+                hints = hints_raw
+
+            rows.append({
+                "id": sid,
+                "category": row.get("category", ""),
+                "title": row.get("title", ""),
+                "slug": row.get("slug", ""),
+                "level": row.get("level", "beginner"),
+                "description": row.get("description", ""),
+                "function_name": row.get("function_name", ""),
+                "starter_code": row.get("starter_code", ""),
+                "test_cases": test_cases,
+                "hints": hints,
+            })
+
+    inserted = 0
+    failed = 0
+    errors = []
+
+    # Batch'li upsert (PostgREST 42601: payload too large)
+    for i in range(0, len(rows), batch_size):
+        batch = rows[i:i + batch_size]
+        try:
+            # upsert batch
+            result = sb.table("questions").upsert(
+                batch, on_conflict="id"
+            ).execute()
+            if result.data:
+                inserted += len(result.data)
+        except Exception as e:
+            # batch fail olduysa tek tek dene (hangi satir patliyor bul)
+            err_msg = str(e)[:500]
+            log.warning(f"Batch {i}-{i+batch_size} upsert fail: {err_msg}")
+            for row in batch:
+                try:
+                    sb.table("questions").upsert(
+                        [row], on_conflict="id"
+                    ).execute()
+                    inserted += 1
+                except Exception as e2:
+                    failed += 1
+                    errors.append({"id": row["id"], "error": str(e2)[:200]})
+                    if len(errors) < 10:
+                        log.exception("Row upsert failed for id=%s", row["id"])
+
+    return BulkSeedResponse(
+        total=inserted + failed,
+        inserted=inserted,
+        updated=0,
+        failed=failed,
+        errors=errors,
+    )
+
+
