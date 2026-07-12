@@ -98,10 +98,24 @@ def _extract_function_name(starter_code: Optional[str]) -> str:
     return "solution"
 
 
+def _to_jsonb_list(v):
+    """PostgREST JSONB alanı bazen string döndürür. Güvenli list dönüşümü."""
+    if v is None:
+        return []
+    if isinstance(v, list):
+        return v
+    if isinstance(v, str):
+        try:
+            parsed = json.loads(v)
+            return parsed if isinstance(parsed, list) else []
+        except Exception:
+            return []
+    return []
+
+
 def _to_question_out(q, include_starter: bool = False) -> QuestionOut:
-    test_cases = _q_get(q, "test_cases", []) or []
-    if not isinstance(test_cases, list):
-        test_cases = []
+    raw_test_cases = _to_jsonb_list(_q_get(q, "test_cases", []))
+    test_cases = raw_test_cases
     starter_code = _q_get(q, "starter_code") if include_starter else None
     function_name = (
         _extract_function_name(starter_code)
@@ -115,21 +129,21 @@ def _to_question_out(q, include_starter: bool = False) -> QuestionOut:
         level=_q_get(q, "level"),
         topic=_q_get(q, "topic"),
         category=_q_get(q, "category"),
-        tags=_q_get(q, "tags", []) or [],
+        tags=_to_jsonb_list(_q_get(q, "tags", [])),
         starter_code=starter_code,
         test_count=len(test_cases),
         test_cases=test_cases if include_starter else [],
         function_name=function_name,
-        hints=_q_get(q, "hints", []) or [],
+        hints=_to_jsonb_list(_q_get(q, "hints", [])),
         explanation=_q_get(q, "explanation"),
         complexity=_q_get(q, "complexity"),
-        related_concepts=_q_get(q, "related_concepts", []) or [],
-        related_question_ids=_q_get(q, "related_question_ids", []) or [],
+        related_concepts=_to_jsonb_list(_q_get(q, "related_concepts", [])),
+        related_question_ids=_to_jsonb_list(_q_get(q, "related_question_ids", [])),
         tutorial_slug=_q_get(q, "tutorial_slug"),
         slug=str(_q_get(q, "slug") or _q_get(q, "id")),
         meta_title=_q_get(q, "meta_title"),
         meta_description=_q_get(q, "meta_description"),
-        meta_keywords=_q_get(q, "meta_keywords", []) or [],
+        meta_keywords=_to_jsonb_list(_q_get(q, "meta_keywords", [])),
     )
 
 
