@@ -20,11 +20,18 @@ import time
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import httpx
+
+# httpx opsiyonel: Mavis API yoksa urllib ile fallback
+try:
+    import httpx
+    HTTPX_AVAILABLE = True
+except ImportError:
+    HTTPX_AVAILABLE = False
+    import urllib.request
 
 from supabase_client import get_supabase_admin
 
-router = APIRouter(prefix="/admin/audit", tags=["admin-audit"])
+router = APIRouter(prefix="/audit", tags=["admin-audit"])
 log = logging.getLogger("pymulakat.audit")
 
 # Mavis API config (OpenAI uyumlu)
@@ -188,6 +195,44 @@ async def generate_code(req: GenerateRequest):
 
     prompt = _build_prompt(req)
     start = time.time()
+
+    if not HTTPX_AVAILABLE:
+        # urllib fallback (sync)
+        body = json.dumps({
+            "model": MAVIS_MODEL,
+            "messages": [
+                {"role": "system", "content": "Sen deneyimli Python yazılımcısı."},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.2,
+            "max_tokens": 1500,
+        }).encode("utf-8")
+        req_obj = urllib.request.Request(
+            f"{MAVIS_API_BASE}/chat/completions",
+            data=body,
+            headers={
+                "Authorization": f"Bearer {MAVIS_API_KEY}",
+                "Content-Type": "application/json",
+            },
+        )
+        with urllib.request.urlopen(req_obj, timeout=30) as resp:
+            response_text = resp.read().decode("utf-8")
+            data = json.loads(response_text)
+        content = data["choices"][0]["message"]["content"]
+        code = content.strip()
+        if code.startswith("```"):
+            lines = code.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            code = "\n".join(lines).strip()
+        elapsed_ms = int((time.time() - start) * 1000)
+        tokens = data.get("usage", {}).get("total_tokens", 0)
+        return GenerateResponse(
+            code=code, model=MAVIS_MODEL,
+            tokens_used=tokens, elapsed_ms=elapsed_ms,
+        )
 
     try:
         async with httpx.AsyncClient(timeout=30) as client:

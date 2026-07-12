@@ -22,12 +22,18 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 log = logging.getLogger("pymulakat.admin")
 
 # Audit endpoints (import edip router'a ekle)
+import sys
+import traceback
 try:
     from routers.audit import router as audit_router
     router.include_router(audit_router)
     log.info("✅ audit endpoints yüklendi (Mavis API + test runner)")
+    print(f"✅ audit_router.routes: {[r.path for r in audit_router.routes]}", file=sys.stderr)
 except Exception as e:
-    log.exception(f"❌ audit router yüklenemedi: {e}")
+    err_msg = f"❌ audit router yüklenemedi: {e}"
+    log.exception(err_msg)
+    print(err_msg, file=sys.stderr)
+    print(traceback.format_exc(), file=sys.stderr)
 
 
 # ═══════════════════════════════════════════════════════════════
