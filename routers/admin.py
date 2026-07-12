@@ -792,3 +792,49 @@ def reset_audit_status():
         return {"updated": updated, "message": f"{updated} soru audit pending yapildi"}
     except Exception as e:
         raise HTTPException(500, f"Reset failed: {e}")
+
+# ═══════════════════════════════════════════════════════════════
+# ─── Password management (super admin only) ─────────────────
+# ═══════════════════════════════════════════════════════════════
+
+@router.post("/users/set-password-by-email")
+def set_user_password_by_email(req: dict):
+    """Email ile user bul, sifresini sifirla (service_role ile).
+    
+    Body: { "email": "...", "password": "yeni-sifre" }
+    
+    Super admin onayi gerekir.
+    """
+    email = req.get("email", "")
+    password = req.get("password", "")
+    
+    if not email or not password:
+        raise HTTPException(400, "email ve password gerekli")
+    if len(password) < 8:
+        raise HTTPException(400, "Password en az 8 karakter")
+    
+    sb = get_supabase_admin()
+    try:
+        result = sb.auth.admin.list_users(page=1, per_page=200)
+        target = None
+        for u in result:
+            if u.email and u.email.lower() == email.lower():
+                target = u
+                break
+        if not target:
+            raise HTTPException(404, f"User bulunamadi: {email}")
+        
+        sb.auth.admin.update_user_by_id(
+            target.id,
+            {"password": password}
+        )
+        return {
+            "id": target.id,
+            "email": target.email,
+            "password_updated": True,
+            "message": f"{email} sifresi guncellendi",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Set password failed: {e}")
