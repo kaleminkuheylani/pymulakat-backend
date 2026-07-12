@@ -156,38 +156,18 @@ Sonuç: (karakter, zincir uzunluğu","def longest_char_chain(nums: str) -> list[
 algorithms,Alt Dizi Toplam Kontrolü,alt-dizi-toplam-kontrolu,intermediate,"Bir sayı listesi ve bir hedef sayı veriliyor.
 Listedeki herhangi bir alt dizinin (continuous subsequence","def has_subarray_with_sum(x: dict) -> bool:
     pass","[{""input"": {""nums"": [1, 4, 20, 3, 10, 5], ""target"": 33}, ""expected"": true}, {""input"": {""nums"": [1, 2, 3, 4], ""target"": 15}, ""expected"": false}, {""input"": {""nums"": [1, 2, 3], ""target"": 6}, ""expected"": true}, {""input"": {""nums"": [0, 0], ""target"": 0}, ""expected"": true}, {""input"": {""nums"": [-2, -1, 0, 1, 2], ""target"": 0}, ""expected"": true}]","[""💡 İpucu 1: Sliding window tekniği düşün — başlangıç ve bitiş işaretçileri."", ""💡 İpucu 2: Mevcut toplam hedefi aştıysa, başlangıcı kaydır."", ""💡 İpucu 3: Negatif sayılar varsa sliding window çalışmaz — prefix sum + hashmap dene.""]",72,has_subarray_with_sum
-algorithms,Benzersiz Alt Dizgi Sayısı,benzersiz-alt-dizgi-sayisi,intermediate,"Bir string'deki tüm benzersiz alt dizgilerin (substring) sayısını bul.
-Örnek: 'abc' → 6 ('a', 'b', 'c', 'ab', 'bc', 'abc').
-Formül: n*(n+1)/2 benzersiz substring'ler için, ama tekrar varsa azalır.
-En etkili çözüm: tüm olası substring'leri set'e ekle, len(set) al.","def count_unique_substrings(x: str) -> int:
-    pass","[{""input"": ""abc"", ""expected"": 6}, {""input"": ""aaa"", ""expected"": 2}, {""input"": """", ""expected"": 0}, {""input"": ""abcd"", ""expected"": 10}, {""input"": ""aab"", ""expected"": 4}]","[""💡 İpucu 1: Her karakterden başlayarak tüm alt dizgileri oluştur."", ""💡 İpucu 2: Bir set() kullanarak benzersiz olanları sakla."", ""💡 İpucu 3: İç içe döngü yerine, her i için j=i+1,...,len(s) alt dizgisini sete ekle.""]",73,count_unique_substrings
 python-basics,Cift Sayilari Filtrele ve Karelerini Topla,cift-sayilari-filtrele-ve-karelerini-topla,beginner,"Bir sayi listesi var. Listedeki SADECE cift sayilarin karelerini al ve topla.
 Tek sayilar yok sayilir (sadece ciftler","def sum_of_even_squares(nums: list[int]) -> int:
     pass","[{""input"": [2, 3, 4, 5, 6], ""expected"": 56}, {""input"": [1, 3, 5, 7], ""expected"": 0}, {""input"": [10], ""expected"": 100}, {""input"": [], ""expected"": 0}]","[""💡 Ipucu 1: x % 2 == 0 ile cift sayilari filtrele."", ""💡 Ipucu 2: sum() icinde generator expression kullan."", ""💡 Ipucu 3: sum(x*x for x in nums if x % 2 == 0) tek satirda coz.""]",84,sum_of_even_squares
 python-basics,Iki String Arasindaki Ortak Karakterler,iki-string-arasindaki-ortak-karakterler,beginner,"İki string arasında ortak karakterleri (küçük harf duyarsız, tekrar etmeyen) alfabetik sırayla liste olarak döndüren fonksiyon yaz.","def common_chars(s: str, text: str) -> list | list[str]:
     pass","[{""input"": [""Merhaba"", ""Araba""], ""expected"": [""a"", ""r""]}, {""input"": [""Python"", ""Java""], ""expected"": [""a""]}, {""input"": [""abc"", ""def""], ""expected"": []}, {""input"": [""AAA"", ""aaa""], ""expected"": [""a""]}]","[""💡 Ipucu 1: set(a.lower()) & set(b.lower()) -> kesisim."", ""💡 Ipucu 2: sorted() ile alfabetik siraya koy."", ""💡 Ipucu 3: list(sorted(set(a.lower()) & set(b.lower()))) tek satir.""]",85,common_chars
-python-basics,Listedeki En Sik Tekrar Eden Eleman,listedeki-en-sik-tekrar-eden-eleman,beginner,"Bir liste var. En sik gecen elemani dondur.
-Birden fazla esit siklik varsa en kucuk sayiyi veya alfabetik ilk olani dondur.
-Ornek: [1, 3, 2, 3, 4, 1, 1] -> 1 (4 kez","def most_frequent(nums: list[int]) -> int | str:
-    pass","[{""input"": [1, 3, 2, 3, 4, 1, 1], ""expected"": 1}, {""input"": [""a"", ""b"", ""a"", ""c""], ""expected"": ""a""}, {""input"": [5, 5, 3, 3, 1], ""expected"": 3}, {""input"": [1], ""expected"": 1}]","[""💡 Ipucu 1: from collections import Counter -> Counter(items).most_common()."", ""💡 Ipucu 2: max_count = max(c.values()) -> en yuksek frekans."", ""💡 Ipucu 3: candidates = [k for k,v in c.items() if v == max_count]; min(candidates) ile coz.""]",86,most_frequent
 algorithms,Sayilari Toplami Hedefe Esit Olan Ciftler,sayilari-toplami-hedefe-esit-olan-ciftler,intermediate,"Bir liste ve bir hedef sayi var. Listedeki hangi iki sayinin toplami hedefe esit?
 Tum benzersiz ciftleri (kucuk, buyuk","def two_sum_pairs(nums: list[int], target: int) -> list[list[int]]:
     pass","[{""input"": [[2, 7, 11, 15], 9], ""expected"": [[2, 7]]}, {""input"": [[1, 5, 3, 7, 9], 12], ""expected"": [[3, 9], [5, 7]]}, {""input"": [[1, 2, 3], 10], ""expected"": []}, {""input"": [[3, 3], 6], ""expected"": [[3, 3]]}, {""input"": [[-1, -2, -3, 4, 5], 2], ""expected"": [[-3, 5], [-1, 3]]}]",[],88,two_sum_pairs
-algorithms,Rotasyon Adimini Bul,rotasyon-adimini-bul,intermediate,"Bir liste veriliyor. Bu liste sirali bir dizinin rotasyonu.
-Rotasyon adimini bul (kac kez sola donduruldu","def rotation_count(nums: list[int]) -> int:
-    pass","[{""input"": [3, 4, 5, 1, 2], ""expected"": 3}, {""input"": [1, 2, 3, 4, 5], ""expected"": 0}, {""input"": [5, 1, 2, 3, 4], ""expected"": 1}, {""input"": [2, 3, 4, 5, 1], ""expected"": 4}, {""input"": [1], ""expected"": 0}]","[""💡 Ipucu 1: Minimum elemanin indexini bul."", ""💡 Ipucu 2: min_idx = nums.index(min(nums))."", ""💡 Ipucu 3: return min_idx (0 = zaten sirali, min_idx = kac adim sola).""]",89,rotation_count
-python-basics,Bir cumle var,bir-cumle-var,intermediate,"Bir cumle var. Kelime sirasini tersine cevir, kelime icindeki harfler ayni kalsin.
-Ornek: 'Merhaba dunya nasilsin' -> 'nasilsin dunya Merhaba'
-Fazla bosluklari tek bosluga indir.","def reverse_words(x: str) -> str:
-    pass","[{""input"": ""Merhaba dunya nasilsin"", ""expected"": ""nasilsin dunya Merhaba""}, {""input"": ""Python   harika  bir dil"", ""expected"": ""dil bir harika Python""}, {""input"": ""tek"", ""expected"": ""tek""}, {""input"": """", ""expected"": """"}, {""input"": ""  bosluklu   cumle  "", ""expected"": ""cumle bosluklu""}]",[],90,reverse_words
 python-basics,Bir 2D matris var,bir-2d-matris-var,beginner,"Bir 2D matris var. Satirlari sutun, sutunlari satir yap.
 Ornek: [[1,2,3], [4,5,6]] -> [[1,4], [2,5], [3,6]]
 Dikdortgen matrisler icin calissin (tum satirlar ayni uzunlukta","def transpose(nums: list[int], lst: list[int]) -> list[list[int]]:
     pass","[{""input"": [[1, 2, 3], [4, 5, 6]], ""expected"": [[1, 4], [2, 5], [3, 6]]}, {""input"": [[1, 2], [3, 4], [5, 6]], ""expected"": [[1, 3, 5], [2, 4, 6]]}, {""input"": [[1]], ""expected"": [[1]]}, {""input"": [[1, 2, 3]], ""expected"": [[1], [2], [3]]}]",[],92,transpose
-python-basics,Ilk Tekrar Etmeyen Karakter,ilk-tekrar-etmeyen-karakter,intermediate,"Bir string veriliyor. İlk kez tekrarlanMAYAN (unique) karakteri ve indeksini döndür. Yoksa None veya -1.
-Örnek: 'leetcode' → ('l', 0). 'aabb' → None.
-collections.Counter ile O(n) çözüm.","def first_unique_char(nums: str) -> str:
-    pass","[{""input"": ""swiss"", ""expected"": ""w""}, {""input"": ""aabbcc"", ""expected"": """"}, {""input"": ""programming"", ""expected"": ""p""}, {""input"": ""aabb"", ""expected"": """"}, {""input"": ""z"", ""expected"": ""z""}]","[""💡 Ipucu 1: from collections import Counter -> c = Counter(s)."", ""💡 Ipucu 2: for ch in s: if c[ch] == 1: return ch."", ""💡 Ipucu 3: Bos string icin '' dondur (return ch if any(c[ch]==1 for ch in s) else '').""]",93,first_unique_char
 algorithms,Sirali Dizide Ilk ve Son Occurrence,sirali-dizide-ilk-ve-son-occurrence,intermediate,"Sirali bir dizide target degerin ILK ve SON indeksini bul.
 Yoksa [-1, -1] dondur.
 find_first = lower bound","def search_range(nums: list[int], n: int) -> list[int]:
@@ -220,18 +200,9 @@ algorithms,En Uzun Consecutive Sequence,en-uzun-consecutive-sequence,intermediat
 Örnek: [100, 4, 200, 1, 3, 2] → 4 ([1,2,3,4]).
 HashSet yaklaşımı: O(n) — her eleman için zincirin uzunluğunu bul (komsuya bakarak).","def longest_consecutive(nums: list[int]) -> int:
     pass","[{""input"": [100, 4, 200, 1, 3, 2], ""expected"": 4}, {""input"": [0, 3, 7, 2, 5, 8, 4, 6, 0, 1], ""expected"": 9}, {""input"": [], ""expected"": 0}, {""input"": [1, 2, 3, 4], ""expected"": 4}, {""input"": [10], ""expected"": 1}]","[""💡 Ipucu 1: Tum sayilari sete koy: num_set = set(nums)."", ""💡 Ipucu 2: Sadece dizi baslangici olan sayilari kontrol et: x-1 not in num_set."", ""💡 Ipucu 3: Oradan baslayarak while x+1 in set: x+=1. count tut.""]",102,longest_consecutive
-algorithms,Iki string'in anagram olup olmadigini kontrol e...,iki-string-in-anagram-olup-olmadigini-kontrol-e,beginner,"İki string'in anagram olup olmadığını kontrol et (harfler aynı, sıra farklı).
-Case insensitive. Boşluk ve özel karakterler yok sayılır.
-Örnek: 'listen' ↔ 'silent' → True. 'hello' ↔ 'world' → False.
-collections.Counter veya sorted() ile çözüm: O(n).","def anagram_two_strings(s: str, text: str) -> bool:
-    pass","[{""input"": [""anagram"", ""nagaram""], ""expected"": true}, {""input"": [""listen"", ""silent""], ""expected"": true}, {""input"": [""hello"", ""world""], ""expected"": false}, {""input"": [""a"", ""b""], ""expected"": false}, {""input"": ["""", """"], ""expected"": true}]","[""💡 Ipucu 1: Counter ile frekans say: Counter(s) == Counter(t)."", ""💡 Ipucu 2: Manuel: 26 harflik dizi, s'de +1, t'de -1; hepsi 0 mi?"", ""💡 Ipucu 3: sorted(s) == sorted(t) ile kisa cozum (yavas ama basit).""]",103,anagram_two_strings
 data-structures,Tekrarlayan Elemanları Bul,tekrarlayan-elemanlari-bul,beginner,"Bir koleksiyonda birden fazla geçen elemanları bulun.
 Koleksiyon tipini sen seç: hangi yapı en verimli?","def find_duplicates(nums: list[int]) -> list[int]:
     pass","[{""input"": [1, 2, 3, 4, 2, 3, 5], ""expected"": [2, 3]}, {""input"": [""a"", ""b"", ""a"", ""c"", ""b""], ""expected"": [""a"", ""b""]}, {""input"": [1, 2, 3], ""expected"": []}]","[""💡 İpucu 1: Birden fazla geçen elemanları saymak için 'frekans' sayacı lazım."", ""💡 İpucu 2: Counter veya dict.items() kullanabilirsin — hangisi daha okunur?"", ""💡 İpucu 3: count > 1 olanları filtreleyip liste yap.""]",110,find_duplicates
-data-structures,İki Listenin Kesişimi,i-ki-listenin-kesisimi,beginner,"İki koleksiyondaki ortak elemanları bul.
-Örnek: [1,2,3,4,5] ∩ [3,4,5,6,7] → [3, 4, 5]. Tekrarlar tekilleştirilir.
-set(a) & set(b) veya set(a).intersection(b).","def intersection(nums: dict) -> list | list[int] | list[str]:
-    pass","[{""input"": {""a"": [1, 2, 3, 4], ""b"": [3, 4, 5, 6]}, ""expected"": [3, 4]}, {""input"": {""a"": [""x"", ""y""], ""b"": [""y"", ""z""]}, ""expected"": [""y""]}, {""input"": {""a"": [1, 2], ""b"": [3, 4]}, ""expected"": []}]","[""💡 İpucu 1: İki döngü O(n*m). Daha hızlı yol: birini okumaya hazır yap."", ""💡 İpucu 2: Hangi veri yapısı arama (lookup) için O(1)?"", ""💡 İpucu 3: set yapısı O(1) arama yapar. set(a) & set(b).""]",111,intersection
 data-structures,En Sık Geçen Eleman,en-sik-gecen-eleman,beginner,"Bir koleksiyonda en çok geçen elemanı bul.
 Birden fazla aynı frekansta varsa ilkini döndür.","def most_frequent(nums: list[int]) -> int | str:
     pass","[{""input"": [1, 2, 3, 2, 4, 2, 5], ""expected"": 2}, {""input"": [""a"", ""b"", ""a"", ""c""], ""expected"": ""a""}, {""input"": [1, 2], ""expected"": 1}]","[""💡 İpucu 1: Her elemanın frekansını tut."", ""💡 İpucu 2: collections.Counter kullanabilirsin veya dict."", ""💡 İpucu 3: counter.most_common(1) ile en sık olanı al.""]",112,most_frequent
@@ -340,10 +311,6 @@ algorithms,Pivotlanmış Binary Search,pivotlanmis-binary-search,intermediate,"D
 pandas,DataFrame NaN Sayımı,dataframe-nan-sayimi,beginner,"Her sütun için NaN sayısını hesapla ve dict olarak döndür.
 {column_name: nan_count}. Veri yapısı senin.","def nan_counts(x: str) -> str:
     pass","[{""input"": ""df with NaN in 2 cols"", ""expected"": ""{'a': 1, 'b': 2}"", ""description"": ""NaN var""}, {""input"": ""df no NaN"", ""expected"": ""{}"", ""description"": ""temiz""}, {""input"": ""df all NaN"", ""expected"": ""{'a': 5}"", ""description"": ""hepsi NaN""}]","[""💡 İpucu 1: df.isna().sum().to_dict() tek satırda çözer."", ""💡 İpucu 2: dict comprehension ile: {c: df[c].isna().sum() for c in df.columns}."", ""💡 İpucu 3: Series.sum() NaN'leri 0 sayar.""]",139,nan_counts
-python-basics,İki string birbirinin permütasyonu mu? (aynı ka...,i-ki-string-birbirinin-permutasyonu-mu-ayni-ka,beginner,"İki string birbirinin permütasyonu mu? (aynı karakterler farklı sırada).
-Örnek: 'abc' ↔ 'bca' → True. 'abc' ↔ 'abd' → False.
-Case sensitive. sorted() ile O(n log n), Counter ile O(n).","def is_permutation(s: str, text: str) -> bool:
-    pass","[{""input"": [""abc"", ""bca""], ""expected"": true, ""description"": ""temel""}, {""input"": [""abc"", ""abd""], ""expected"": false, ""description"": ""farkli karakter""}, {""input"": ["""", """"], ""expected"": true, ""description"": ""bos-bos""}, {""input"": [""a"", ""aa""], ""expected"": false, ""description"": ""uzunluk farkli""}]","[""💡 İpucu 1: sorted(a) == sorted(b) en kısa."", ""💡 İpucu 2: Counter(a) == Counter(b) karakter sayıları."", ""💡 İpucu 3: Önce len kontrolü yap, erken çık.""]",140,is_permutation
 data-structures,LRU Cache Uygulaması,lru-cache-uygulamasi,intermediate,"En az kullanılan (LRU) elemanı çıkaran bir cache sınıfı yaz.
 get(key) ve put(key, value) operasyonları O(1) olmalı.
 Kapasite dolduğunda en az kullanılan eleman çıkarılır.","def __init__(x: str) -> str:
