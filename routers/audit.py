@@ -40,8 +40,8 @@ MAVIS_API_KEY = (
 # Base URL: MAVIS_API_BASE → OPENAI_API_BASE → default OpenAI
 # Hardcoded OpenAI default — env override YOK (Railway MAVIS_API_BASE=api.MiniMax.cn hatali)
 MAVIS_API_BASE = "https://api.openai.com/v1"
-# Hardcoded gpt-4o-mini — env override YOK
-MAVIS_MODEL = "gpt-4o-mini"
+# Model: env varsa onu kullan, yoksa gpt-4o-mini
+MAVIS_MODEL = os.environ.get("MAVIS_MODEL", "gpt-4o-mini")
 EXEC_TIMEOUT = 8
 
 
