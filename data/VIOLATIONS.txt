@@ -1,0 +1,84 @@
+Denetim ihlalleri: 16
+
+id=1 title='Palindrome Checker' fn='is_palindrome'
+  ihlal: jenerik fn: is_palindrome
+  sc: def is_palindrome(text: str) -> bool:
+    pass
+
+id=7 title='Asal Sayı Kontrolü' fn='is_prime'
+  ihlal: jenerik fn: is_prime
+  sc: def is_prime(n: int) -> bool:
+    pass
+
+id=8 title='Liste Düzleştirme' fn='flatten'
+  ihlal: jenerik fn: flatten
+  sc: def flatten(nums: list[int], lst: list[int], arr2: list[int]) -> list[int]:
+    pass
+
+id=9 title='Fibonacci Dizisi' fn='fibonacci'
+  ihlal: jenerik fn: fibonacci
+  sc: def fibonacci(n: int) -> list[int]:
+    pass
+
+id=10 title='Anagram Kontrolü' fn='is_anagram'
+  ihlal: jenerik fn: is_anagram
+  sc: def is_anagram(s: dict) -> bool:
+    pass
+
+id=26 title='İki Listeyi Birleştir' fn='merge_sorted'
+  ihlal: shortcut in sc: sorted(
+  sc: def merge_sorted(nums: dict) -> list[int]:
+    pass
+
+id=41 title='Tekrar Eden Satırlar' fn='remove_duplicates'
+  ihlal: jenerik fn: remove_duplicates
+  sc: def remove_duplicates(rows: list[list[int]]) -> list[list[int]]:
+    pass
+
+id=46 title='İkili Arama' fn='binary_search'
+  ihlal: jenerik fn: binary_search
+  sc: def binary_search(x: dict) -> int:
+    pass
+
+id=47 title='Bubble Sort' fn='bubble_sort'
+  ihlal: jenerik fn: bubble_sort
+  sc: def bubble_sort(nums: list[int]) -> list[int]:
+    pass
+
+id=87 title='Donen Dizi Kontrolu' fn='is_rotated_sorted'
+  ihlal: shortcut in sc: sorted(
+  sc: def is_rotated_sorted(nums: list[int]) -> bool:
+    pass
+
+id=91 title='Bir liste var' fn='remove_duplicates'
+  ihlal: jenerik fn: remove_duplicates
+  sc: def remove_duplicates(nums: list[int]) -> list[int]:
+    pass
+
+id=103 title='Iki string'in anagram olup olmadigini kontrol e...' fn='is_anagram'
+  ihlal: jenerik fn: is_anagram
+  sc: def is_anagram(s: str, text: str) -> bool:
+    pass
+
+id=115 title='İç içe 1 seviye listeyi düzleştir' fn='flatten'
+  ihlal: jenerik fn: flatten
+  sc: def flatten(nums: list[int], lst: list[int], arr2: list[int]) -> list[int] | list[str]:
+    pass
+
+id=117 title='Sıralı Dizide Hızlı Arama' fn='in_sorted'
+  ihlal: shortcut in sc: sorted(
+  sc: def in_sorted(x: dict) -> bool:
+    pass
+
+id=156 title='Merge K Sorted Lists' fn='merge_k_sorted'
+  ihlal: shortcut in sc: sorted(; ALGORITHM title ama sorted() in sc
+  sc: def merge_k_sorted(lists: list) -> list:
+    # heapq ile k heap, her seferinde min pop
+    pass
+
+id=162 title='Valid Parentheses' fn='is_valid'
+  ihlal: jenerik fn: is_valid
+  sc: def is_valid(s: str) -> bool:
+    # stack, açılışta push, kapanışta pop ve match kontrol
+    pass
+
