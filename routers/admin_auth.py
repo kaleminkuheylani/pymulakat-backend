@@ -18,6 +18,7 @@ yeterli değil. Şimdilik password-only auth.
 import os
 import secrets
 import logging
+import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -135,7 +136,7 @@ def clear_lockout(email: str):
 
 
 def issue_session_token(user_id: str, email: str, ip: str) -> str:
-    jti = secrets.token_urlsafe(32)
+    jti = str(uuid.uuid4())  # admin_sessions.id UUID tipinde (Postgres)
     payload = {
         "sub": user_id,
         "email": email,
@@ -165,6 +166,7 @@ def get_session_from_request(request: Request) -> Optional[dict]:
         payload = jwt.decode(token, ADMIN_JWT_SECRET, algorithms=["HS256"])
         # jti DB'de var mı + revoked mi?
         sb = get_supabase_admin()
+        # jti UUID string — Supabase PostgREST otomatik cast eder
         result = sb.table("admin_sessions").select("*").eq("id", payload["jti"]).maybe_single().execute()
         if not result.data or result.data.get("revoked"):
             return None
