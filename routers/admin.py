@@ -433,3 +433,30 @@ def bulk_seed_questions():
     )
 
 
+@router.post("/bulk-seed-test")
+def bulk_seed_test():
+    """İlk 5 satırı dene, hata olursa hangi ID'de patladığını logla."""
+    sb = get_supabase_admin()
+    csv_path = "data/QUESTIONS-v3.csv"
+    if not Path(csv_path).exists():
+        csv_path = "/app/data/QUESTIONS-v3.csv"
+    if not Path(csv_path).exists():
+        raise HTTPException(404, "CSV yok")
+    
+    results = []
+    with open(csv_path, encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for i, row in enumerate(reader):
+            if i >= 5:
+                break
+            try:
+                sid = int(row.get("id", "0"))
+                # Sadece description insert dene
+                sb.table("questions").update(
+                    {"description": row.get("description", "")[:1000]}
+                ).eq("id", sid).execute()
+                results.append({"id": sid, "status": "ok"})
+            except Exception as e:
+                results.append({"id": sid, "status": "fail", "error": str(e)[:300]})
+                log.exception("Test failed for id=%s", sid)
+    return results
