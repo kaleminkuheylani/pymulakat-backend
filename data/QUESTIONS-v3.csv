@@ -37,7 +37,7 @@ fakat kelimelerin kendisini tersine çevirme.","def reverse_words(x: str) -> str
 python-basics,İkinci En Büyük,beginner,"Bir listedeki ikinci en büyük eşsiz sayıyı döndür.
 Eğer yeterli eşsiz eleman yoksa None döndür.
 Örnek: [3, 5, 2, 5, 6, 6, 1] → 5 (en büyük 6, ikinci en büyük 5).
-Sort yerine set ile O(n) çözüm yapabilirsin.","def second_largest(n: int, k: int, pos: int, threshold: int, count: int, n2: int, n3: int, n4: int) -> int:
+Sort yerine set ile O(n) çözüm yapabilirsin.","def second_largest(nums: list[int]) -> int:
     pass","[{""input"": [3, 1, 4, 1, 5, 9, 2, 6], ""expected"": 6}, {""input"": [5, 5, 5], ""expected"": null}, {""input"": [10, 20], ""expected"": 10}]","[""💡 İpucu 1: Önce set() ile tekrarları kaldır."", ""💡 İpucu 2: sorted() veya max() kullanarak en büyükleri bul."", ""💡 İpucu 3: len(unique) < 2 ise None döndür, yoksa sorted(unique)[-2]""]",12,second_largest
 python-basics,Sezar Şifresi,beginner,"Metni n karakter kaydırarak şifrele (yalnızca İngilizce harfler, a-z).
 Örnek: n=3, 'abc' → 'def'. Harf dışı karakterler (boşluk, rakam, noktalama) dokunulmaz.
@@ -84,7 +84,7 @@ list-dict,Sözlük Birleştirme,beginner,"İki sözlüğü birleştir. Aynı ana
 dict.update veya **spread ile yapılabilir ama aynı key toplama özel mantık gerektirir.","def merge_dicts(x: dict) -> dict:
     pass","[{""input"": {""d1"": {""a"": 1, ""b"": 2}, ""d2"": {""b"": 3, ""c"": 4}}, ""expected"": {""a"": 1, ""b"": 5, ""c"": 4}}, {""input"": {""d1"": {}, ""d2"": {""x"": 10}}, ""expected"": {""x"": 10}}]","[""💡 İpucu 1: d1.copy() ile başla, d2'nin öğelerini üzerine ekle."", ""💡 İpucu 2: result.get(key, 0) + value ile birleştirme yap."", ""💡 İpucu 3: collections.Counter da bu iş için kullanılabilir.""]",27,merge_dicts
 list-dict,Gruplama,beginner,"Bir sayı listesini 'tek' ve 'çift' olarak grupla.
-Sonuç: {'tek': [...], 'çift': [...]}","def group_by_parity(n: int, k: int, pos: int, threshold: int, count: int, n2: int) -> dict:
+Sonuç: {'tek': [...], 'çift': [...]}","def group_by_parity(nums: list[int]) -> dict:
     pass","[{""input"": [1, 2, 3, 4, 5, 6], ""expected"": {""tek"": [1, 3, 5], ""çift"": [2, 4, 6]}}, {""input"": [10, 15, 20, 25], ""expected"": {""tek"": [15, 25], ""çift"": [10, 20]}}]","[""💡 İpucu 1: Boş bir dict oluştur: result = {'tek': [], 'çift': []}"", ""💡 İpucu 2: Her öğe için: if n % 2 == 0 → 'çift', else → 'tek'"", ""💡 İpucu 3: result['tek'].append(n) veya result['çift'].append(n)""]",28,group_by_parity
 list-dict,Fark Listesi,beginner,"İki liste arasındaki farkları bul: yalnızca A'da, yalnızca B'de ve ikisinde birden olan elemanlar.","def list_diff(nums: dict) -> dict:
     pass","[{""input"": {""a"": [1, 2, 3, 4], ""b"": [3, 4, 5, 6]}, ""expected"": {""only_a"": [1, 2], ""only_b"": [5, 6], ""common"": [3, 4]}, ""description"": ""tipik iki liste""}, {""input"": {""a"": [], ""b"": [1, 2]}, ""expected"": {""only_a"": [], ""only_b"": [1, 2], ""common"": []}, ""description"": ""boş A""}, {""input"": {""a"": [1, 2, 3], ""b"": [1, 2, 3]}, ""expected"": {""only_a"": [], ""only_b"": [], ""common"": [1, 2, 3]}, ""description"": ""tamamen ortak""}, {""input"": {""a"": [1, 1, 2], ""b"": [2, 2, 3]}, ""expected"": {""only_a"": [1], ""only_b"": [3], ""common"": [2]}, ""description"": ""tekrarlı elemanlar""}]","[""💡 İpucu 1: set() dönüşümü yap: sa=set(a), sb=set(b)"", ""💡 İpucu 2: only_a = sorted(sa - sb), only_b = sorted(sb - sa)"", ""💡 İpucu 3: common = sorted(sa & sb)  (kesişim)""]",29,list_diff
@@ -99,7 +99,7 @@ Yeterli eleman olmayan başlangıç pencerelerini atla.","def moving_average(x: 
 data-structures,En Uzun Artan Alt Dizi,intermediate,"Bir dizideki en uzun sürekli artan alt dizinin uzunluğunu bul.
 Sürekli = ardışık indisler (skip yok).
 Örnek: [10, 9, 2, 5, 3, 7, 101, 18] için 4 ([2,3,7,101] veya [3,5,7,18]).
-DP yaklaşımı: dp[i] = nums[i]'den biten en uzun artan alt dizi.","def longest_increasing_subsequence(n: int, k: int, pos: int, threshold: int, count: int) -> int:
+DP yaklaşımı: dp[i] = nums[i]'den biten en uzun artan alt dizi.","def longest_increasing_subsequence(nums: list[int]) -> int:
     pass","[{""input"": [1, 3, 5, 4, 7], ""expected"": 3}, {""input"": [2, 2, 2, 2, 2], ""expected"": 1}, {""input"": [1, 2, 3, 4, 5], ""expected"": 5}]","[""💡 İpucu 1: current ve max_len sayaçları tut."", ""💡 İpucu 2: nums[i] > nums[i-1] ise current += 1, değilse current = 1"", ""💡 İpucu 3: Her adımda max_len = max(max_len, current) güncelle.""]",33,longest_increasing_subsequence
 data-structures,Fiyat Analizi,beginner,"Ürün fiyatlarının bulunduğu bir sözlükten min, max ve ortalama fiyatı döndür.
 Örnek: {'ekmek': 5, 'süt': 12, 'peynir': 45} → (5, 45, 20.67).
@@ -107,13 +107,13 @@ Boş dict ise None veya raise ValueError. Ortalama 2 ondalık yuvarlanabilir.","
     pass","[{""input"": {""elma"": 5, ""armut"": 8, ""muz"": 3}, ""expected"": {""min"": 3, ""max"": 8, ""avg"": 5.33}, ""description"": ""3 ürün""}, {""input"": {""tek"": 10}, ""expected"": {""min"": 10, ""max"": 10, ""avg"": 10.0}, ""description"": ""tek ürün""}, {""input"": {""a"": 1, ""b"": 2, ""c"": 3, ""d"": 4, ""e"": 5}, ""expected"": {""min"": 1, ""max"": 5, ""avg"": 3.0}, ""description"": ""5 ürün""}, {""input"": {}, ""expected"": null, ""description"": ""boş sözlük, None veya hata""}]","[""💡 İpucu 1: values = list(prices.values()) ile değerleri al."", ""💡 İpucu 2: min(), max() ve sum()/len() ile istatistikleri hesapla."", ""💡 İpucu 3: round(avg, 2) ile yuvarla.""]",34,price_analysis
 data-structures,Kümülatif Toplam,beginner,"Bir listenin kümülatif (birikimli) toplamını hesapla.
 Her index i için sonuç[i] = input[0] + input[1] + ... + input[i].
-Boş liste için boş liste döndür.","def cumulative_sum(a: int, b: int, arg2: int, arg3: int) -> list[int]:
+Boş liste için boş liste döndür.","def cumulative_sum(nums: list[int]) -> list[int]:
     pass","[{""input"": [1, 2, 3, 4], ""expected"": [1, 3, 6, 10], ""description"": ""artan dizi""}, {""input"": [5, 5, 5, 5, 5], ""expected"": [5, 10, 15, 20, 25], ""description"": ""sabit değerler""}, {""input"": [10], ""expected"": [10], ""description"": ""tek eleman""}, {""input"": [], ""expected"": [], ""description"": ""boş liste""}]","[""💡 İpucu 1: Döngü başında running_total = 0 tut."", ""💡 İpucu 2: Her elemanda running_total += n, ardından result'a ekle."", ""💡 İpucu 3: itertools.accumulate(nums) de aynı sonucu verir.""]",35,cumulative_sum
 pandas,Favori Renk Anketi,beginner,"Bir anket sonucu sözlüğü veriliyor. En popüler rengi bul.
 (pandas kullanmadan, saf Python ile yap","def favorite_color(x: dict) -> str:
     pass","[{""input"": {""A"": ""Mavi"", ""B"": ""Kırmızı"", ""C"": ""Mavi"", ""D"": ""Yeşil"", ""E"": ""Mavi""}, ""expected"": ""Mavi""}, {""input"": {""X"": ""Siyah"", ""Y"": ""Siyah""}, ""expected"": ""Siyah""}]","[""💡 İpucu 1: Boş bir dict oluştur: counts = {}"", ""💡 İpucu 2: Her değer için counts[color] = counts.get(color, 0) + 1"", ""💡 İpucu 3: max(counts, key=counts.get) ile en yüksek frekanslıyı bul.""]",36,favorite_color
 pandas,Eksik Değer Doldurma,beginner,"Bir sayı listesindeki None değerleri, listenin ortalamasıyla doldur.
-(pandas kullanmadan, saf Python ile","def fill_missing(n: int, value: None, k: int, other: None, pos: int) -> list[int | float]:
+(pandas kullanmadan, saf Python ile","def fill_missing(nums: list[int]) -> list[int | float]:
     pass","[{""input"": [1, null, 3, null, 5], ""expected"": [1, 3.0, 3, 3.0, 5]}, {""input"": [10, null, 20], ""expected"": [10, 15.0, 20]}]","[""💡 İpucu 1: Önce sadece sayısal değerlerin ortalamasını hesapla."", ""💡 İpucu 2: nums = [x for x in numbers if x is not None]"", ""💡 İpucu 3: Ortalama = sum(nums) / len(nums); sonra None'ları bu değerle değiştir.""]",37,fill_missing
 pandas,Satış Raporu,beginner,"Satış verisini ürün bazında grupla, toplam satışı hesapla ve en çok satan ürünü döndür.","def top_selling_product(mapping: dict, data: dict, mapping2: dict) -> str:
     pass","[{""input"": [{""product"": ""A"", ""amount"": 100}, {""product"": ""B"", ""amount"": 200}, {""product"": ""A"", ""amount"": 150}], ""expected"": ""A"", ""description"": ""A toplam 250, B 200""}, {""input"": [{""product"": ""X"", ""amount"": 50}], ""expected"": ""X"", ""description"": ""tek ürün""}, {""input"": [{""product"": ""A"", ""amount"": 100}, {""product"": ""B"", ""amount"": 100}], ""expected"": ""A"", ""description"": ""beraberlikte ilk gelen""}, {""input"": [{""product"": ""K"", ""amount"": 5}, {""product"": ""L"", ""amount"": 5}, {""product"": ""M"", ""amount"": 10}], ""expected"": ""M"", ""description"": ""açık ara kazanan""}]","[""💡 İpucu 1: Bir dict ile ürün → toplam satış tut: totals = {}"", ""💡 İpucu 2: Her kayıt için totals[product] = totals.get(product, 0) + amount"", ""💡 İpucu 3: max(totals, key=totals.get) ile en yüksek satışlı ürünü bul.""]",38,top_selling_product
@@ -124,18 +124,18 @@ pandas,Korelasyon Analizi,intermediate,"İki sayı listesi arasındaki Pearson k
 0.7+ güçlü, 0.4-0.7 orta, <0.4 zayıf.","def correlation_analysis(x: dict) -> dict:
     pass","[{""input"": {""x"": [1, 2, 3, 4, 5], ""y"": [2, 4, 6, 8, 10]}, ""expected"": {""correlation"": 1.0, ""strength"": ""güçlü""}}, {""input"": {""x"": [1, 2, 3, 4, 5], ""y"": [5, 4, 3, 2, 1]}, ""expected"": {""correlation"": -1.0, ""strength"": ""güçlü""}}]","[""💡 İpucu 1: Pearson formülü: r = Σ((xi-x̄)(yi-ȳ)) / √(Σ(xi-x̄)² · Σ(yi-ȳ)²)"", ""💡 İpucu 2: Önce x_bar = sum(x)/len(x), y_bar = sum(y)/len(y) hesapla."", ""💡 İpucu 3: abs(r) >= 0.7 → 'güçlü', >= 0.4 → 'orta', else → 'zayıf'""]",40,correlation_analysis
 pandas,Tekrar Eden Satırlar,beginner,"Bir listedeki tekrar eden öğeleri kaldır ve kaç tane kaldırıldığını döndür.
-Sonuç: (temizlenmiş_liste, kaldırılan_sayısı","def remove_duplicates(n: int, k: int, pos: int, threshold: int, count: int, n2: int, n3: int) -> list[list[int]] | list[list[str]]:
+Sonuç: (temizlenmiş_liste, kaldırılan_sayısı","def remove_duplicates(rows: list[list[int]]) -> list[list[int]]:
     pass","[{""input"": [1, 2, 2, 3, 3, 3, 4], ""expected"": [[1, 2, 3, 4], 3]}, {""input"": [""a"", ""b"", ""a"", ""c""], ""expected"": [[""a"", ""b"", ""c""], 1]}]","[""💡 İpucu 1: seen = set() ile görülen öğeleri takip et."", ""💡 İpucu 2: Her öğe için: if item not in seen → ekle, else → sayacı artır."", ""💡 İpucu 3: Sonuç: [clean_list, removed_count]""]",41,remove_duplicates
 pandas,Yaş Grubu Segmentasyonu,beginner,"Yaş listesini gruplara ayır: 0-17 'Genç', 18-64 'Yetişkin', 65+ 'Yaşlı'.
 Her yaş için karşılık gelen etiketi döndür.
-Örnek: [15, 25, 70] → ['Genç', 'Yetişkin', 'Yaşlı']. Pandas ile pd.cut veya saf Python ile if-elif-else.","def age_segment(n: int, k: int, pos: int, threshold: int, count: int) -> list[str]:
+Örnek: [15, 25, 70] → ['Genç', 'Yetişkin', 'Yaşlı']. Pandas ile pd.cut veya saf Python ile if-elif-else.","def age_segment(ages: list[int]) -> list[str]:
     pass","[{""input"": [15, 25, 70, 5, 45], ""expected"": [""Genç"", ""Yetişkin"", ""Yaşlı"", ""Genç"", ""Yetişkin""], ""description"": ""karışık yaşlar""}, {""input"": [0, 17, 18, 64, 65], ""expected"": [""Genç"", ""Genç"", ""Yetişkin"", ""Yetişkin"", ""Yaşlı""], ""description"": ""sınır değerler""}, {""input"": [100, 200], ""expected"": [""Yaşlı"", ""Yaşlı""], ""description"": ""çok yaşlılar""}, {""input"": [], ""expected"": [], ""description"": ""boş liste""}]","[""💡 İpucu 1: Her yaş için koşullu kontrol yap."", ""💡 İpucu 2: if age <= 17: 'Genç', elif age <= 64: 'Yetişkin', else: 'Yaşlı'"", ""💡 İpucu 3: List comprehension kullan: [segment(a) for a in ages]""]",42,age_segment
 pandas,Grup Toplamı,intermediate,"Satış verisinden bölge bazında toplam satışı hesapla.
-Sonuç: {bölge: toplam_satış} sözlüğü","def region_totals(a: dict, b: dict, arg2: dict, arg3: dict) -> dict:
+Sonuç: {bölge: toplam_satış} sözlüğü","def region_totals(sales: list[dict]) -> dict:
     pass","[{""input"": [{""region"": ""A"", ""sales"": 100}, {""region"": ""B"", ""sales"": 50}, {""region"": ""A"", ""sales"": 150}, {""region"": ""B"", ""sales"": 100}], ""expected"": {""A"": 250, ""B"": 150}, ""description"": ""2 bölge""}, {""input"": [{""region"": ""X"", ""sales"": 10}], ""expected"": {""X"": 10}, ""description"": ""tek bölge""}, {""input"": [{""region"": ""A"", ""sales"": 5}, {""region"": ""B"", ""sales"": 10}, {""region"": ""C"", ""sales"": 15}], ""expected"": {""A"": 5, ""B"": 10, ""C"": 15}, ""description"": ""3 bölge tek satır""}, {""input"": [], ""expected"": {}, ""description"": ""boş veri""}]","[""💡 İpucu 1: Boş bir dict: totals = {}"", ""💡 İpucu 2: Her kayıt için totals[region] = totals.get(region, 0) + sales"", ""💡 İpucu 3: totals dict'ini döndür.""]",43,region_totals
 pandas,Aykırı Değer Tespiti,intermediate,"IQR yöntemiyle aykırı değerleri tespit et.
 Q1-1.5*IQR altındakiler veya Q3+1.5*IQR üstündekiler aykırıdır.
-Sonuç: aykırı değerlerin indeks listesi.","def detect_outliers(n: int, k: int, pos: int, threshold: int, count: int, n2: int, n3: int) -> list | list[int]:
+Sonuç: aykırı değerlerin indeks listesi.","def detect_outliers(nums: list[int]) -> list[int]:
     pass","[{""input"": [1, 2, 2, 3, 3, 3, 100], ""expected"": [6]}, {""input"": [10, 11, 12, 13, 14, 15], ""expected"": []}]","[""💡 İpucu 1: Sıralı listeden Q1 (25. yüzdelik) ve Q3 (75. yüzdelik) hesapla."", ""💡 İpucu 2: IQR = Q3 - Q1; alt sınır = Q1 - 1.5*IQR, üst sınır = Q3 + 1.5*IQR"", ""💡 İpucu 3: [i for i, x in enumerate(data) if x < lower or x > upper]""]",44,detect_outliers
 pandas,Rolling Ortalama,intermediate,"k-pencereli rolling (kayan pencere) ortalama hesapla.
 Her i >= k-1 için sonuç[i] = ortalama(data[i-k+1 : i+1]); ilk k-1 eleman için None (veya null) döndür.
@@ -145,7 +145,7 @@ algorithms,İkili Arama,beginner,"Sıralı bir listede binary search ile hedef s
 Bulunamazsa -1 döndür.","def binary_search(x: dict) -> int:
     pass","[{""input"": {""arr"": [1, 3, 5, 7, 9, 11], ""target"": 7}, ""expected"": 3}, {""input"": {""arr"": [1, 3, 5, 7, 9, 11], ""target"": 6}, ""expected"": -1}, {""input"": {""arr"": [1], ""target"": 1}, ""expected"": 0}]","[""💡 İpucu 1: left=0, right=len(arr)-1 ile başla."", ""💡 İpucu 2: mid = (left+right)//2; arr[mid]>target ise right=mid-1, küçükse left=mid+1"", ""💡 İpucu 3: arr[mid]==target ise mid'i döndür. Döngü biterse -1.""]",46,binary_search
 algorithms,Bubble Sort,beginner,"Bubble sort algoritmasıyla bir listeyi küçükten büyüğe sırala.
-Orijinal listeyi değiştirme, kopyasını döndür.","def bubble_sort(n: int, k: int, pos: int, threshold: int, count: int, n2: int, n3: int) -> list[int]:
+Orijinal listeyi değiştirme, kopyasını döndür.","def bubble_sort(nums: list[int]) -> list[int]:
     pass","[{""input"": [64, 34, 25, 12, 22, 11, 90], ""expected"": [11, 12, 22, 25, 34, 64, 90]}, {""input"": [5, 1, 4, 2, 8], ""expected"": [1, 2, 4, 5, 8]}]","[""💡 İpucu 1: arr = arr[:] ile kopya al."", ""💡 İpucu 2: İki iç içe döngü: dış n kez, iç komşuları karşılaştırır."", ""💡 İpucu 3: arr[j] > arr[j+1] ise swap yap: arr[j], arr[j+1] = arr[j+1], arr[j]""]",47,bubble_sort
 algorithms,İki Maaş Bordrosunu Birleştir,intermediate,"İki maaş bordrosu kaydını birleştirip tek bir sözlük olarak döndüren fonksiyon yaz. Ortak alanlar üzerinde değerler güncellenir (ikinci sözlük kazanır), çakışmayan alanlar korunur.","def merge_salaries(eng: dict, mkt: dict) -> dict:
     pass","[{""input"": {""eng"": {""ali"": 80000, ""ayse"": 75000}, ""mkt"": {""mehmet"": 70000, ""ayse"": 72000}}, ""expected"": {""ali"": 80000, ""ayse"": 72000, ""mehmet"": 70000}, ""description"": ""catisma — ikinci kazanir""}, {""input"": {""eng"": {""a"": 1}, ""mkt"": {""b"": 2}}, ""expected"": {""a"": 1, ""b"": 2}, ""description"": ""ayrik alanlar""}, {""input"": {""eng"": {}, ""mkt"": {""x"": 10}}, ""expected"": {""x"": 10}, ""description"": ""bos eng""}]","[""💡 İpucu 1: Sonuç sözlüğünü eng kopyasıyla başlat: result = dict(eng)."", ""💡 İpucu 2: mkt içindeki her anahtar-değer çiftini result üzerine yaz: result.update(mkt)."", ""💡 İpucu 3: Python 3.9+’da {**eng, **mkt} tek satırda aynı işi yapar.""]",68,merge_salaries
@@ -178,30 +178,30 @@ Formül: n*(n+1)/2 benzersiz substring'ler için, ama tekrar varsa azalır.
 En etkili çözüm: tüm olası substring'leri set'e ekle, len(set) al.","def count_unique_substrings(x: str) -> int:
     pass","[{""input"": ""abc"", ""expected"": 6}, {""input"": ""aaa"", ""expected"": 2}, {""input"": """", ""expected"": 0}, {""input"": ""abcd"", ""expected"": 10}, {""input"": ""aab"", ""expected"": 4}]","[""💡 İpucu 1: Her karakterden başlayarak tüm alt dizgileri oluştur."", ""💡 İpucu 2: Bir set() kullanarak benzersiz olanları sakla."", ""💡 İpucu 3: İç içe döngü yerine, her i için j=i+1,...,len(s) alt dizgisini sete ekle.""]",73,count_unique_substrings
 python-basics,Cift Sayilari Filtrele ve Karelerini Topla,beginner,"Bir sayi listesi var. Listedeki SADECE cift sayilarin karelerini al ve topla.
-Tek sayilar yok sayilir (sadece ciftler","def sum_of_even_squares(n: int, k: int, pos: int, threshold: int, count: int) -> int:
+Tek sayilar yok sayilir (sadece ciftler","def sum_of_even_squares(nums: list[int]) -> int:
     pass","[{""input"": [2, 3, 4, 5, 6], ""expected"": 56}, {""input"": [1, 3, 5, 7], ""expected"": 0}, {""input"": [10], ""expected"": 100}, {""input"": [], ""expected"": 0}]","[""💡 Ipucu 1: x % 2 == 0 ile cift sayilari filtrele."", ""💡 Ipucu 2: sum() icinde generator expression kullan."", ""💡 Ipucu 3: sum(x*x for x in nums if x % 2 == 0) tek satirda coz.""]",84,sum_of_even_squares
 python-basics,Iki String Arasindaki Ortak Karakterler,beginner,"İki string arasında ortak karakterleri (küçük harf duyarsız, tekrar etmeyen) alfabetik sırayla liste olarak döndüren fonksiyon yaz.","def common_chars(s: str, text: str) -> list | list[str]:
     pass","[{""input"": [""Merhaba"", ""Araba""], ""expected"": [""a"", ""r""]}, {""input"": [""Python"", ""Java""], ""expected"": [""a""]}, {""input"": [""abc"", ""def""], ""expected"": []}, {""input"": [""AAA"", ""aaa""], ""expected"": [""a""]}]","[""💡 Ipucu 1: set(a.lower()) & set(b.lower()) -> kesisim."", ""💡 Ipucu 2: sorted() ile alfabetik siraya koy."", ""💡 Ipucu 3: list(sorted(set(a.lower()) & set(b.lower()))) tek satir.""]",85,common_chars
 python-basics,Listedeki En Sik Tekrar Eden Eleman,beginner,"Bir liste var. En sik gecen elemani dondur.
 Birden fazla esit siklik varsa en kucuk sayiyi veya alfabetik ilk olani dondur.
-Ornek: [1, 3, 2, 3, 4, 1, 1] -> 1 (4 kez","def most_frequent(n: int, k: int, pos: int, threshold: int, count: int, n2: int, n3: int) -> int | str:
+Ornek: [1, 3, 2, 3, 4, 1, 1] -> 1 (4 kez","def most_frequent(nums: list[int]) -> int | str:
     pass","[{""input"": [1, 3, 2, 3, 4, 1, 1], ""expected"": 1}, {""input"": [""a"", ""b"", ""a"", ""c""], ""expected"": ""a""}, {""input"": [5, 5, 3, 3, 1], ""expected"": 3}, {""input"": [1], ""expected"": 1}]","[""💡 Ipucu 1: from collections import Counter -> Counter(items).most_common()."", ""💡 Ipucu 2: max_count = max(c.values()) -> en yuksek frekans."", ""💡 Ipucu 3: candidates = [k for k,v in c.items() if v == max_count]; min(candidates) ile coz.""]",86,most_frequent
 python-basics,Donen Dizi Kontrolu,beginner,"Bir liste döndürülmüş (rotated) sıralı dizi mi kontrol et.
 Liste, sıralı bir dizinin bir kısmının sona taşınmasıyla elde edilmiş olmalı.
-Tek eleman veya boş liste her zaman True döndürür. Duplicate elemanlar geçerli değil.","def is_rotated_sorted(n: int, k: int, pos: int, threshold: int, count: int) -> bool:
+Tek eleman veya boş liste her zaman True döndürür. Duplicate elemanlar geçerli değil.","def is_rotated_sorted(nums: list[int]) -> bool:
     pass","[{""input"": [3, 4, 5, 1, 2], ""expected"": true, ""description"": ""rotated""}, {""input"": [1, 2, 3, 4, 5], ""expected"": true, ""description"": ""sıralı (0 rotasyon)""}, {""input"": [2, 1, 3], ""expected"": false, ""description"": ""rotated değil""}, {""input"": [1], ""expected"": true, ""description"": ""tek eleman""}, {""input"": [], ""expected"": true, ""description"": ""boş liste""}]",[],87,is_rotated_sorted
 algorithms,Sayilari Toplami Hedefe Esit Olan Ciftler,intermediate,"Bir liste ve bir hedef sayi var. Listedeki hangi iki sayinin toplami hedefe esit?
-Tum benzersiz ciftleri (kucuk, buyuk","def two_sum_pairs(a: list[int], b: int) -> list | list[list[int]]:
+Tum benzersiz ciftleri (kucuk, buyuk","def two_sum_pairs(nums: list[int], target: int) -> list[list[int]]:
     pass","[{""input"": [[2, 7, 11, 15], 9], ""expected"": [[2, 7]]}, {""input"": [[1, 5, 3, 7, 9], 12], ""expected"": [[3, 9], [5, 7]]}, {""input"": [[1, 2, 3], 10], ""expected"": []}, {""input"": [[3, 3], 6], ""expected"": [[3, 3]]}, {""input"": [[-1, -2, -3, 4, 5], 2], ""expected"": [[-3, 5], [-1, 3]]}]",[],88,two_sum_pairs
 algorithms,Rotasyon Adimini Bul,intermediate,"Bir liste veriliyor. Bu liste sirali bir dizinin rotasyonu.
-Rotasyon adimini bul (kac kez sola donduruldu","def rotation_count(n: int, k: int, pos: int, threshold: int, count: int) -> int:
+Rotasyon adimini bul (kac kez sola donduruldu","def rotation_count(nums: list[int]) -> int:
     pass","[{""input"": [3, 4, 5, 1, 2], ""expected"": 3}, {""input"": [1, 2, 3, 4, 5], ""expected"": 0}, {""input"": [5, 1, 2, 3, 4], ""expected"": 1}, {""input"": [2, 3, 4, 5, 1], ""expected"": 4}, {""input"": [1], ""expected"": 0}]","[""💡 Ipucu 1: Minimum elemanin indexini bul."", ""💡 Ipucu 2: min_idx = nums.index(min(nums))."", ""💡 Ipucu 3: return min_idx (0 = zaten sirali, min_idx = kac adim sola).""]",89,rotation_count
 python-basics,Bir cumle var,intermediate,"Bir cumle var. Kelime sirasini tersine cevir, kelime icindeki harfler ayni kalsin.
 Ornek: 'Merhaba dunya nasilsin' -> 'nasilsin dunya Merhaba'
 Fazla bosluklari tek bosluga indir.","def reverse_words(x: str) -> str:
     pass","[{""input"": ""Merhaba dunya nasilsin"", ""expected"": ""nasilsin dunya Merhaba""}, {""input"": ""Python   harika  bir dil"", ""expected"": ""dil bir harika Python""}, {""input"": ""tek"", ""expected"": ""tek""}, {""input"": """", ""expected"": """"}, {""input"": ""  bosluklu   cumle  "", ""expected"": ""cumle bosluklu""}]",[],90,reverse_words
 python-basics,Bir liste var,beginner,"Bir liste var. Listedeki tekrarlari kaldir, ilk gorunme sirasini koru.
-Ornek: [1, 3, 2, 3, 4, 1, 5] -> [1, 3, 2, 4, 5] (3 ve 1 tekrari atlanir","def remove_duplicates(n: int, k: int, pos: int, threshold: int, count: int, n2: int, n3: int) -> list | list[int] | list[str]:
+Ornek: [1, 3, 2, 3, 4, 1, 5] -> [1, 3, 2, 4, 5] (3 ve 1 tekrari atlanir","def remove_duplicates(nums: list[int]) -> list[int]:
     pass","[{""input"": [1, 3, 2, 3, 4, 1, 5], ""expected"": [1, 3, 2, 4, 5]}, {""input"": [""a"", ""b"", ""a"", ""c"", ""b""], ""expected"": [""a"", ""b"", ""c""]}, {""input"": [1, 2, 3], ""expected"": [1, 2, 3]}, {""input"": [], ""expected"": []}, {""input"": [1, 1, 1], ""expected"": [1]}]","[""💡 Ipucu 1: seen = set() ile takip et."", ""💡 Ipucu 2: if x not in seen: result.append(x); seen.add(x)."", ""💡 Ipucu 3: dict.fromkeys(items) ile tek satirda coz (Python 3.7+ dict sira korur).""]",91,remove_duplicates
 python-basics,Bir 2D matris var,beginner,"Bir 2D matris var. Satirlari sutun, sutunlari satir yap.
 Ornek: [[1,2,3], [4,5,6]] -> [[1,4], [2,5], [3,6]]
@@ -220,7 +220,7 @@ Aramayı O(log n)'de yap (binary search varyasyonu).
 Yoksa -1 döndür.","def search_rotated(nums: list[int], n: int) -> int:
     pass","[{""input"": [[4, 5, 6, 7, 0, 1, 2], 0], ""expected"": 4, ""description"": ""klasik""}, {""input"": [[4, 5, 6, 7, 0, 1, 2], 3], ""expected"": -1, ""description"": ""yok""}, {""input"": [[1], 0], ""expected"": -1, ""description"": ""tek eleman, yok""}, {""input"": [[1, 3], 3], ""expected"": 1, ""description"": ""sağ yarıda""}, {""input"": [[5, 1, 3], 5], ""expected"": 0, ""description"": ""sol yarıda""}]","[""💡 Ipucu 1: Her adimda bir yari SORTED (sol veya sag)."", ""💡 Ipucu 2: nums[low] <= nums[mid] ise sol yari sirali; kontrol et target sol aralikta mi."", ""💡 Ipucu 3: Aksi halde sag yari sirali; kontrol et target sag aralikta mi.""]",95,search_rotated
 algorithms,Bir dizide peak element: nums[i-1] < nums[i] > ...,intermediate,"Bir dizide peak element: nums[i-1] < nums[i] > nums[i+1].
-Sadece komusuna bakarak (O(log n","def find_peak(n: int, k: int, pos: int, threshold: int) -> int:
+Sadece komusuna bakarak (O(log n","def find_peak(nums: list[int]) -> int:
     pass","[{""input"": [1, 2, 3, 1], ""expected"": 2}, {""input"": [1, 2, 1, 3, 5, 6, 4], ""expected"": 5}, {""input"": [1], ""expected"": 0}, {""input"": [1, 2], ""expected"": 1}, {""input"": [2, 1], ""expected"": 0}]","[""💡 Ipucu 1: nums[mid] < nums[mid+1] ise peak sag tarafta."", ""💡 Ipucu 2: nums[mid] > nums[mid+1] ise peak sol tarafta (veya mid kendisi)."", ""💡 Ipucu 3: low < high dongusu kullan, return low.""]",96,find_peak
 algorithms,Iki Isaretci ile Palindrom Kontrolu,intermediate,"Bir string'in palindrom olup olmadigini iki isaretci ile kontrol et.
 Alfabetik olmayan karakterleri (bosluk, noktalama, buyuk/kucuk harf","def is_palindrome_two_pointer(x: str) -> bool:
@@ -231,7 +231,7 @@ Boş string için 0 döndür.","def length_of_longest_substring(x: str) -> int:
     pass","[{""input"": ""abcabcbb"", ""expected"": 3, ""description"": ""klasik (abc)""}, {""input"": ""bbbbb"", ""expected"": 1, ""description"": ""hep aynı karakter""}, {""input"": ""pwwkew"", ""expected"": 3, ""description"": ""wke""}, {""input"": """", ""expected"": 0, ""description"": ""boş string""}, {""input"": ""abcdef"", ""expected"": 6, ""description"": ""tamamen benzersiz""}]","[""💡 Ipucu 1: Sliding window: left ve right isaretcileri, bir set ile tutulan karakterleri izle."", ""💡 Ipucu 2: s[right] sette varsa, left'ten baslayarak setten cikar, left++."", ""💡 Ipucu 3: Her adimda max(max_len, right - left + 1) guncelle.""]",98,length_of_longest_substring
 algorithms,Iki Isaretci Ile Ters Ciftleri Say,intermediate,"Bir dizide, dizideki elemanların toplamı daha büyük olan (dominant) sayıyı bul.
 Örnek: [16, 6, 3, 2, 1] → 16 (toplam 6+3+2+1=12, 16>12).
-2x > sum(dizi) kontrolü, max() ile en büyük dominant eleman.","def count_inversions(n: int, k: int, pos: int, threshold: int, count: int) -> int:
+2x > sum(dizi) kontrolü, max() ile en büyük dominant eleman.","def count_inversions(nums: list[int]) -> int:
     pass","[{""input"": [2, 4, 1, 3, 5], ""expected"": 3}, {""input"": [5, 4, 3, 2, 1], ""expected"": 10}, {""input"": [1, 2, 3, 4, 5], ""expected"": 0}, {""input"": [1], ""expected"": 0}, {""input"": [], ""expected"": 0}]","[""💡 Ipucu 1: Merge sort yaklasimi - bol ve fethet."", ""💡 Ipucu 2: Sayaci merge sirasinda artir: sol[i] > sag[j] ise count += len(sol) - i."", ""💡 Ipucu 3: Daha basit O(n^2): her cifti kontrol et (ama yavas).""]",99,count_inversions
 algorithms,Bir dizide en sik gecen K elemani bul,intermediate,"Bir dizide en sik gecen K elemani bul.
 Siralama onemli degil.
@@ -241,7 +241,7 @@ algorithms,İki Dizinin Kesişimi,beginner,"İki dizinin kesişimini (ortak elem
     pass","[{""input"": [[1, 2, 2, 1], [2, 2]], ""expected"": [2], ""description"": ""tekrarlar — unique ortak""}, {""input"": [[4, 9, 5], [9, 4, 9, 8, 4]], ""expected"": [9, 4], ""description"": ""klasik""}, {""input"": [[1, 2, 3], [4, 5, 6]], ""expected"": [], ""description"": ""kesisim yok""}]","[""💡 İpucu 1: set(nums1) & set(nums2) -> Pythonic çözüm."", ""💡 İpucu 2: Küçük diziyi sete çevir, büyük diziyi iterate et."", ""💡 İpucu 3: Tekrarları önle: result.append(x); seen.add(x) ile takip et.""]",101,intersection
 algorithms,En Uzun Consecutive Sequence,intermediate,"Bir dizideki en uzun ard arda gelen sayı dizisinin uzunluğunu bul.
 Örnek: [100, 4, 200, 1, 3, 2] → 4 ([1,2,3,4]).
-HashSet yaklaşımı: O(n) — her eleman için zincirin uzunluğunu bul (komsuya bakarak).","def longest_consecutive(n: int, k: int, pos: int, threshold: int, count: int, n2: int) -> int:
+HashSet yaklaşımı: O(n) — her eleman için zincirin uzunluğunu bul (komsuya bakarak).","def longest_consecutive(nums: list[int]) -> int:
     pass","[{""input"": [100, 4, 200, 1, 3, 2], ""expected"": 4}, {""input"": [0, 3, 7, 2, 5, 8, 4, 6, 0, 1], ""expected"": 9}, {""input"": [], ""expected"": 0}, {""input"": [1, 2, 3, 4], ""expected"": 4}, {""input"": [10], ""expected"": 1}]","[""💡 Ipucu 1: Tum sayilari sete koy: num_set = set(nums)."", ""💡 Ipucu 2: Sadece dizi baslangici olan sayilari kontrol et: x-1 not in num_set."", ""💡 Ipucu 3: Oradan baslayarak while x+1 in set: x+=1. count tut.""]",102,longest_consecutive
 algorithms,Iki string'in anagram olup olmadigini kontrol e...,beginner,"İki string'in anagram olup olmadığını kontrol et (harfler aynı, sıra farklı).
 Case insensitive. Boşluk ve özel karakterler yok sayılır.
@@ -249,14 +249,14 @@ Case insensitive. Boşluk ve özel karakterler yok sayılır.
 collections.Counter veya sorted() ile çözüm: O(n).","def is_anagram(s: str, text: str) -> bool:
     pass","[{""input"": [""anagram"", ""nagaram""], ""expected"": true}, {""input"": [""listen"", ""silent""], ""expected"": true}, {""input"": [""hello"", ""world""], ""expected"": false}, {""input"": [""a"", ""b""], ""expected"": false}, {""input"": ["""", """"], ""expected"": true}]","[""💡 Ipucu 1: Counter ile frekans say: Counter(s) == Counter(t)."", ""💡 Ipucu 2: Manuel: 26 harflik dizi, s'de +1, t'de -1; hepsi 0 mi?"", ""💡 Ipucu 3: sorted(s) == sorted(t) ile kisa cozum (yavas ama basit).""]",103,is_anagram
 data-structures,Tekrarlayan Elemanları Bul,beginner,"Bir koleksiyonda birden fazla geçen elemanları bulun.
-Koleksiyon tipini sen seç: hangi yapı en verimli?","def find_duplicates(n: int, k: int, pos: int, threshold: int, count: int, n2: int, n3: int) -> list | list[int] | list[str]:
+Koleksiyon tipini sen seç: hangi yapı en verimli?","def find_duplicates(nums: list[int]) -> list[int]:
     pass","[{""input"": [1, 2, 3, 4, 2, 3, 5], ""expected"": [2, 3]}, {""input"": [""a"", ""b"", ""a"", ""c"", ""b""], ""expected"": [""a"", ""b""]}, {""input"": [1, 2, 3], ""expected"": []}]","[""💡 İpucu 1: Birden fazla geçen elemanları saymak için 'frekans' sayacı lazım."", ""💡 İpucu 2: Counter veya dict.items() kullanabilirsin — hangisi daha okunur?"", ""💡 İpucu 3: count > 1 olanları filtreleyip liste yap.""]",110,find_duplicates
 data-structures,İki Listenin Kesişimi,beginner,"İki koleksiyondaki ortak elemanları bul.
 Örnek: [1,2,3,4,5] ∩ [3,4,5,6,7] → [3, 4, 5]. Tekrarlar tekilleştirilir.
 set(a) & set(b) veya set(a).intersection(b).","def intersection(nums: dict) -> list | list[int] | list[str]:
     pass","[{""input"": {""a"": [1, 2, 3, 4], ""b"": [3, 4, 5, 6]}, ""expected"": [3, 4]}, {""input"": {""a"": [""x"", ""y""], ""b"": [""y"", ""z""]}, ""expected"": [""y""]}, {""input"": {""a"": [1, 2], ""b"": [3, 4]}, ""expected"": []}]","[""💡 İpucu 1: İki döngü O(n*m). Daha hızlı yol: birini okumaya hazır yap."", ""💡 İpucu 2: Hangi veri yapısı arama (lookup) için O(1)?"", ""💡 İpucu 3: set yapısı O(1) arama yapar. set(a) & set(b).""]",111,intersection
 data-structures,En Sık Geçen Eleman,beginner,"Bir koleksiyonda en çok geçen elemanı bul.
-Birden fazla aynı frekansta varsa ilkini döndür.","def most_frequent(n: int, k: int, pos: int, threshold: int, count: int, n2: int, n3: int) -> int | str:
+Birden fazla aynı frekansta varsa ilkini döndür.","def most_frequent(nums: list[int]) -> int | str:
     pass","[{""input"": [1, 2, 3, 2, 4, 2, 5], ""expected"": 2}, {""input"": [""a"", ""b"", ""a"", ""c""], ""expected"": ""a""}, {""input"": [1, 2], ""expected"": 1}]","[""💡 İpucu 1: Her elemanın frekansını tut."", ""💡 İpucu 2: collections.Counter kullanabilirsin veya dict."", ""💡 İpucu 3: counter.most_common(1) ile en sık olanı al.""]",112,most_frequent
 data-structures,Stack ve Queue Simülasyonu,intermediate,"Bir closure factory yaz. mode=""queue"" verildiğinde FIFO (kuyruk), mode=""stack"" verildiğinde LIFO (yığın) davranan bir nesne döndür. Nesnenin add(x) ve remove() metodu olsun; remove() eklenen değeri döndürür.","def container(mode: str):
     storage = []
@@ -308,7 +308,7 @@ yapıştırarak bırak. Örn: ""Merhaba, dünya!"" -> [""Merhaba,"", ""dünya!""
 Yapıyı sen seç.","def split_keep_punct(x: str) -> list[str]:
     pass","[{""input"": ""Merhaba, dünya!"", ""expected"": [""Merhaba,"", ""dünya!""], ""description"": ""temel noktalama""}, {""input"": ""Python mı?"", ""expected"": [""Python"", ""mı?""], ""description"": ""soru işareti""}, {""input"": ""a b c"", ""expected"": [""a"", ""b"", ""c""], ""description"": ""düz metin""}]","[""💡 İpucu 1: re.findall(r\""\\w+[\\w]*\\S*\"", s) deneyebilirsin."", ""💡 İpucu 2: Karakter karakter gezip harf olmayanları sınır olarak kullan."", ""💡 İpucu 3: split() noktalamayı kaybeder, findall daha iyi.""]",123,split_keep_punct
 algorithms,Bir dizide n/2'den fazla geçen elemanı bul,intermediate,"Bir dizide n/2'den fazla geçen elemanı bul. Her zaman böyle bir
-eleman var. Veri yapısı kullanmadan, O(1","def majority_element(n: int, k: int, pos: int) -> int:
+eleman var. Veri yapısı kullanmadan, O(1","def majority_element(nums: list[int]) -> int:
     pass","[{""input"": [3, 2, 3], ""expected"": 3, ""description"": ""tek majority""}, {""input"": [2, 2, 1, 1, 1, 2, 2], ""expected"": 2, ""description"": ""uzun dizi""}, {""input"": [1], ""expected"": 1, ""description"": ""tek eleman""}]","[""💡 İpucu 1: Boyer-Moore Voting Algorithm kullan."", ""💡 İpucu 2: candidate tut, count artır/azalt."", ""💡 İpucu 3: Son aday kesin çözüm (garanti varken).""]",124,majority_element
 data-structures,Bir dict ver,beginner,"Bir dict ver. Anahtarlarını value'ya göre artan sırala.
 Value eşitse alfabetik olarak anahtara göre sırala.
@@ -316,13 +316,13 @@ Sonuç: [(key, value","def sort_by_value(x: dict) -> list | list[list[str]]:
     pass","[{""input"": {""banana"": 3, ""apple"": 3, ""cherry"": 1}, ""expected"": [[""cherry"", 1], [""apple"", 3], [""banana"", 3]], ""description"": ""tie-break""}, {""input"": {""a"": 2, ""b"": 1}, ""expected"": [[""b"", 1], [""a"", 2]], ""description"": ""basit""}, {""input"": {}, ""expected"": [], ""description"": ""bos dict""}]",[],125,sort_by_value
 python-basics,İki tam sayının ortalamasını hesapla,intermediate,"İki tam sayının ortalamasını hesapla. (a + b) / 2.
 Float sonuç döndür (örn. (3 + 4) / 2 = 3.5).
-Negatif sayılar da geçerli.","def average(n: int, k: int) -> int:
+Negatif sayılar da geçerli.","def average(a: int, b: int) -> int:
     pass","[{""input"": [10, 20], ""expected"": 15, ""description"": ""pozitif""}, {""input"": [-5, 5], ""expected"": 0, ""description"": ""negatif + pozitif""}, {""input"": [3, 7], ""expected"": 5, ""description"": ""tek sayi""}, {""input"": [0, 0], ""expected"": 0, ""description"": ""iki sıfır""}]","[""💡 İpucu 1: (a & b) + ((a ^ b) >> 1) bitsel çözüm."", ""💡 İpucu 2: Sıradan: (a + b) // 2."", ""💡 İpucu 3: (a // 2) + (b // 2) + ((a % 2 + b % 2) // 2).""]",126,average
 pandas,DataFrame Satır Normalizasyonu,intermediate,"Bir DataFrame\'in sayısal sütunlarını satır bazlı normalize et.
 Yani her satır için: (x - min","def row_normalize(nums: list[int], lst: list[int]) -> list[list[float]] | list[list[int]]:
     pass","[{""input"": [[1, 2], [3, 4]], ""expected"": [[0.0, 1.0], [0.0, 1.0]], ""description"": ""basit kare""}, {""input"": [[10, 20, 30]], ""expected"": [[0.0, 0.5, 1.0]], ""description"": ""tek satir""}, {""input"": [[5, 5]], ""expected"": [[0, 0]], ""description"": ""sabit satir""}]","[""💡 İpucu 1: df.select_dtypes(include=\""number\"").sub(df.min(axis=1), axis=0).div(df.max(axis=1) - df.min(axis=1), axis=0)"", ""💡 İpucu 2: axis=1 satır bazlı demek."", ""💡 İpucu 3: max == min olan satırlarda 0/0 olur, NaN döner.""]",127,row_normalize
 algorithms,Bir dizideki en uzun kesin artan altdizinin uzu...,intermediate,"Bir dizideki en uzun kesin artan altdizinin uzunluğunu bul.
-Örn: [10, 9, 2, 5, 3, 7, 101, 18] -> 4 (2, 3, 7, 18 veya 2, 5, 7, 101","def length_of_lis(n: int, k: int, pos: int, threshold: int, count: int, n2: int, n3: int, n4: int) -> int:
+Örn: [10, 9, 2, 5, 3, 7, 101, 18] -> 4 (2, 3, 7, 18 veya 2, 5, 7, 101","def length_of_lis(nums: list[int]) -> int:
     pass","[{""input"": [10, 9, 2, 5, 3, 7, 101, 18], ""expected"": 4, ""description"": ""klasik""}, {""input"": [0, 1, 0, 3, 2, 3], ""expected"": 4, ""description"": ""tekrar""}, {""input"": [7, 7, 7, 7], ""expected"": 1, ""description"": ""sabit dizi""}]","[""💡 İpucu 1: Patience sorting / binary search ile O(n log n)."", ""💡 İpucu 2: bisect_left ile uygun pozisyonu bul."", ""💡 İpucu 3: O(n²) DP de çalışır ama yavaş.""]",128,length_of_lis
 algorithms,Çakışan aralıkları birleştir,intermediate,"Çakışan aralıkları birleştir. Sonuç: çakışmayan, sıralı aralıklar.
 Girdi: [[1,3],[2,6],[8,10],[15,18]] -> [[1,6],[8,10],[15,18]]
@@ -333,7 +333,7 @@ Her kategorik sütun kendi mode'u ile doldurulur.
 Örnek: {'şehir': ['İst', NaN, 'Ank', 'İst']} → 'İst' ile doldurulur.","def fill_categorical_nan(x: str) -> str:
     pass","[{""input"": ""df with NaN in 'city' column"", ""expected"": ""df with NaN filled by mode"", ""description"": ""temel""}, {""input"": ""df all numeric"", ""expected"": ""df unchanged"", ""description"": ""sayisal dokunulmaz""}, {""input"": ""df no NaN"", ""expected"": ""df unchanged"", ""description"": ""bos is yok""}]",[],130,fill_categorical_nan
 python-basics,Listedeki Yinelenenleri Say,beginner,"Bir listedeki elemanların kaç kez geçtiğini dict olarak döndür.
-Sıra önemsiz. Yapıyı sen seç.","def count_items(n: int, k: int, pos: int, threshold: int, count: int, n2: int) -> dict:
+Sıra önemsiz. Yapıyı sen seç.","def count_items(nums: list[int]) -> dict:
     pass","[{""input"": [1, 2, 2, 3, 3, 3], ""expected"": {""1"": 1, ""2"": 2, ""3"": 3}, ""description"": ""basit""}, {""input"": [], ""expected"": {}, ""description"": ""bos liste""}, {""input"": [""a"", ""a"", ""b""], ""expected"": {""a"": 2, ""b"": 1}, ""description"": ""string""}]","[""💡 İpucu 1: collections.Counter(items)."", ""💡 İpucu 2: dict.get(k, 0) + 1 döngüsü."", ""💡 İpucu 3: defaultdict(int) kullanabilirsin.""]",131,count_items
 data-structures,Deque Kullanarak Kayan Pencere Maksimumu,intermediate,"Bir dizide k boyutunda kayan pencere ile her pencerenin maksimumunu bul.
 Örnek: [1,3,-1,-3,5,3,6,7], k=3 → [3,3,5,5,6,7].
@@ -412,7 +412,6 @@ dynamic-programming,Unique Paths,beginner,"m×n grid'de (0,0)'dan (m-1,n-1)'e sa
 Kaç farklı yol var?
 Örnek: 3×7 grid → 28 yol. Formül: C(m+n-2, m-1).
 DP: dp[i][j] = dp[i-1][j] + dp[i][j-1].","def unique_paths(m: int, n: int) -> int:
-    # dp[i][j] = (0,0)'dan (i,j)'ye yol sayisi
     pass","[{""input"": {""m"": 3, ""n"": 7}, ""expected"": 28}, {""input"": {""m"": 3, ""n"": 2}, ""expected"": 3}]","[""💡 dp[i][j] = dp[i-1][j] + dp[i][j-1]"", ""💡 dp[0][j]=dp[i][0]=1"", ""💡 1D versiyon: sadece son satırı tut""]",150,unique_paths
 dynamic-programming,House Robber,beginner,"Bir dizi ev var. Yan yana iki ev soyamazsın (alarm bağlı).
 Maksimum para. Maks 2 durum: soy (i) veya soyma (i-1).
