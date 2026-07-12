@@ -11,23 +11,26 @@ Detay: scripts/seed_questions.py
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict, Any
 import os
 from pathlib import Path
 import subprocess
 import sys
 import json
 import logging
+import traceback
+import csv
 
 router = APIRouter(prefix="/api/v2/admin", tags=["admin"])
 log = logging.getLogger("pymulakat.admin")
 
 # Audit endpoints (import edip router'a ekle)
-import sys
-import traceback
 try:
     from routers.audit import router as audit_router
     router.include_router(audit_router)
+    log.info("✅ audit endpoints yüklendi (Mavis API + test runner)")
+except Exception as e:
+    log.exception(f"❌ audit router yüklenemedi: {e}")
     log.info("✅ audit endpoints yüklendi (Mavis API + test runner)")
     print(f"✅ audit_router.routes: {[r.path for r in audit_router.routes]}", file=sys.stderr)
 except Exception as e:
