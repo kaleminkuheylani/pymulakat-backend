@@ -664,11 +664,15 @@ async def bulk_audit(max_questions: int = 50):
             code = gen_resp.code
         except HTTPException as e:
             failed_count += 1
-            errors.append({"id": qid, "title": title, "stage": "generate", "error": e.detail})
+            err_msg = str(e.detail)[:300]
+            errors.append({"id": qid, "title": title, "stage": "generate", "error": err_msg})
+            results.append({"id": qid, "title": title, "status": "failed", "stage": "generate", "error": err_msg})
             continue
         except Exception as e:
             failed_count += 1
-            errors.append({"id": qid, "title": title, "stage": "generate", "error": str(e)})
+            err_msg = str(e)[:300]
+            errors.append({"id": qid, "title": title, "stage": "generate", "error": err_msg})
+            results.append({"id": qid, "title": title, "status": "failed", "stage": "generate", "error": err_msg})
             continue
 
         # 2) Run tests
