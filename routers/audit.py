@@ -34,10 +34,11 @@ from supabase_client import get_supabase_admin
 router = APIRouter(prefix="/audit", tags=["admin-audit"])  # /admin zaten admin.py prefix, /audit eklenecek
 log = logging.getLogger("pymulakat.audit")
 
-# Mavis API config (OpenAI uyumlu)
-MAVIS_API_KEY = os.environ.get("MAVIS_API_KEY", "")
-MAVIS_API_BASE = os.environ.get("MAVIS_API_BASE", "https://api.minimax.io/v1")
-MAVIS_MODEL = os.environ.get("MAVIS_MODEL", "MiniMax-M2")
+# Gemini API config (OpenAI uyumlu mode)
+# MAVIS_API_KEY → artık GOOGLE_API_KEY (veya GEMINI_API_KEY alias)
+MAVIS_API_KEY = os.environ.get("MAVIS_API_KEY") or os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY") or ""
+MAVIS_API_BASE = os.environ.get("MAVIS_API_BASE", "https://generativelanguage.googleapis.com/v1beta/openai")
+MAVIS_MODEL = os.environ.get("MAVIS_MODEL", "gemini-1.5-flash")
 
 # Code execution timeout (saniye)
 EXEC_TIMEOUT = 8
