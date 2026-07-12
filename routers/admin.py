@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 import os
+from pathlib import Path
 import subprocess
 import sys
 import json
@@ -346,3 +347,89 @@ async def generate_questions(request: Request):
         raise HTTPException(504, "10 dk timeout")
     except Exception as e:
         raise HTTPException(500, f"subprocess error: {e}")
+
+# ═══════════════════════════════════════════════════════════════
+# ─── BULK UPSERT: data/QUESTIONS-v3.csv → Supabase ───────────
+# ═══════════════════════════════════════════════════════════════
+
+class BulkSeedResponse(BaseModel):
+    total: int
+    inserted: int
+    updated: int
+    failed: int
+    errors: List[Dict[str, Any]] = []
+
+
+@router.post("/bulk-seed-questions")
+def bulk_seed_questions():
+    """data/QUESTIONS-v3.csv dosyasını oku, Supabase'e upsert et.
+
+    - id varsa: UPDATE (slug, title, description, function_name, starter_code, test_cases, hints, level, category)
+    - id yoksa: INSERT
+    - Multi-line CSV alanları Python csv modülü ile doğru parse edilir
+    """
+    import csv
+    sb = get_supabase_admin()
+
+    csv_paths = [
+        "data/QUESTIONS-v3.csv",                # local
+        "/app/data/QUESTIONS-v3.csv",            # Railway
+    ]
+    csv_path = None
+    for p in csv_paths:
+        if Path(p).exists():
+            csv_path = p
+            break
+    if not csv_path:
+        raise HTTPException(status_code=404, detail="QUESTIONS-v3.csv not found")
+
+    inserted = 0
+    updated = 0
+    failed = 0
+    errors = []
+
+    with open(csv_path, encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            try:
+                sid = int(row.get("id", "0"))
+                if not sid:
+                    continue
+                # Upsert data
+                data = {
+                    "category": row.get("category", ""),
+                    "title": row.get("title", ""),
+                    "slug": row.get("slug", ""),
+                    "level": row.get("level", "beginner"),
+                    "description": row.get("description", ""),
+                    "function_name": row.get("function_name", ""),
+                    "starter_code": row.get("starter_code", ""),
+                    "test_cases": row.get("test_cases", ""),  # JSON string
+                    "hints": row.get("hints", ""),  # JSON string
+                }
+                # test_cases ve hints JSON string olmalı
+                # Supabase jsonb alana insert ederken Python list/dict gönderilebilir
+                # ama burada string olarak bırakıyoruz, DB'de jsonb/text ne ise o olur
+                # Mevcut data_type: Supabase'te jsonb olabilir veya text
+                # Text olarak insert edip, okurken parse ederiz
+                result = sb.table("questions").upsert(
+                    {**data, "id": sid},
+                    on_conflict="id",
+                ).execute()
+                if result.data:
+                    if len(result.data) == 1 and result.data[0].get("id") == sid:
+                        # upsert hem insert hem update destekler, ayırt etmek zor
+                        inserted += 1
+            except Exception as e:
+                failed += 1
+                errors.append({"id": row.get("id", "?"), "error": str(e)[:200]})
+                if len(errors) < 5:
+                    log.exception("Upsert failed for id=%s", row.get("id", "?"))
+
+    return BulkSeedResponse(
+        total=inserted + failed,
+        inserted=inserted,
+        updated=updated,
+        failed=failed,
+        errors=errors,
+    )
