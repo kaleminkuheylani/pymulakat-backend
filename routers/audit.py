@@ -28,10 +28,11 @@ router = APIRouter(prefix="/audit", tags=["admin-audit"])  # /api/v2/admin (admi
 log = logging.getLogger("pymulakat.audit")
 
 # API config (OpenAI uyumlu: OpenAI, Gemini, Mavis)
-# Key sırası: MAVIS_API_KEY → OPENAI_API_KEY → GOOGLE_API_KEY → GEMINI_API_KEY
+# Key sırası: OPENAI_API_KEY → MAVIS_API_KEY → GOOGLE_API_KEY → GEMINI_API_KEY
+# OpenAI ilk çünkü MAVIS_API_KEY'de Mavis key olabilir (sk-cp-...) OpenAI reddeder
 MAVIS_API_KEY = (
-    os.environ.get("MAVIS_API_KEY")
-    or os.environ.get("OPENAI_API_KEY")
+    os.environ.get("OPENAI_API_KEY")
+    or os.environ.get("MAVIS_API_KEY")
     or os.environ.get("GOOGLE_API_KEY")
     or os.environ.get("GEMINI_API_KEY")
     or ""
