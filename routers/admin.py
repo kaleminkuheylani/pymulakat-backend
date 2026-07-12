@@ -746,3 +746,58 @@ def debug_list_test(category: str = "pandas", limit: int = 10):
         return {"error": str(e)[:500], "trace": traceback.format_exc()[:2000]}
 
 
+@router.post("/debug/bulk-seed-debug")
+def debug_bulk_seed():
+    """Bulk-seed + hangi satir patliyor, log detayli."""
+    import sys
+    sb = get_supabase_admin()
+
+    csv_paths = ["data/QUESTIONS-v3.csv", "/app/data/QUESTIONS-v3.csv"]
+    csv_path = None
+    for p_path in csv_paths:
+        if Path(p_path).exists():
+            csv_path = p_path
+            break
+    if not csv_path:
+        return {"error": "CSV yok"}
+
+    results = []
+    with open(csv_path, encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            sid = int(row.get("id", "0") or 0)
+            if not sid:
+                continue
+            # Mevcut mu kontrol
+            existing = sb.table("questions").select("id").eq("id", sid).execute()
+            if existing.data:
+                results.append({"id": sid, "status": "exists"})
+                continue
+            # Yeni ekle - sadece ilk 10 eksik
+            if len([r for r in results if r["status"] == "fail"]) >= 3:
+                results.append({"id": sid, "status": "skip", "reason": "limit"})
+                continue
+            try:
+                tc_raw = row.get("test_cases", "[]")
+                hints_raw = row.get("hints", "[]")
+                test_cases = json.loads(tc_raw) if tc_raw.startswith("[") else tc_raw
+                hints = json.loads(hints_raw) if hints_raw.startswith("[") else hints_raw
+                data = {
+                    "id": sid,
+                    "category": row.get("category", "") or "",
+                    "title": row.get("title", "") or "",
+                    "slug": row.get("slug", "") or "",
+                    "level": row.get("level", "beginner") or "beginner",
+                    "description": row.get("description", "") or "",
+                    "function_name": row.get("function_name", "") or "",
+                    "starter_code": row.get("starter_code", "") or "",
+                    "test_cases": test_cases,
+                    "hints": hints,
+                }
+                result = sb.table("questions").insert(data).execute()
+                results.append({"id": sid, "status": "ok"})
+            except Exception as e:
+                results.append({"id": sid, "status": "fail", "error": str(e)[:400]})
+    return {"total": len(results), "results": results[:20]}
+
+
