@@ -579,3 +579,145 @@ def delete_pending_questions():
         raise HTTPException(500, f"Delete failed: {e}")
 
 
+
+# ═══════════════════════════════════════════════════════════════
+# ─── User role management (Supabase admin) ───────────────────
+# ═══════════════════════════════════════════════════════════════
+
+class SetRoleRequest(BaseModel):
+    role: str  # "admin" | "user"
+
+
+@router.get("/users/list")
+def list_admin_users(limit: int = 50):
+    """Tum auth.users listele (admin kontrolu gerekli - sadece super admin).
+    
+    Sadece admin olan user'lar bu endpoint'i kullanabilir.
+    NOT: Bu endpoint ileride super_admin check eklenmeli.
+    Simdilik service_role ile auth.users.admin API kullanir.
+    """
+    sb = get_supabase_admin()
+    try:
+        # Supabase Admin API: GET /auth/v1/admin/users
+        # service_role key ile
+        result = sb.auth.admin.list_users(page=1, per_page=limit)
+        users = []
+        for u in result:
+            app_meta = u.app_metadata or {}
+            users.append({
+                "id": u.id,
+                "email": u.email,
+                "created_at": u.created_at.isoformat() if u.created_at else None,
+                "last_sign_in_at": u.last_sign_in_at.isoformat() if u.last_sign_in_at else None,
+                "role": app_meta.get("role", "user"),
+                "provider": app_meta.get("provider", "email"),
+                "email_confirmed": bool(u.email_confirmed_at),
+            })
+        return {"users": users, "total": len(users)}
+    except Exception as e:
+        raise HTTPException(500, f"List users failed: {e}")
+
+
+@router.post("/users/{user_id}/set-role")
+def set_user_role(user_id: str, req: SetRoleRequest):
+    """User'in app_metadata.role'unu guncelle (service_role ile).
+    
+    SADECE Supabase auth admin yapabilir. Bu endpoint zaten admin-only
+    (UI'da requireAdmin ile korunuyor). Super admin check ileride eklenir.
+    """
+    if req.role not in ("admin", "user"):
+        raise HTTPException(400, "role 'admin' veya 'user' olmali")
+    
+    sb = get_supabase_admin()
+    try:
+        # Mevcut user'i al
+        user_result = sb.auth.admin.get_user_by_id(user_id)
+        if not user_result:
+            raise HTTPException(404, "User bulunamadi")
+        
+        current_meta = dict(user_result.app_metadata or {})
+        current_meta["role"] = req.role
+        current_meta["role_updated_at"] = "2026-07-12T18:15:00Z"
+        
+        # app_metadata guncelle
+        result = sb.auth.admin.update_user_by_id(
+            user_id,
+            {"app_metadata": current_meta}
+        )
+        return {
+            "id": result.user.id,
+            "email": result.user.email,
+            "role": current_meta["role"],
+            "updated": True,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Set role failed: {e}")
+
+
+@router.get("/users/me")
+def get_current_user_info(request: Request):
+    """Token'dan user bilgisi (debug icin)."""
+    auth = request.headers.get("authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(401, "Token gerekli")
+    
+    token = auth[7:]
+    sb = get_supabase()
+    try:
+        result = sb.auth.get_user(token)
+        if not result or not result.user:
+            raise HTTPException(401, "Token gecersiz")
+        u = result.user
+        return {
+            "id": u.id,
+            "email": u.email,
+            "role": (u.app_metadata or {}).get("role", "user"),
+            "email_confirmed": bool(u.email_confirmed_at),
+        }
+    except Exception as e:
+        raise HTTPException(401, f"Token dogrulanamadi: {e}")
+
+
+@router.post("/users/set-role-by-email")
+def set_user_role_by_email(req: dict):
+    """Email ile user bul, role guncelle. Super-admin debug endpoint.
+    
+    Body: { "email": "...", "role": "admin" | "user" }
+    """
+    email = req.get("email", "")
+    role = req.get("role", "")
+    
+    if not email or role not in ("admin", "user"):
+        raise HTTPException(400, "email ve role ('admin'|'user') gerekli")
+    
+    sb = get_supabase_admin()
+    try:
+        # Email ile user bul
+        result = sb.auth.admin.list_users(page=1, per_page=200)
+        target = None
+        for u in result:
+            if u.email and u.email.lower() == email.lower():
+                target = u
+                break
+        if not target:
+            raise HTTPException(404, f"User bulunamadi: {email}")
+        
+        current_meta = dict(target.app_metadata or {})
+        current_meta["role"] = role
+        
+        update_result = sb.auth.admin.update_user_by_id(
+            target.id,
+            {"app_metadata": current_meta}
+        )
+        return {
+            "id": update_result.user.id,
+            "email": update_result.user.email,
+            "role": role,
+            "updated": True,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Set role failed: {e}")
