@@ -19,6 +19,7 @@ import subprocess
 import sys
 import json
 import logging
+from supabase_client import get_supabase, get_supabase_admin
 import traceback
 import csv
 
@@ -48,7 +49,7 @@ except Exception as e:
 @router.get("/health")
 def health():
     """Liveness + DB bağlantı testi."""
-    from supabase_client import get_supabase
+    from supabase_client import get_supabase  # get_supabase_admin zaten modül seviyesinde
     db_ok = False
     db_error = None
     db_stats = {}
@@ -155,7 +156,7 @@ async def seed_questions_endpoint(request: Request):
                 payload[fld] = val.replace('""', '"')
             rows_to_write.append(payload)
 
-    from supabase_client import get_supabase
+    from supabase_client import get_supabase  # get_supabase_admin zaten modül seviyesinde
     sb = get_supabase()
 
     succeeded = []
