@@ -356,39 +356,21 @@ async def generate_questions(request: Request):
 # ─── BULK UPSERT: data/QUESTIONS-v3.csv → Supabase ───────────
 # ═══════════════════════════════════════════════════════════════
 
-class BulkSeedResponse(BaseModel):
-    total: int
-    inserted: int
-    updated: int
-    failed: int
-    errors: List[Dict[str, Any]] = []
-
-
 @router.post("/bulk-seed-questions")
 def bulk_seed_questions():
-    """data/QUESTIONS-v3.csv dosyasını oku, Supabase'e upsert et.
-
-    - id varsa: UPDATE (slug, title, description, function_name, starter_code, test_cases, hints, level, category)
-    - id yoksa: INSERT
-    - Multi-line CSV alanları Python csv modülü ile doğru parse edilir
-    """
-    import csv
+    """data/QUESTIONS-v3.csv -> Supabase upsert."""
     sb = get_supabase_admin()
 
-    csv_paths = [
-        "data/QUESTIONS-v3.csv",                # local
-        "/app/data/QUESTIONS-v3.csv",            # Railway
-    ]
+    csv_paths = ["data/QUESTIONS-v3.csv", "/app/data/QUESTIONS-v3.csv"]
     csv_path = None
-    for p in csv_paths:
-        if Path(p).exists():
-            csv_path = p
+    for p_path in csv_paths:
+        if Path(p_path).exists():
+            csv_path = p_path
             break
     if not csv_path:
         raise HTTPException(status_code=404, detail="QUESTIONS-v3.csv not found")
 
     inserted = 0
-    updated = 0
     failed = 0
     errors = []
 
@@ -399,56 +381,55 @@ def bulk_seed_questions():
                 sid = int(row.get("id", "0"))
                 if not sid:
                     continue
-                # Test cases JSON string olarak parse et (eğer JSON string ise)
-            test_cases_raw = row.get("test_cases", "[]")
-            hints_raw = row.get("hints", "[]")
-            try:
-                test_cases = json.loads(test_cases_raw) if test_cases_raw.startswith("[") else test_cases_raw
-            except:
-                test_cases = test_cases_raw
-            try:
-                hints = json.loads(hints_raw) if hints_raw.startswith("[") else hints_raw
-            except:
-                hints = hints_raw
+                # JSON string alanlarini parse et
+                tc_raw = row.get("test_cases", "[]")
+                hints_raw = row.get("hints", "[]")
+                try:
+                    test_cases = json.loads(tc_raw) if tc_raw.startswith("[") else tc_raw
+                except Exception:
+                    test_cases = tc_raw
+                try:
+                    hints = json.loads(hints_raw) if hints_raw.startswith("[") else hints_raw
+                except Exception:
+                    hints = hints_raw
 
-            # Upsert data (sadece değişen alanlar)
-            data = {
-                "category": row.get("category", ""),
-                "title": row.get("title", ""),
-                "slug": row.get("slug", ""),
-                "level": row.get("level", "beginner"),
-                "description": row.get("description", ""),
-                "function_name": row.get("function_name", ""),
-                "starter_code": row.get("starter_code", ""),
-                "test_cases": test_cases,
-                "hints": hints,
-            }
-            # Önce mevcut kaydı kontrol et (güncelleme gerekli mi?)
-            try:
-                existing = sb.table("questions").select("id, test_cases, hints, function_name").eq("id", sid).execute()
+                data = {
+                    "category": row.get("category", ""),
+                    "title": row.get("title", ""),
+                    "slug": row.get("slug", ""),
+                    "level": row.get("level", "beginner"),
+                    "description": row.get("description", ""),
+                    "function_name": row.get("function_name", ""),
+                    "starter_code": row.get("starter_code", ""),
+                    "test_cases": test_cases,
+                    "hints": hints,
+                }
+                # Önce kontrol et
+                existing = sb.table("questions").select("id").eq("id", sid).execute()
                 if existing.data:
-                    # Update
-                    result = sb.table("questions").update(data).eq("id", sid).execute()
+                    sb.table("questions").update(data).eq("id", sid).execute()
                 else:
-                    # Insert
-                    result = sb.table("questions").insert({**data, "id": sid}).execute()
+                    sb.table("questions").insert({**data, "id": sid}).execute()
+                inserted += 1
             except Exception as e:
-                # Fallback: upsert
-                result = sb.table("questions").upsert({**data, "id": sid}, on_conflict="id").execute()
-                if result.data:
-                    if len(result.data) == 1 and result.data[0].get("id") == sid:
-                        # upsert hem insert hem update destekler, ayırt etmek zor
-                        inserted += 1
-            except Exception as e:
-                failed += 1
-                errors.append({"id": row.get("id", "?"), "error": str(e)[:200]})
-                if len(errors) < 5:
-                    log.exception("Upsert failed for id=%s", row.get("id", "?"))
+                # Fallback upsert
+                try:
+                    sb.table("questions").upsert(
+                        {**data, "id": sid}, on_conflict="id"
+                    ).execute()
+                    inserted += 1
+                except Exception as e2:
+                    failed += 1
+                    errors.append({"id": row.get("id", "?"), "error": str(e2)[:200]})
+                    if len(errors) < 5:
+                        log.exception("Upsert failed for id=%s", row.get("id", "?"))
 
     return BulkSeedResponse(
         total=inserted + failed,
         inserted=inserted,
-        updated=updated,
+        updated=0,
         failed=failed,
         errors=errors,
     )
+
+
