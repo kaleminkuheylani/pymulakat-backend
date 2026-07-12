@@ -183,6 +183,7 @@ async def seed_questions_endpoint(request: Request):
 
 
 # (dry-run shortcut kaldırıldı: parametresiz, idempotent endpoint yeterli)
+class FullMigrationRequest(BaseModel):
     dry_run: bool = True
     old_supabase_url: Optional[str] = None
     old_service_role_key: Optional[str] = None
