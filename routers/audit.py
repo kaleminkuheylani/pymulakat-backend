@@ -220,20 +220,28 @@ async def generate_code(req: GenerateRequest):
         "max_tokens": 1500,
     }).encode("utf-8")
 
-    req_obj = urllib.request.Request(
-        url,
-        data=body,
-        headers={
-            "Authorization": f"Bearer {MAVIS_API_KEY}",
-            "Content-Type": "application/json",
-        },
-    )
-
+    # subprocess curl: Railway DNS bozuk, curl çalışıyor
     try:
-        with urllib.request.urlopen(req_obj, timeout=30) as resp:
-            response_text = resp.read().decode("utf-8")
-            data = json.loads(response_text)
-            content = data["choices"][0]["message"]["content"]
+        result = subprocess.run(
+            ["curl", "-sS", "-X", "POST", url,
+             "-H", f"Authorization: Bearer {MAVIS_API_KEY}",
+             "-H", "Content-Type: application/json",
+             "--data-binary", body.decode("utf-8"),
+             "--max-time", "30"],
+            capture_output=True, text=True, timeout=35,
+        )
+        if result.returncode != 0:
+            log.error("curl error: rc=%d, stderr=%s", result.returncode, result.stderr[:200])
+            raise HTTPException(
+                status_code=502,
+                detail=f"API call failed: {result.stderr[:200] or 'curl error'}",
+            )
+        data = json.loads(result.stdout)
+        if "error" in data:
+            err_msg = data["error"].get("message", str(data["error"]))[:200]
+            log.error("API error: %s", err_msg)
+            raise HTTPException(status_code=502, detail=f"API error: {err_msg}")
+        content = data["choices"][0]["message"]["content"]
 
         # Kod bloğundan temizle ```python ... ```
         code = content.strip()
@@ -257,19 +265,10 @@ async def generate_code(req: GenerateRequest):
             code=code, model=MAVIS_MODEL,
             tokens_used=tokens, elapsed_ms=elapsed_ms,
         )
-    except urllib.error.HTTPError as e:
-        body_err = e.read().decode("utf-8", errors="replace")[:300]
-        log.error("API HTTP error: %s — %s", e.code, body_err)
-        raise HTTPException(
-            status_code=502,
-            detail=f"API error: {e.code} — {body_err}",
-        )
-    except urllib.error.URLError as e:
-        log.error("API URL error: %s", e)
-        raise HTTPException(
-            status_code=502,
-            detail=f"API URL error (DNS/network): {e.reason}",
-        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="API timeout (30s)")
+    except HTTPException:
+        raise
     except Exception as e:
         log.exception("Generate failed")
         raise HTTPException(status_code=500, detail=f"Generate error: {e}")
