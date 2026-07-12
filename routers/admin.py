@@ -398,27 +398,42 @@ def bulk_seed_questions():
                 sid = int(row.get("id", "0"))
                 if not sid:
                     continue
-                # Upsert data
-                data = {
-                    "category": row.get("category", ""),
-                    "title": row.get("title", ""),
-                    "slug": row.get("slug", ""),
-                    "level": row.get("level", "beginner"),
-                    "description": row.get("description", ""),
-                    "function_name": row.get("function_name", ""),
-                    "starter_code": row.get("starter_code", ""),
-                    "test_cases": row.get("test_cases", ""),  # JSON string
-                    "hints": row.get("hints", ""),  # JSON string
-                }
-                # test_cases ve hints JSON string olmalı
-                # Supabase jsonb alana insert ederken Python list/dict gönderilebilir
-                # ama burada string olarak bırakıyoruz, DB'de jsonb/text ne ise o olur
-                # Mevcut data_type: Supabase'te jsonb olabilir veya text
-                # Text olarak insert edip, okurken parse ederiz
-                result = sb.table("questions").upsert(
-                    {**data, "id": sid},
-                    on_conflict="id",
-                ).execute()
+                # Test cases JSON string olarak parse et (eğer JSON string ise)
+            test_cases_raw = row.get("test_cases", "[]")
+            hints_raw = row.get("hints", "[]")
+            try:
+                test_cases = json.loads(test_cases_raw) if test_cases_raw.startswith("[") else test_cases_raw
+            except:
+                test_cases = test_cases_raw
+            try:
+                hints = json.loads(hints_raw) if hints_raw.startswith("[") else hints_raw
+            except:
+                hints = hints_raw
+
+            # Upsert data (sadece değişen alanlar)
+            data = {
+                "category": row.get("category", ""),
+                "title": row.get("title", ""),
+                "slug": row.get("slug", ""),
+                "level": row.get("level", "beginner"),
+                "description": row.get("description", ""),
+                "function_name": row.get("function_name", ""),
+                "starter_code": row.get("starter_code", ""),
+                "test_cases": test_cases,
+                "hints": hints,
+            }
+            # Önce mevcut kaydı kontrol et (güncelleme gerekli mi?)
+            try:
+                existing = sb.table("questions").select("id, test_cases, hints, function_name").eq("id", sid).execute()
+                if existing.data:
+                    # Update
+                    result = sb.table("questions").update(data).eq("id", sid).execute()
+                else:
+                    # Insert
+                    result = sb.table("questions").insert({**data, "id": sid}).execute()
+            except Exception as e:
+                # Fallback: upsert
+                result = sb.table("questions").upsert({**data, "id": sid}, on_conflict="id").execute()
                 if result.data:
                     if len(result.data) == 1 and result.data[0].get("id") == sid:
                         # upsert hem insert hem update destekler, ayırt etmek zor
