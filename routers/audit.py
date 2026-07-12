@@ -207,8 +207,11 @@ async def generate_code(req: GenerateRequest):
             "temperature": 0.2,
             "max_tokens": 1500,
         }).encode("utf-8")
+        url = MAVIS_API_BASE
+        if not url.endswith("/chat/completions") and not url.endswith("/chatcompletion_v2"):
+            url = f"{MAVIS_API_BASE}/chat/completions"
         req_obj = urllib.request.Request(
-            f"{MAVIS_API_BASE}/chat/completions",
+            url,
             data=body,
             headers={
                 "Authorization": f"Bearer {MAVIS_API_KEY}",
@@ -235,9 +238,13 @@ async def generate_code(req: GenerateRequest):
         )
 
     try:
+        # Path: eğer MAVIS_API_BASE zaten tam path içeriyorsa ekleme
+        url = MAVIS_API_BASE
+        if not url.endswith("/chat/completions") and not url.endswith("/chatcompletion_v2"):
+            url = f"{MAVIS_API_BASE}/chat/completions"
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
-                f"{MAVIS_API_BASE}/chat/completions",
+                url,
                 headers={
                     "Authorization": f"Bearer {MAVIS_API_KEY}",
                     "Content-Type": "application/json",
