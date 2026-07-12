@@ -503,14 +503,29 @@ def debug_network():
         if not url.endswith("/chat/completions") and not url.endswith("/chatcompletion_v2"):
             url = f"{MAVIS_API_BASE}/chat/completions"
         try:
-            req = urllib.request.Request(url, headers={
+            body = json.dumps({
+                "model": MAVIS_MODEL,
+                "messages": [{"role": "user", "content": "test"}],
+                "max_tokens": 5,
+            }).encode("utf-8")
+            req = urllib.request.Request(url, data=body, headers={
                 "Authorization": f"Bearer {MAVIS_API_KEY}",
                 "Content-Type": "application/json",
             })
             with urllib.request.urlopen(req, timeout=10) as r:
-                results["urllib_api"] = {"status": "ok", "code": r.status}
+                body_text = r.read().decode("utf-8")
+                results["urllib_api"] = {
+                    "status": "ok",
+                    "code": r.status,
+                    "body_sample": body_text[:300],
+                }
         except urllib.error.HTTPError as e:
-            results["urllib_api"] = {"status": "http_error", "code": e.code}
+            err_body = e.read().decode("utf-8", errors="replace")[:300]
+            results["urllib_api"] = {
+                "status": "http_error",
+                "code": e.code,
+                "body_sample": err_body,
+            }
         except Exception as e:
             results["urllib_api"] = {"status": "fail", "error": str(e)}
     return {
