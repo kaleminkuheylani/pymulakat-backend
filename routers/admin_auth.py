@@ -206,9 +206,10 @@ def login(req: LoginRequest, request: Request, response: Response):
     sb = get_supabase()
     try:
         result = sb.auth.sign_in_with_password({"email": email, "password": req.password})
-    except Exception:
+    except Exception as e:
+        log.error(f"[admin_auth] signIn exception: {type(e).__name__}: {e}")
         record_failed_login(email)
-        write_audit(None, email, "login", ip, ua, False, {"reason": "auth_failed"})
+        write_audit(None, email, "login", ip, ua, False, {"reason": "auth_failed", "error": str(e)[:200]})
         raise HTTPException(status_code=401, detail="Geçersiz email veya şifre")
 
     if not result or not result.user:
@@ -229,15 +230,22 @@ def login(req: LoginRequest, request: Request, response: Response):
     # 4) Session
     session_jwt = issue_session_token(user_id, email, ip)
     jti = jwt.decode(session_jwt, options={"verify_signature": False})["jti"]
-    get_supabase_admin().table("admin_sessions").insert({
-        "id": jti,
-        "user_id": user_id,
-        "ip": ip,
-        "user_agent": ua,
-        "expires_at": (datetime.now(timezone.utc) + timedelta(hours=SESSION_TTL_HOURS)).isoformat(),
-    }).execute()
+    try:
+        get_supabase_admin().table("admin_sessions").insert({
+            "id": jti,
+            "user_id": user_id,
+            "ip": ip,
+            "user_agent": ua,
+            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=SESSION_TTL_HOURS)).isoformat(),
+        }).execute()
+    except Exception as e:
+        log.error(f"[admin_auth] admin_sessions insert failed: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=f"Session yazma hatası: {str(e)[:200]}")
     clear_lockout(email)
-    write_audit(user_id, email, "login", ip, ua, True, {"stage": "complete"})
+    try:
+        write_audit(user_id, email, "login", ip, ua, True, {"stage": "complete"})
+    except Exception as e:
+        log.error(f"[admin_auth] audit log failed: {e}")
 
     response.set_cookie(
         key="admin_session",
