@@ -1,14 +1,13 @@
-"""Admin denetim endpointleri.
-
-Soru açıklamasını al → Mavis API ile doğru kodu üret → çalıştır → test
-geçerse DB'de is_audited=true olarak işaretle.
+"""Admin denetim endpointleri (urllib-only, httpx Railway DNS bozuk).
 
 Endpointler:
   GET  /admin/audit/list            → tüm sorular (audit status ile)
-  POST /admin/audit/generate        → Mavis API ile kod üret
-  POST /admin/audit/run             → üretilen kodu subprocess ile çalıştır
-  POST /admin/audit/mark            → DB'de is_audited update
+  GET  /admin/audit/stats           → dashboard özeti
   GET  /admin/audit/status/{id}     → tek soru audit durumu
+  POST /admin/audit/generate        → API (OpenAI/Gemini/Mavis) ile kod üret
+  POST /admin/audit/run             → subprocess + timeout ile test
+  POST /admin/audit/mark            → DB'de is_audited güncelle
+  GET  /admin/audit/debug/network   → outbound DNS testi
 """
 
 import os
@@ -17,24 +16,18 @@ import logging
 import subprocess
 import tempfile
 import time
+import urllib.request
+import urllib.error
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-# httpx opsiyonel: Mavis API yoksa urllib ile fallback
-try:
-    import httpx
-    HTTPX_AVAILABLE = True
-except ImportError:
-    HTTPX_AVAILABLE = False
-    import urllib.request
-
 from supabase_client import get_supabase_admin
 
-router = APIRouter(prefix="/audit", tags=["admin-audit"])  # /admin zaten admin.py prefix, /audit eklenecek
+router = APIRouter(prefix="/api/v2/admin/audit", tags=["admin-audit"])
 log = logging.getLogger("pymulakat.audit")
 
-# MAVIS API config (OpenAI uyumlu: OpenAI, Gemini-OpenAI, Mavis, vs.)
+# API config (OpenAI uyumlu: OpenAI, Gemini, Mavis)
 # Key sırası: MAVIS_API_KEY → OPENAI_API_KEY → GOOGLE_API_KEY → GEMINI_API_KEY
 MAVIS_API_KEY = (
     os.environ.get("MAVIS_API_KEY")
@@ -43,20 +36,18 @@ MAVIS_API_KEY = (
     or os.environ.get("GEMINI_API_KEY")
     or ""
 )
-# Base URL sırası: MAVIS_API_BASE → OPENAI_API_BASE → varsayılan (OpenAI)
+# Base URL: MAVIS_API_BASE → OPENAI_API_BASE → default OpenAI
 MAVIS_API_BASE = (
     os.environ.get("MAVIS_API_BASE")
     or os.environ.get("OPENAI_API_BASE")
     or "https://api.openai.com/v1"
 )
 MAVIS_MODEL = os.environ.get("MAVIS_MODEL", "gpt-4o-mini")
-
-# Code execution timeout (saniye)
 EXEC_TIMEOUT = 8
 
 
 # ═══════════════════════════════════════════════════════════════
-# ─── Pydantic Models ─────────────────────────────────────────
+# ─── Pydantic Models ─────────────────────────────────────
 # ═══════════════════════════════════════════════════════════════
 
 class GenerateRequest(BaseModel):
@@ -119,31 +110,32 @@ class QuestionSummary(BaseModel):
 
 
 # ═══════════════════════════════════════════════════════════════
-# ─── 1) Soru listesi (audit status) ───────────────────────────
+# ─── 1) Soru listesi (audit status) ────────────────────────
 # ═══════════════════════════════════════════════════════════════
 
 @router.get("/list", response_model=List[QuestionSummary])
 def list_questions():
-    """Tüm soruları audit durumu ile döndür (scrollable dropdown için).
+    """Tüm soruları audit durumu ile döndür.
 
     Kolonlar (is_audited, audit_status, audited_at) henüz eklenmediyse
-    fallback: temel soru verisi + audit_status="pending" default.
+    fallback: temel sorgu + default audit alanları.
     """
     sb = get_supabase_admin()
-    # Önce audit kolonları dahil SELECT dene
     try:
         result = (
             sb.table("questions")
-            .select("id, title, category, level, slug, is_audited, audit_status, audited_at, description, function_name, starter_code, test_cases")
+            .select(
+                "id, title, category, level, slug, is_audited, audit_status, audited_at, "
+                "description, function_name, starter_code, test_cases"
+            )
             .order("id", desc=False)
             .execute()
         )
         return result.data or []
     except Exception as e1:
-        # Audit kolonları yoksa (404/PGRST116) fallback
         err_str = str(e1)
         if "PGRST116" in err_str or "is_audited" in err_str or "404" in err_str or "Could not find" in err_str:
-            log.warning("Audit kolonları yok, fallback temel sorgu (DB migration gerekli)")
+            log.warning("Audit kolonları yok, fallback temel sorgu")
             try:
                 result = (
                     sb.table("questions")
@@ -152,11 +144,10 @@ def list_questions():
                     .execute()
                 )
                 rows = result.data or []
-                # Default audit alanları ekle
                 for r in rows:
-                    r["is_audited"] = False
-                    r["audit_status"] = "pending"
-                    r["audited_at"] = None
+                    r.setdefault("is_audited", False)
+                    r.setdefault("audit_status", "pending")
+                    r.setdefault("audited_at", None)
                 return rows
             except Exception as e2:
                 log.exception("Fallback list failed")
@@ -166,11 +157,10 @@ def list_questions():
 
 
 # ═══════════════════════════════════════════════════════════════
-# ─── 2) Mavis API ile kod üret ───────────────────────────────
+# ─── 2) API ile kod üret (urllib, sync) ────────────────────
 # ═══════════════════════════════════════════════════════════════
 
 def _build_prompt(req: GenerateRequest) -> str:
-    """Mavis API için prompt oluştur."""
     tests = json.dumps(req.test_cases, ensure_ascii=False, indent=2)
     return f"""Sen deneyimli bir Python yazılımcısısın. Aşağıdaki soruyu çöz.
 
@@ -185,7 +175,7 @@ KURALLAR:
 1. Sadece {req.function_name} fonksiyonunu yaz
 2. Type hint kullan
 3. Pythonic, temiz kod
-4. Kısa yol fonksiyonları YASAK (sorted, set, Counter, defaultdict, bisect, heapq)
+4. Kısayol fonksiyonları YASAK (sorted, set, Counter, defaultdict, bisect, heapq)
 5. Sadece saf Python (built-in) kullan
 6. Test case'lerdeki tüm senaryoları karşıla
 
@@ -198,104 +188,59 @@ def {req.function_name}(...):
 
 @router.post("/generate", response_model=GenerateResponse)
 async def generate_code(req: GenerateRequest):
-    """Mavis API ile doğru kodu üret."""
+    """API (OpenAI/Gemini/Mavis) ile doğru kodu üret. urllib (httpx Railway DNS bozuk)."""
     if not MAVIS_API_KEY:
         raise HTTPException(
             status_code=503,
-            detail="MAVIS_API_KEY env tanımlı değil (Railway). Mavis API devre dışı.",
+            detail="API key env tanımlı değil (MAVIS_API_KEY / OPENAI_API_KEY / GOOGLE_API_KEY / GEMINI_API_KEY).",
         )
 
     prompt = _build_prompt(req)
     start = time.time()
 
-    if not HTTPX_AVAILABLE:
-        # urllib fallback (sync)
-        body = json.dumps({
-            "model": MAVIS_MODEL,
-            "messages": [
-                {"role": "system", "content": "Sen deneyimli Python yazılımcısı."},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.2,
-            "max_tokens": 1500,
-        }).encode("utf-8")
-        url = MAVIS_API_BASE
-        if not url.endswith("/chat/completions") and not url.endswith("/chatcompletion_v2"):
-            url = f"{MAVIS_API_BASE}/chat/completions"
-        req_obj = urllib.request.Request(
-            url,
-            data=body,
-            headers={
-                "Authorization": f"Bearer {MAVIS_API_KEY}",
-                "Content-Type": "application/json",
+    # URL: tam path değilse /chat/completions ekle
+    url = MAVIS_API_BASE
+    if not url.endswith("/chat/completions") and not url.endswith("/chatcompletion_v2"):
+        url = f"{MAVIS_API_BASE}/chat/completions"
+
+    body = json.dumps({
+        "model": MAVIS_MODEL,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "Sen deneyimli bir Python yazılımcısısın. "
+                    "Sadece saf Python ile yaz, kısayol YASAK. "
+                    "Sadece kod döndür, açıklama yok."
+                ),
             },
-        )
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.2,
+        "max_tokens": 1500,
+    }).encode("utf-8")
+
+    req_obj = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "Authorization": f"Bearer {MAVIS_API_KEY}",
+            "Content-Type": "application/json",
+        },
+    )
+
+    try:
         with urllib.request.urlopen(req_obj, timeout=30) as resp:
             response_text = resp.read().decode("utf-8")
             data = json.loads(response_text)
-        content = data["choices"][0]["message"]["content"]
-        code = content.strip()
-        if code.startswith("```"):
-            lines = code.split("\n")
-            if lines[0].startswith("```"):
-                lines = lines[1:]
-            if lines and lines[-1].startswith("```"):
-                lines = lines[:-1]
-            code = "\n".join(lines).strip()
-        elapsed_ms = int((time.time() - start) * 1000)
-        tokens = data.get("usage", {}).get("total_tokens", 0)
-        return GenerateResponse(
-            code=code, model=MAVIS_MODEL,
-            tokens_used=tokens, elapsed_ms=elapsed_ms,
-        )
+            content = data["choices"][0]["message"]["content"]
 
-    try:
-        # Path: eğer MAVIS_API_BASE zaten tam path içeriyorsa ekleme
-        url = MAVIS_API_BASE
-        if not url.endswith("/chat/completions") and not url.endswith("/chatcompletion_v2"):
-            url = f"{MAVIS_API_BASE}/chat/completions"
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.post(
-                url,
-                headers={
-                    "Authorization": f"Bearer {MAVIS_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": MAVIS_MODEL,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": (
-                                "Sen deneyimli bir Python yazılımcısısın. "
-                                "Sadece saf Python ile yaz, kısayol YASAK. "
-                                "Sadece kod döndür, açıklama yok."
-                            ),
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    "temperature": 0.2,
-                    "max_tokens": 1500,
-                },
-            )
-
-        if response.status_code != 200:
-            log.error("Mavis API error: %s — %s", response.status_code, response.text[:300])
-            raise HTTPException(
-                status_code=502,
-                detail=f"Mavis API error: {response.status_code} — {response.text[:200]}",
-            )
-
-        data = response.json()
-        content = data["choices"][0]["message"]["content"]
         # Kod bloğundan temizle ```python ... ```
         code = content.strip()
         if code.startswith("```"):
             lines = code.split("\n")
-            # İlk satır ```python veya ```
             if lines[0].startswith("```"):
                 lines = lines[1:]
-            # Son satır ```
             if lines and lines[-1].startswith("```"):
                 lines = lines[:-1]
             code = "\n".join(lines).strip()
@@ -309,164 +254,100 @@ async def generate_code(req: GenerateRequest):
         )
 
         return GenerateResponse(
-            code=code,
-            model=MAVIS_MODEL,
-            tokens_used=tokens,
-            elapsed_ms=elapsed_ms,
+            code=code, model=MAVIS_MODEL,
+            tokens_used=tokens, elapsed_ms=elapsed_ms,
         )
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="Mavis API timeout (30s)")
-    except HTTPException:
-        raise
+    except urllib.error.HTTPError as e:
+        body_err = e.read().decode("utf-8", errors="replace")[:300]
+        log.error("API HTTP error: %s — %s", e.code, body_err)
+        raise HTTPException(
+            status_code=502,
+            detail=f"API error: {e.code} — {body_err}",
+        )
+    except urllib.error.URLError as e:
+        log.error("API URL error: %s", e)
+        raise HTTPException(
+            status_code=502,
+            detail=f"API URL error (DNS/network): {e.reason}",
+        )
     except Exception as e:
         log.exception("Generate failed")
         raise HTTPException(status_code=500, detail=f"Generate error: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════
-# ─── 3) Üretilen kodu subprocess ile çalıştır ────────────────
+# ─── 3) Üretilen kodu subprocess ile çalıştır ─────────────
 # ═══════════════════════════════════════════════════════════════
 
-def _run_test(code: str, fn_name: str, test_case: Dict) -> TestResult:
+def _run_single_test(code: str, fn_name: str, test_case: Dict) -> TestResult:
     """Tek test case'i çalıştır."""
-    # Test case'ten input/expected al
     inp = test_case.get("input", test_case.get("args", []))
     expected = test_case.get("expected", test_case.get("output"))
 
-    # input dict ise kwargs olarak aç
     if isinstance(inp, dict):
-        args = []
-        kwargs = inp
+        args, kwargs = [], inp
     elif isinstance(inp, list):
-        args = inp
-        kwargs = {}
+        args, kwargs = inp, {}
     else:
-        args = [inp]
-        kwargs = {}
+        args, kwargs = [inp], {}
 
-    # Test runner script oluştur
     test_script = f"""
 import sys
 import json
 import traceback
 
-# User kodu
 {code}
 
-# Test
 _args = json.loads({json.dumps(json.dumps(args))})
 _kwargs = json.loads({json.dumps(json.dumps(kwargs))})
 
 try:
-    result = {_qualname(fn_name)}(*_args, **_kwargs)
+    result = {fn_name}(*_args, **_kwargs)
     print(json.dumps({{"ok": True, "result": result}}))
 except Exception as e:
     print(json.dumps({{"ok": False, "error": str(e), "trace": traceback.format_exc()}}))
 """
-    return _test_script, _args, _kwargs, expected
-
-
-def _qualname(fn_name: str) -> str:
-    return fn_name
-
-
-@router.post("/run", response_model=RunResponse)
-def run_code(req: RunRequest):
-    """Üretilen kodu tüm test case'lerde çalıştır."""
-    start = time.time()
-    results: List[TestResult] = []
-    stderr_all = ""
-
-    for tc in req.test_cases:
+    try:
+        proc = subprocess.run(
+            ["python3", "-c", test_script],
+            capture_output=True, text=True, timeout=EXEC_TIMEOUT,
+            cwd=tempfile.gettempdir(),
+        )
+        if proc.returncode != 0:
+            return TestResult(
+                input=inp, expected=expected, actual=None, passed=False,
+                error=f"Runtime error: {proc.stderr[:200]}",
+            )
         try:
-            test_script, args, kwargs, expected = _run_test(
-                req.code, req.function_name, tc
+            out = json.loads(proc.stdout.strip())
+        except json.JSONDecodeError:
+            return TestResult(
+                input=inp, expected=expected, actual=None, passed=False,
+                error=f"Output parse error: {proc.stdout[:200]}",
             )
-            # subprocess çalıştır
-            proc = subprocess.run(
-                ["python3", "-c", test_script],
-                capture_output=True,
-                text=True,
-                timeout=EXEC_TIMEOUT,
-                cwd=tempfile.gettempdir(),
+        if not out.get("ok"):
+            return TestResult(
+                input=inp, expected=expected, actual=None, passed=False,
+                error=out.get("error", "Unknown error"),
             )
-            stderr_all += proc.stderr[:200] + "\n" if proc.stderr else ""
-
-            if proc.returncode != 0:
-                results.append(TestResult(
-                    input=tc.get("input"),
-                    expected=expected,
-                    actual=None,
-                    passed=False,
-                    error=f"Runtime error: {proc.stderr[:200]}",
-                ))
-                continue
-
-            # Parse output
-            try:
-                out = json.loads(proc.stdout.strip())
-            except json.JSONDecodeError:
-                results.append(TestResult(
-                    input=tc.get("input"),
-                    expected=expected,
-                    actual=None,
-                    passed=False,
-                    error=f"Output parse error: {proc.stdout[:200]}",
-                ))
-                continue
-
-            if not out.get("ok"):
-                results.append(TestResult(
-                    input=tc.get("input"),
-                    expected=expected,
-                    actual=None,
-                    passed=False,
-                    error=out.get("error", "Unknown error"),
-                ))
-                continue
-
-            actual = out.get("result")
-            # Karşılaştır (deep equality)
-            passed = _deep_eq(actual, expected)
-            results.append(TestResult(
-                input=tc.get("input"),
-                expected=expected,
-                actual=actual,
-                passed=passed,
-            ))
-        except subprocess.TimeoutExpired:
-            results.append(TestResult(
-                input=tc.get("input"),
-                expected=expected,
-                actual=None,
-                passed=False,
-                error=f"Timeout ({EXEC_TIMEOUT}s)",
-            ))
-        except Exception as e:
-            results.append(TestResult(
-                input=tc.get("input"),
-                expected=expected,
-                actual=None,
-                passed=False,
-                error=str(e),
-            ))
-
-    passed_count = sum(1 for r in results if r.passed)
-    failed_count = len(results) - passed_count
-    elapsed_ms = int((time.time() - start) * 1000)
-
-    return RunResponse(
-        passed_count=passed_count,
-        failed_count=failed_count,
-        total=len(results),
-        results=results,
-        stderr=stderr_all[:500] if stderr_all else None,
-        elapsed_ms=elapsed_ms,
-    )
+        actual = out.get("result")
+        return TestResult(
+            input=inp, expected=expected, actual=actual,
+            passed=_deep_eq(actual, expected),
+        )
+    except subprocess.TimeoutExpired:
+        return TestResult(
+            input=inp, expected=expected, actual=None, passed=False,
+            error=f"Timeout ({EXEC_TIMEOUT}s)",
+        )
+    except Exception as e:
+        return TestResult(
+            input=inp, expected=expected, actual=None, passed=False,
+            error=str(e),
+        )
 
 
 def _deep_eq(a, b) -> bool:
-    """Deep equality (list, dict, primitive)."""
     if a == b:
         return True
     if isinstance(a, (int, float)) and isinstance(b, (int, float)):
@@ -480,16 +361,38 @@ def _deep_eq(a, b) -> bool:
     return False
 
 
+@router.post("/run", response_model=RunResponse)
+def run_code(req: RunRequest):
+    """Üretilen kodu tüm test case'lerde çalıştır."""
+    start = time.time()
+    results: List[TestResult] = []
+    stderr_all = ""
+
+    for tc in req.test_cases:
+        r = _run_single_test(req.code, req.function_name, tc)
+        results.append(r)
+        if not r.passed and r.error and "Runtime error" in r.error:
+            stderr_all += r.error[:200] + "\n"
+
+    passed_count = sum(1 for r in results if r.passed)
+    failed_count = len(results) - passed_count
+    elapsed_ms = int((time.time() - start) * 1000)
+
+    return RunResponse(
+        passed_count=passed_count, failed_count=failed_count,
+        total=len(results), results=results,
+        stderr=stderr_all[:500] if stderr_all else None,
+        elapsed_ms=elapsed_ms,
+    )
+
+
 # ═══════════════════════════════════════════════════════════════
-# ─── 4) Audit durumunu DB'ye yaz ─────────────────────────────
+# ─── 4) Audit durumunu DB'ye yaz ───────────────────────────
 # ═══════════════════════════════════════════════════════════════
 
 @router.post("/mark")
 def mark_audited(req: MarkRequest):
-    """DB'de is_audited, audit_status, audited_at güncelle.
-
-    Audit kolonları henüz DB'de yoksa 503 doner (migration gerekli).
-    """
+    """DB'de is_audited, audit_status, audited_at güncelle."""
     sb = get_supabase_admin()
     try:
         update = {
@@ -504,18 +407,10 @@ def mark_audited(req: MarkRequest):
             .execute()
         )
         if not result.data:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Question {req.question_id} not found",
-            )
-        log.info(
-            "Marked qid=%d as %s",
-            req.question_id,
-            "passed" if req.passed else "failed",
-        )
+            raise HTTPException(status_code=404, detail=f"Question {req.question_id} not found")
+        log.info("Marked qid=%d as %s", req.question_id, "passed" if req.passed else "failed")
         return {
-            "ok": True,
-            "question_id": req.question_id,
+            "ok": True, "question_id": req.question_id,
             "is_audited": req.passed,
             "audit_status": "passed" if req.passed else "failed",
         }
@@ -524,34 +419,26 @@ def mark_audited(req: MarkRequest):
     except Exception as e:
         err_str = str(e)
         if "PGRST116" in err_str or "is_audited" in err_str or "Could not find" in err_str:
-            log.error(
-                "Audit kolonlari DB'de YOK! Supabase SQL Editor'de "
-                "scripts/add_audit_columns.sql calistir, sonra 5dk bekle "
-                "(PostgREST schema cache)."
-            )
+            log.error("Audit kolonları DB'de YOK! SQL migration gerekli.")
             raise HTTPException(
                 status_code=503,
-                detail=(
-                    "Audit kolonlari DB'de yok. Supabase SQL Editor'de "
-                    "scripts/add_audit_columns.sql calistir, sonra 5dk bekle."
-                ),
+                detail="Audit kolonları DB'de yok. scripts/add_audit_columns.sql çalıştır, 5dk bekle.",
             )
         log.exception("Mark failed")
         raise HTTPException(status_code=500, detail=f"Mark error: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════
-# ─── 5) Tek soru audit durumu ─────────────────────────────────
+# ─── 5) Tek soru audit durumu ──────────────────────────────
 # ═══════════════════════════════════════════════════════════════
 
 @router.get("/status/{question_id}", response_model=QuestionSummary)
 def get_status(question_id: int):
-    """Tek sorunun audit durumunu getir."""
     sb = get_supabase_admin()
     try:
         result = (
             sb.table("questions")
-            .select("id, title, category, level, slug, is_audited, audit_status, audited_at")
+            .select("id, title, category, level, slug, is_audited, audit_status, audited_at, description, function_name, starter_code, test_cases")
             .eq("id", question_id)
             .single()
             .execute()
@@ -567,19 +454,14 @@ def get_status(question_id: int):
 
 
 # ═══════════════════════════════════════════════════════════════
-# ─── 6) Toplu test (tüm pending soruları) ───────────────────
+# ─── 6) Stats ──────────────────────────────────────────────
 # ═══════════════════════════════════════════════════════════════
 
 @router.get("/stats")
 def audit_stats():
-    """Audit durumu özeti (dashboard)."""
     sb = get_supabase_admin()
     try:
-        result = (
-            sb.table("questions")
-            .select("audit_status")
-            .execute()
-        )
+        result = sb.table("questions").select("audit_status").execute()
         rows = result.data or []
         stats = {"passed": 0, "failed": 0, "pending": 0}
         for r in rows:
@@ -590,16 +472,19 @@ def audit_stats():
         log.exception("Stats failed")
         raise HTTPException(status_code=500, detail=f"Stats error: {e}")
 
+
 # ═══════════════════════════════════════════════════════════════
-# ─── Debug: outbound network test ───────────────────────────
+# ─── 7) Debug: outbound network ────────────────────────────
 # ═══════════════════════════════════════════════════════════════
 
 @router.get("/debug/network")
 def debug_network():
-    """Outbound network test — Railway kısıtlarını debug et."""
+    """Outbound network test — Railway DNS kısıtlarını debug et."""
     import socket
-    import subprocess
-    hosts = ["api.openai.com", "generativelanguage.googleapis.com", "api.github.com", "api.minimax.io"]
+    hosts = [
+        "api.openai.com", "generativelanguage.googleapis.com",
+        "api.github.com", "api.minimax.io",
+    ]
     results = {}
     for h in hosts:
         try:
@@ -607,10 +492,27 @@ def debug_network():
             results[h] = {"status": "ok", "ip": ip}
         except Exception as e:
             results[h] = {"status": "fail", "error": str(e)}
-    # subprocess test (curl)
-    try:
-        r = subprocess.run(["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "https://api.openai.com/v1/models", "-H", f"Authorization: Bearer {MAVIS_API_KEY or 'fake'}"], capture_output=True, text=True, timeout=10)
-        results["curl_openai"] = {"stdout": r.stdout[:200], "stderr": r.stderr[:200]}
-    except Exception as e:
-        results["curl_openai"] = {"error": str(e)}
-    return results
+    # urllib test (API URL'sine gerçek istek)
+    if MAVIS_API_KEY:
+        url = MAVIS_API_BASE
+        if not url.endswith("/chat/completions") and not url.endswith("/chatcompletion_v2"):
+            url = f"{MAVIS_API_BASE}/chat/completions"
+        try:
+            req = urllib.request.Request(url, headers={
+                "Authorization": f"Bearer {MAVIS_API_KEY}",
+                "Content-Type": "application/json",
+            })
+            with urllib.request.urlopen(req, timeout=10) as r:
+                results["urllib_api"] = {"status": "ok", "code": r.status}
+        except urllib.error.HTTPError as e:
+            results["urllib_api"] = {"status": "http_error", "code": e.code}
+        except Exception as e:
+            results["urllib_api"] = {"status": "fail", "error": str(e)}
+    return {
+        "dns": results,
+        "config": {
+            "has_key": bool(MAVIS_API_KEY),
+            "base": MAVIS_API_BASE,
+            "model": MAVIS_MODEL,
+        },
+    }
