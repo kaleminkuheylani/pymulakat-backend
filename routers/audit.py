@@ -40,7 +40,7 @@ MAVIS_API_KEY = (
 # Hardcoded OpenAI (Railway env override YOK)
 MAVIS_API_BASE = "https://api.openai.com/v1"
 # Hardcoded OpenAI model (env override YOK)
-MAVIS_MODEL = "gpt-4o"
+MAVIS_MODEL = "gpt-4o-mini"
 EXEC_TIMEOUT = 8
 
 
