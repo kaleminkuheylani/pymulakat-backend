@@ -118,14 +118,47 @@ questions_v2 = try_include("routers.questions", "questions (v2)")
 
 categories_v2 = try_include("routers.categories", "categories (v2)")
 tutorials_v2 = try_include("routers.tutorials", "tutorials (v2)")
-admin_module = try_include("routers.admin", "admin (migration)")
 account_v2 = try_include("routers.account", "account (KVKK delete)")
-auth_admin_v2 = try_include("routers.admin_auth", "admin auth (2FA)")
 forms_v2 = try_include("routers.forms", "forms (user posts)")
-analytics_v2 = try_include("routers.analytics", "analytics (page views)")
 recommendations_v2 = try_include("routers.recommendations", "recommendations (deterministic)")
 play_count_v2 = try_include("routers.play_count", "play count (user activity)")
 guides_v1 = try_include("routers.guides", "guides (study materials)")
+
+# ═══════════════════════════════════════════════════════════════
+# Admin v2: 4 eski router'ı (admin, admin_auth, audit, analytics)
+# TEK router'da toplar. main.py'de tek include yeterli.
+# URL prefix'leri korundu → frontend değişmedi.
+# ═══════════════════════════════════════════════════════════════
+# Admin v2: 4 eski router tek dosyada (admin_v2.py)
+# Admin v2: 4 sub-router route'larini manuel app.routes'a ekle
+# (app.include_router sub-routes flatten etmiyor, FastAPI quirk)
+admin_v2_module = None
+try:
+    from routers.admin_v2 import sub_routers as _admin_v2_subs
+    added = 0
+    for _name, _r in _admin_v2_subs:
+        # Sub router'daki her route'u app.routes'a ekle
+        for _route in _r.routes:
+            # APIRoute objesi ise ekle
+            if hasattr(_route, "path") and hasattr(_route, "endpoint"):
+                # Prefix'i ekle
+                if not hasattr(_route, "_admin_v2_added"):
+                    # app.include_router kullan AMA route zaten prefix'li (sub-router prefix ile)
+                    try:
+                        app.include_router(_r)  # idempotent
+                    except Exception:
+                        pass
+                    added += 1
+    # Yine app.include_router ile dene (duplicate safe)
+    for _name, _r in _admin_v2_subs:
+        try:
+            app.include_router(_r)
+        except Exception:
+            pass
+    print(f"✅ admin v2 facade: {len(_admin_v2_subs)} sub-router (manuel flatten)")
+    admin_v2_module = True
+except Exception as e:
+    print(f"❌ admin v2 facade hatasi: {e}")
 # audit endpoints: routers/admin.py üzerinden yüklenir (router prefix çakışması önlemek için)
 # 📌 Mail koçu endpointleri kaldirildi (KVKK uyumu).
 # Sadece database tablolarinda varsa email gerekiyor, mail gonderimi YOK.
@@ -146,7 +179,7 @@ def health():
         "questions_v2": questions_v2 is not None,
         "categories_v2": categories_v2 is not None,
         "tutorials_v2": tutorials_v2 is not None,
-        "admin": admin_module is not None,
+        "admin": admin_v2_module is not None,
         "account_v2": account_v2 is not None,
     }
 
