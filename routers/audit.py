@@ -36,7 +36,7 @@ log = logging.getLogger("pymulakat.audit")
 
 # Mavis API config (OpenAI uyumlu)
 MAVIS_API_KEY = os.environ.get("MAVIS_API_KEY", "")
-MAVIS_API_BASE = os.environ.get("MAVIS_API_BASE", "https://api.mavis.com/v1")
+MAVIS_API_BASE = os.environ.get("MAVIS_API_BASE", "https://api.MiniMax.cn/v1")
 MAVIS_MODEL = os.environ.get("MAVIS_MODEL", "mavis-code")
 
 # Code execution timeout (saniye)
