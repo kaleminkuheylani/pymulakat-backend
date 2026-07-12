@@ -38,8 +38,14 @@ MAVIS_API_KEY = (
     or ""
 )
 # Base URL: MAVIS_API_BASE → OPENAI_API_BASE → default OpenAI
-# Hardcoded OpenAI default — env override YOK (Railway MAVIS_API_BASE=api.MiniMax.cn hatali)
-MAVIS_API_BASE = "https://api.openai.com/v1"
+# Base URL: MAVIS_API_BASE / OPENAI_API_BASE / default Gemini OpenAI-uyumlu
+# Gemini OpenAI uyumlu: https://generativelanguage.googleapis.com/v1beta/openai
+# OpenAI: https://api.openai.com/v1
+MAVIS_API_BASE = (
+    os.environ.get("MAVIS_API_BASE")
+    or os.environ.get("OPENAI_API_BASE")
+    or "https://generativelanguage.googleapis.com/v1beta/openai"
+)
 # Model: env varsa onu kullan, yoksa gpt-4o-mini
 MAVIS_MODEL = os.environ.get("MAVIS_MODEL", "gpt-4o-mini")
 EXEC_TIMEOUT = 8
