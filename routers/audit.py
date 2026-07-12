@@ -236,12 +236,42 @@ async def generate_code(req: GenerateRequest):
                 status_code=502,
                 detail=f"API call failed: {result.stderr[:200] or 'curl error'}",
             )
-        data = json.loads(result.stdout)
+        # Sağlam response parse (Gemini bazen liste/format farkli doner)
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError as e:
+            log.error("JSON parse error: %s — body: %s", e, result.stdout[:500])
+            raise HTTPException(
+                status_code=502,
+                detail=f"API response JSON parse error: {result.stdout[:300]}",
+            )
+        # Liste response ise (Gemini) ilk elemani al
+        if isinstance(data, list):
+            data = data[0] if data else {}
+        if not isinstance(data, dict):
+            log.error("Unexpected response type: %s", type(data).__name__)
+            raise HTTPException(
+                status_code=502,
+                detail=f"API unexpected response type: {type(data).__name__}",
+            )
         if "error" in data:
-            err_msg = data["error"].get("message", str(data["error"]))[:200]
+            err_msg = data["error"].get("message", str(data["error"]))[:300]
             log.error("API error: %s", err_msg)
             raise HTTPException(status_code=502, detail=f"API error: {err_msg}")
-        content = data["choices"][0]["message"]["content"]
+        choices = data.get("choices", [])
+        if not choices:
+            log.error("No choices in response: %s", json.dumps(data)[:500])
+            raise HTTPException(
+                status_code=502,
+                detail=f"API empty choices: {json.dumps(data)[:300]}",
+            )
+        content = choices[0].get("message", {}).get("content", "")
+        if not content:
+            log.error("Empty content: %s", json.dumps(choices[0])[:500])
+            raise HTTPException(
+                status_code=502,
+                detail=f"API empty content: {json.dumps(choices[0])[:300]}",
+            )
 
         # Kod bloğundan temizle ```python ... ```
         code = content.strip()
