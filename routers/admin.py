@@ -462,6 +462,35 @@ def bulk_seed_test():
         log.exception("bulk-seed-test failed")
         return {"error": str(e)[:500]}
 
+@router.post("/bulk-seed-test")
+def bulk_seed_test():
+    """Hata ayiklama: CSV oku, JSON parse et."""
+    try:
+        csv_path = "data/QUESTIONS-v3.csv"
+        if not Path(csv_path).exists():
+            csv_path = "/app/data/QUESTIONS-v3.csv"
+        if not Path(csv_path).exists():
+            return {"error": "CSV yok", "paths_checked": ["data/QUESTIONS-v3.csv", "/app/data/QUESTIONS-v3.csv"]}
+        
+        # Sadece ilk 3 satırı oku
+        results = {"csv_path": csv_path, "rows": []}
+        with open(csv_path, encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            for i, row in enumerate(reader):
+                if i >= 3:
+                    break
+                sid = row.get("id", "?")
+                results["rows"].append({
+                    "id": sid,
+                    "title": row.get("title", "")[:50],
+                    "test_cases_len": len(row.get("test_cases", "")),
+                    "hints_len": len(row.get("hints", "")),
+                })
+        return results
+    except Exception as e:
+        log.exception("bulk-seed-test failed")
+        return {"error": str(e)[:500]}
+
 class BulkSeedResponse(BaseModel):
     total: int
     inserted: int
@@ -551,6 +580,97 @@ def bulk_seed_questions(batch_size: int = 20):
         updated=0,
         failed=failed,
         errors=errors,
+    )
+
+class BulkSeedRowResult(BaseModel):
+    id: int
+    status: str
+    error: str = ""
+
+
+class BulkSeedResponse(BaseModel):
+    total: int
+    inserted: int
+    failed: int
+    rows: List[BulkSeedRowResult] = []
+
+
+@router.post("/bulk-seed-questions")
+def bulk_seed_questions():
+    """data/QUESTIONS-v3.csv -> Supabase tek tek upsert (detayli hata)."""
+    sb = get_supabase_admin()
+
+    csv_paths = ["data/QUESTIONS-v3.csv", "/app/data/QUESTIONS-v3.csv"]
+    csv_path = None
+    for p_path in csv_paths:
+        if Path(p_path).exists():
+            csv_path = p_path
+            break
+    if not csv_path:
+        raise HTTPException(status_code=404, detail="QUESTIONS-v3.csv not found")
+
+    rows_result = []
+    inserted = 0
+    failed = 0
+
+    with open(csv_path, encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for i, row in enumerate(reader):
+            sid_str = row.get("id", "0")
+            try:
+                sid = int(sid_str)
+            except Exception:
+                rows_result.append(BulkSeedRowResult(id=0, status="skip", error="bad id"))
+                continue
+
+            # JSON fields parse
+            tc_raw = row.get("test_cases", "[]") or "[]"
+            hints_raw = row.get("hints", "[]") or "[]"
+            try:
+                test_cases = json.loads(tc_raw) if tc_raw.startswith("[") else tc_raw
+            except Exception:
+                test_cases = []
+            try:
+                hints = json.loads(hints_raw) if hints_raw.startswith("[") else hints_raw
+            except Exception:
+                hints = []
+
+            data = {
+                "id": sid,
+                "category": row.get("category", "") or "",
+                "title": row.get("title", "") or "",
+                "slug": row.get("slug", "") or "",
+                "level": row.get("level", "beginner") or "beginner",
+                "description": row.get("description", "") or "",
+                "function_name": row.get("function_name", "") or "",
+                "starter_code": row.get("starter_code", "") or "",
+                "test_cases": test_cases,
+                "hints": hints,
+            }
+            # Default audit fields (yoksa)
+            try:
+                # Önce UPDATE dene (id varsa)
+                existing = sb.table("questions").select("id").eq("id", sid).execute()
+                if existing.data:
+                    # id'yi data'dan çıkar update için
+                    update_data = {k: v for k, v in data.items() if k != "id"}
+                    sb.table("questions").update(update_data).eq("id", sid).execute()
+                else:
+                    sb.table("questions").insert(data).execute()
+                inserted += 1
+                rows_result.append(BulkSeedRowResult(id=sid, status="ok"))
+            except Exception as e:
+                failed += 1
+                err = str(e)[:200]
+                rows_result.append(BulkSeedRowResult(id=sid, status="fail", error=err))
+                if failed < 5:
+                    log.exception("Upsert failed for id=%s", sid)
+
+    return BulkSeedResponse(
+        total=inserted + failed,
+        inserted=inserted,
+        failed=failed,
+        rows=rows_result,
     )
 
 
