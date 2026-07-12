@@ -18,7 +18,7 @@ import sys
 import json
 import logging
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/api/v2/admin", tags=["admin"])
 log = logging.getLogger("pymulakat.admin")
 
 # Audit endpoints (import edip router'a ekle)

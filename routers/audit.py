@@ -31,7 +31,7 @@ except ImportError:
 
 from supabase_client import get_supabase_admin
 
-router = APIRouter(prefix="/audit", tags=["admin-audit"])
+router = APIRouter(prefix="/api/v2/admin/audit", tags=["admin-audit"])
 log = logging.getLogger("pymulakat.audit")
 
 # Mavis API config (OpenAI uyumlu)
