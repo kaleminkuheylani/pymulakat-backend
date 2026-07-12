@@ -34,11 +34,22 @@ from supabase_client import get_supabase_admin
 router = APIRouter(prefix="/audit", tags=["admin-audit"])  # /admin zaten admin.py prefix, /audit eklenecek
 log = logging.getLogger("pymulakat.audit")
 
-# Gemini API config (OpenAI uyumlu mode)
-# MAVIS_API_KEY → artık GOOGLE_API_KEY (veya GEMINI_API_KEY alias)
-MAVIS_API_KEY = os.environ.get("MAVIS_API_KEY") or os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY") or ""
-MAVIS_API_BASE = os.environ.get("MAVIS_API_BASE", "https://generativelanguage.googleapis.com/v1beta/openai")
-MAVIS_MODEL = os.environ.get("MAVIS_MODEL", "gemini-1.5-flash")
+# MAVIS API config (OpenAI uyumlu: OpenAI, Gemini-OpenAI, Mavis, vs.)
+# Key sırası: MAVIS_API_KEY → OPENAI_API_KEY → GOOGLE_API_KEY → GEMINI_API_KEY
+MAVIS_API_KEY = (
+    os.environ.get("MAVIS_API_KEY")
+    or os.environ.get("OPENAI_API_KEY")
+    or os.environ.get("GOOGLE_API_KEY")
+    or os.environ.get("GEMINI_API_KEY")
+    or ""
+)
+# Base URL sırası: MAVIS_API_BASE → OPENAI_API_BASE → varsayılan (OpenAI)
+MAVIS_API_BASE = (
+    os.environ.get("MAVIS_API_BASE")
+    or os.environ.get("OPENAI_API_BASE")
+    or "https://api.openai.com/v1"
+)
+MAVIS_MODEL = os.environ.get("MAVIS_MODEL", "gpt-4o-mini")
 
 # Code execution timeout (saniye)
 EXEC_TIMEOUT = 8
