@@ -66,18 +66,8 @@ class GenerateResponse(BaseModel):
 class RunRequest(BaseModel):
     question_id: int
     code: str
-    test_cases: Any  # List veya JSON string olabilir
+    test_cases: Any = []  # List veya JSON string olabilir
     function_name: str
-
-    @field_validator("test_cases", mode="before")
-    @classmethod
-    def _parse_generate_test_cases(cls, v):
-        if isinstance(v, str):
-            try:
-                return json.loads(v)
-            except Exception:
-                return []
-        return v
 
 
 class TestResult(BaseModel):
