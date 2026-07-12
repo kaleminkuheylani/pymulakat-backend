@@ -565,3 +565,17 @@ def bulk_seed_questions():
         failed=failed,
         rows=rows_result,
     )
+
+
+@router.post("/delete-pending-questions")
+def delete_pending_questions():
+    """audit_status = 'pending' olan tüm sorulari DB'den sil."""
+    sb = get_supabase_admin()
+    try:
+        result = sb.table("questions").delete().eq("audit_status", "pending").execute()
+        deleted = len(result.data) if result.data else 0
+        return {"deleted": deleted}
+    except Exception as e:
+        raise HTTPException(500, f"Delete failed: {e}")
+
+
