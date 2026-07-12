@@ -278,17 +278,12 @@ async def generate_code(req: GenerateRequest):
 # ═══════════════════════════════════════════════════════════════
 
 def _run_single_test(code: str, fn_name: str, test_case: Dict) -> TestResult:
-    """Tek test case'i çalıştır."""
-    inp = test_case.get("input", test_case.get("args", []))
+    """Tek test case'i çalıştır. Akıllı unpack (dict/list/primitive)."""
+    test_input = test_case.get("input", test_case.get("args", []))
     expected = test_case.get("expected", test_case.get("output"))
 
-    if isinstance(inp, dict):
-        args, kwargs = [], inp
-    elif isinstance(inp, list):
-        args, kwargs = inp, {}
-    else:
-        args, kwargs = [inp], {}
-
+    import json as _json
+    input_json = _json.dumps(test_input)
     test_script = f"""
 import sys
 import json
@@ -296,11 +291,23 @@ import traceback
 
 {code}
 
-_args = json.loads({json.dumps(json.dumps(args))})
-_kwargs = json.loads({json.dumps(json.dumps(kwargs))})
+_input = json.loads({input_json!r})
 
+# Akıllı çağrı:
+# - dict ise: **kwargs
+# - list ise: *args (fn tek parametre bekliyorsa) veya list olarak tek arg
+# - primitive ise: doğrudan
 try:
-    result = {fn_name}(*_args, **_kwargs)
+    if isinstance(_input, dict):
+        result = {fn_name}(**_input)
+    elif isinstance(_input, list):
+        # Liste: *args ile unpack dene, hata olursa liste olarak tek arg
+        try:
+            result = {fn_name}(*_input)
+        except TypeError:
+            result = {fn_name}(_input)
+    else:
+        result = {fn_name}(_input)
     print(json.dumps({{"ok": True, "result": result}}))
 except Exception as e:
     print(json.dumps({{"ok": False, "error": str(e), "trace": traceback.format_exc()}}))
@@ -313,34 +320,34 @@ except Exception as e:
         )
         if proc.returncode != 0:
             return TestResult(
-                input=inp, expected=expected, actual=None, passed=False,
+                input=test_input, expected=expected, actual=None, passed=False,
                 error=f"Runtime error: {proc.stderr[:200]}",
             )
         try:
             out = json.loads(proc.stdout.strip())
         except json.JSONDecodeError:
             return TestResult(
-                input=inp, expected=expected, actual=None, passed=False,
+                input=test_input, expected=expected, actual=None, passed=False,
                 error=f"Output parse error: {proc.stdout[:200]}",
             )
         if not out.get("ok"):
             return TestResult(
-                input=inp, expected=expected, actual=None, passed=False,
+                input=test_input, expected=expected, actual=None, passed=False,
                 error=out.get("error", "Unknown error"),
             )
         actual = out.get("result")
         return TestResult(
-            input=inp, expected=expected, actual=actual,
+            input=test_input, expected=expected, actual=actual,
             passed=_deep_eq(actual, expected),
         )
     except subprocess.TimeoutExpired:
         return TestResult(
-            input=inp, expected=expected, actual=None, passed=False,
+            input=test_input, expected=expected, actual=None, passed=False,
             error=f"Timeout ({EXEC_TIMEOUT}s)",
         )
     except Exception as e:
         return TestResult(
-            input=inp, expected=expected, actual=None, passed=False,
+            input=test_input, expected=expected, actual=None, passed=False,
             error=str(e),
         )
 
@@ -514,3 +521,120 @@ def debug_network():
             "model": MAVIS_MODEL,
         },
     }
+
+
+# ═══════════════════════════════════════════════════════════════
+# ─── 8) BULK AUDIT: tüm pending soruları sırayla denetle ──
+# ═══════════════════════════════════════════════════════════════
+
+class BulkAuditResponse(BaseModel):
+    total: int
+    passed: int
+    failed: int
+    skipped: int
+    errors: List[Dict[str, Any]] = []
+    results: List[Dict[str, Any]] = []
+
+
+@router.post("/bulk-audit", response_model=BulkAuditResponse)
+async def bulk_audit(max_questions: int = 50):
+    """Tüm pending soruları sırayla denetle.
+
+    Her soru için:
+      1) Mavis/OpenAI API ile kod üret
+      2) Üretilen kodu test case'lerde çalıştır
+      3) Hepsi geçtiyse DB'de is_audited=true işaretle
+
+    max_questions: aynı anda kaç soru denetlensin (timeout önlemi)
+    """
+    if not MAVIS_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="API key tanımlı değil.",
+        )
+
+    sb = get_supabase_admin()
+    # Pending soruları al
+    try:
+        result = (
+            sb.table("questions")
+            .select("id, title, category, level, description, function_name, starter_code, test_cases, audit_status")
+            .in_("audit_status", ["pending", "failed"])  # failed'lar da tekrar denetlenebilir
+            .limit(max_questions)
+            .execute()
+        )
+        questions = result.data or []
+    except Exception as e:
+        log.exception("Bulk audit list failed")
+        raise HTTPException(status_code=500, detail=f"List error: {e}")
+
+    passed_count = 0
+    failed_count = 0
+    skipped_count = 0
+    errors = []
+    results = []
+
+    for q in questions:
+        qid = q.get("id")
+        title = q.get("title", "")
+        description = q.get("description", "")
+        fn_name = q.get("function_name", "")
+        test_cases = q.get("test_cases", [])
+
+        if not description or not fn_name or not test_cases:
+            skipped_count += 1
+            errors.append({"id": qid, "title": title, "error": "Eksik alan (description/function_name/test_cases)"})
+            continue
+
+        # 1) Generate
+        try:
+            gen_req = GenerateRequest(
+                question_id=qid,
+                description=description,
+                function_name=fn_name,
+                test_cases=test_cases,
+                starter_code=q.get("starter_code"),
+            )
+            gen_resp = await generate_code(gen_req)
+            code = gen_resp.code
+        except HTTPException as e:
+            failed_count += 1
+            errors.append({"id": qid, "title": title, "stage": "generate", "error": e.detail})
+            continue
+        except Exception as e:
+            failed_count += 1
+            errors.append({"id": qid, "title": title, "stage": "generate", "error": str(e)})
+            continue
+
+        # 2) Run tests
+        try:
+            run_req = RunRequest(
+                question_id=qid, code=code, function_name=fn_name, test_cases=test_cases
+            )
+            run_resp = run_code(run_req)
+        except Exception as e:
+            failed_count += 1
+            errors.append({"id": qid, "title": title, "stage": "run", "error": str(e)})
+            continue
+
+        # 3) Mark (all passed)
+        all_passed = run_resp.passed_count == run_resp.total and run_resp.total > 0
+        if all_passed:
+            try:
+                mark_audited(MarkRequest(question_id=qid, passed=True))
+                passed_count += 1
+                results.append({"id": qid, "title": title, "status": "passed", "tests": f"{run_resp.passed_count}/{run_resp.total}"})
+            except Exception as e:
+                errors.append({"id": qid, "title": title, "stage": "mark", "error": str(e)})
+        else:
+            failed_count += 1
+            results.append({"id": qid, "title": title, "status": "failed", "tests": f"{run_resp.passed_count}/{run_resp.total}"})
+
+    return BulkAuditResponse(
+        total=len(questions),
+        passed=passed_count,
+        failed=failed_count,
+        skipped=skipped_count,
+        errors=errors[:20],  # max 20 error
+        results=results,
+    )
