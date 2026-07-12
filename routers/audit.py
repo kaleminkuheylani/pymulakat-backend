@@ -528,6 +528,26 @@ def debug_network():
             }
         except Exception as e:
             results["urllib_api"] = {"status": "fail", "error": str(e)}
+    # Model listesi (Gemini/OpenAI'da kullanılabilir modeller)
+    models = None
+    if MAVIS_API_KEY:
+        try:
+            models_url = MAVIS_API_BASE.rstrip("/")
+            if models_url.endswith("/chat/completions"):
+                models_url = models_url[:-len("/chat/completions")]
+            models_url = f"{models_url}/models"
+            req = urllib.request.Request(models_url, headers={
+                "Authorization": f"Bearer {MAVIS_API_KEY}",
+            })
+            with urllib.request.urlopen(req, timeout=10) as r:
+                models_data = json.loads(r.read().decode("utf-8"))
+                if "data" in models_data:
+                    models = [m.get("id") for m in models_data.get("data", [])][:20]
+                elif "models" in models_data:
+                    models = [m.get("name", "").split("/")[-1] for m in models_data.get("models", [])][:20]
+        except Exception as e:
+            models = f"error: {e}"
+
     return {
         "dns": results,
         "config": {
@@ -535,6 +555,7 @@ def debug_network():
             "base": MAVIS_API_BASE,
             "model": MAVIS_MODEL,
         },
+        "available_models": models,
     }
 
 
