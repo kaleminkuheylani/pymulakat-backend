@@ -769,3 +769,26 @@ def set_user_role_by_email(req: dict):
         raise
     except Exception as e:
         raise HTTPException(500, f"Set role failed: {e}")
+
+# ═══════════════════════════════════════════════════════════════
+# ─── Audit sıfırlama ────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════
+
+@router.post("/reset-audit")
+def reset_audit_status():
+    """Tüm soruların audit_status = 'pending' yap.
+    
+    Dikkat: Production'da tüm denetim state sıfırlanır.
+    Super admin onayı gerekli (UI confirm).
+    """
+    sb = get_supabase_admin()
+    try:
+        result = sb.table("questions").update({
+            "audit_status": "pending",
+            "is_audited": False,
+            "audited_at": None,
+        }).neq("id", 0).execute()
+        updated = len(result.data) if result.data else 0
+        return {"updated": updated, "message": f"{updated} soru audit pending yapildi"}
+    except Exception as e:
+        raise HTTPException(500, f"Reset failed: {e}")
