@@ -1,1 +1,1 @@
-web: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1
+trigger: 2026-07-12 13:00:01
