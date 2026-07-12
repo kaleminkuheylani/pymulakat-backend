@@ -675,3 +675,74 @@ def bulk_seed_questions():
     )
 
 
+@router.get("/debug/db-state")
+def debug_db_state():
+    """DB soru durumu - kategori dagilimi + ilk 5 satir."""
+    sb = get_supabase_admin()
+    try:
+        result = sb.table("questions").select("id,category,title,slug,audit_status,description,test_cases,function_name,starter_code").limit(5).execute()
+        rows = result.data or []
+        cats = {}
+        statuses = {}
+        for r in rows:
+            c = r.get("category", "?")
+            cats[c] = cats.get(c, 0) + 1
+            s = r.get("audit_status", "?")
+            statuses[s] = statuses.get(s, 0) + 1
+        return {
+            "sample_rows": len(rows),
+            "categories": cats,
+            "statuses": statuses,
+            "first_row": rows[0] if rows else None,
+        }
+    except Exception as e:
+        import traceback
+        return {"error": str(e)[:500], "trace": traceback.format_exc()[:2000]}
+
+
+@router.get("/debug/all-cats")
+def debug_all_cats():
+    """Tum soru kategorileri."""
+    sb = get_supabase_admin()
+    try:
+        result = sb.table("questions").select("id,category,slug,audit_status").execute()
+        rows = result.data or []
+        cats = {}
+        for r in rows:
+            c = r.get("category", "?")
+            cats[c] = cats.get(c, 0) + 1
+        return {
+            "total": len(rows),
+            "categories": cats,
+            "statuses": {s: sum(1 for r in rows if r.get("audit_status") == s) for s in set(r.get("audit_status") for r in rows)},
+        }
+    except Exception as e:
+        return {"error": str(e)[:500]}
+
+
+@router.post("/debug/reload-cache")
+def debug_reload_cache():
+    """_db_questions cache invalidate."""
+    try:
+        from question_loader import invalidate_cache
+        invalidate_cache()
+        return {"ok": True}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@router.get("/debug/list-test")
+def debug_list_test(category: str = "pandas", limit: int = 10):
+    """list_questions endpoint debug - categori filtre."""
+    from question_loader import filter_questions
+    try:
+        filtered = filter_questions(category=category)
+        return {"category": category, "count": len(filtered), "first_3": [
+            {"id": getattr(q, "id", "?"), "title": getattr(q, "title", "")[:50], "slug": getattr(q, "slug", "")}
+            for q in filtered[:3]
+        ]}
+    except Exception as e:
+        import traceback
+        return {"error": str(e)[:500], "trace": traceback.format_exc()[:2000]}
+
+
