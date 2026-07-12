@@ -124,6 +124,7 @@ forms_v2 = try_include("routers.forms", "forms (user posts)")
 recommendations_v2 = try_include("routers.recommendations", "recommendations (deterministic)")
 play_count_v2 = try_include("routers.play_count", "play count (user activity)")
 guides_v1 = try_include("routers.guides", "guides (study materials)")
+audit_v1 = try_include("routers.audit", "audit (Mavis API + test runner)")
 # 📌 Mail koçu endpointleri kaldirildi (KVKK uyumu).
 # Sadece database tablolarinda varsa email gerekiyor, mail gonderimi YOK.
 
