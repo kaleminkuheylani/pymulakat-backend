@@ -105,8 +105,13 @@ class QuestionSummary(BaseModel):
 
 @router.get("/list", response_model=List[QuestionSummary])
 def list_questions():
-    """Tüm soruları audit durumu ile döndür (scrollable dropdown için)."""
+    """Tüm soruları audit durumu ile döndür (scrollable dropdown için).
+
+    Kolonlar (is_audited, audit_status, audited_at) henüz eklenmediyse
+    fallback: temel soru verisi + audit_status="pending" default.
+    """
     sb = get_supabase_admin()
+    # Önce audit kolonları dahil SELECT dene
     try:
         result = (
             sb.table("questions")
@@ -115,9 +120,30 @@ def list_questions():
             .execute()
         )
         return result.data or []
-    except Exception as e:
+    except Exception as e1:
+        # Audit kolonları yoksa (404/PGRST116) fallback
+        err_str = str(e1)
+        if "PGRST116" in err_str or "is_audited" in err_str or "404" in err_str or "Could not find" in err_str:
+            log.warning("Audit kolonları yok, fallback temel sorgu (DB migration gerekli)")
+            try:
+                result = (
+                    sb.table("questions")
+                    .select("id, title, category, level, slug, description, function_name, starter_code, test_cases")
+                    .order("id", desc=False)
+                    .execute()
+                )
+                rows = result.data or []
+                # Default audit alanları ekle
+                for r in rows:
+                    r["is_audited"] = False
+                    r["audit_status"] = "pending"
+                    r["audited_at"] = None
+                return rows
+            except Exception as e2:
+                log.exception("Fallback list failed")
+                raise HTTPException(status_code=500, detail=f"List error (fallback): {e2}")
         log.exception("List questions failed")
-        raise HTTPException(status_code=500, detail=f"List error: {e}")
+        raise HTTPException(status_code=500, detail=f"List error: {e1}")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -396,7 +422,10 @@ def _deep_eq(a, b) -> bool:
 
 @router.post("/mark")
 def mark_audited(req: MarkRequest):
-    """DB'de is_audited, audit_status, audited_at güncelle."""
+    """DB'de is_audited, audit_status, audited_at güncelle.
+
+    Audit kolonları henüz DB'de yoksa 503 doner (migration gerekli).
+    """
     sb = get_supabase_admin()
     try:
         update = {
@@ -429,6 +458,20 @@ def mark_audited(req: MarkRequest):
     except HTTPException:
         raise
     except Exception as e:
+        err_str = str(e)
+        if "PGRST116" in err_str or "is_audited" in err_str or "Could not find" in err_str:
+            log.error(
+                "Audit kolonlari DB'de YOK! Supabase SQL Editor'de "
+                "scripts/add_audit_columns.sql calistir, sonra 5dk bekle "
+                "(PostgREST schema cache)."
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Audit kolonlari DB'de yok. Supabase SQL Editor'de "
+                    "scripts/add_audit_columns.sql calistir, sonra 5dk bekle."
+                ),
+            )
         log.exception("Mark failed")
         raise HTTPException(status_code=500, detail=f"Mark error: {e}")
 
