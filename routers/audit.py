@@ -41,7 +41,7 @@ MAVIS_API_KEY = (
 # Hardcoded Gemini OpenAI-uyumlu (Railway env override YOK)
 MAVIS_API_BASE = "https://generativelanguage.googleapis.com/v1beta/openai"
 # Hardcoded Gemini model (env override YOK)
-MAVIS_MODEL = "gemini-1.5-flash"
+MAVIS_MODEL = "gemini-2.5-flash"
 EXEC_TIMEOUT = 8
 
 
