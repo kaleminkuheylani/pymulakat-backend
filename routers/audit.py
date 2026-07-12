@@ -589,3 +589,28 @@ def audit_stats():
     except Exception as e:
         log.exception("Stats failed")
         raise HTTPException(status_code=500, detail=f"Stats error: {e}")
+
+# ═══════════════════════════════════════════════════════════════
+# ─── Debug: outbound network test ───────────────────────────
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/debug/network")
+def debug_network():
+    """Outbound network test — Railway kısıtlarını debug et."""
+    import socket
+    import subprocess
+    hosts = ["api.openai.com", "generativelanguage.googleapis.com", "api.github.com", "api.minimax.io"]
+    results = {}
+    for h in hosts:
+        try:
+            ip = socket.gethostbyname(h)
+            results[h] = {"status": "ok", "ip": ip}
+        except Exception as e:
+            results[h] = {"status": "fail", "error": str(e)}
+    # subprocess test (curl)
+    try:
+        r = subprocess.run(["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "https://api.openai.com/v1/models", "-H", f"Authorization: Bearer {MAVIS_API_KEY or 'fake'}"], capture_output=True, text=True, timeout=10)
+        results["curl_openai"] = {"stdout": r.stdout[:200], "stderr": r.stderr[:200]}
+    except Exception as e:
+        results["curl_openai"] = {"error": str(e)}
+    return results
