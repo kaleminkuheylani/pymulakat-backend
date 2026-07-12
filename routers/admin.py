@@ -531,9 +531,8 @@ def bulk_seed_questions(batch_size: int = 20):
             if result.data:
                 inserted += len(result.data)
         except Exception as e:
-            # batch fail olduysa tek tek dene (hangi satir patliyor bul)
             err_msg = str(e)[:500]
-            log.warning(f"Batch {i}-{i+batch_size} upsert fail: {err_msg}")
+            log.exception(f"Batch {i}-{i+batch_size} upsert FAIL (satir basina fallback): {err_msg}")
             for row in batch:
                 try:
                     sb.table("questions").upsert(
