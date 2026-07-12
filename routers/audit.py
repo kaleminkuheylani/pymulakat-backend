@@ -27,27 +27,21 @@ from supabase_client import get_supabase_admin
 router = APIRouter(prefix="/audit", tags=["admin-audit"])  # /api/v2/admin (admin.py) + /audit
 log = logging.getLogger("pymulakat.audit")
 
-# API config (OpenAI uyumlu: OpenAI, Gemini, Mavis)
-# Key sırası: OPENAI_API_KEY → MAVIS_API_KEY → GOOGLE_API_KEY → GEMINI_API_KEY
-# OpenAI ilk çünkü MAVIS_API_KEY'de Mavis key olabilir (sk-cp-...) OpenAI reddeder
+# API config — Gemini OpenAI uyumlu
+# Key sırası: GOOGLE_API_KEY / GEMINI_API_KEY (Gemini) → OPENAI → MAVIS_API_KEY
+# MAVIS_API_KEY env'de Mavis key olabilir (sk-cp-...) — Gemini reddeder
 MAVIS_API_KEY = (
-    os.environ.get("OPENAI_API_KEY")
-    or os.environ.get("MAVIS_API_KEY")
-    or os.environ.get("GOOGLE_API_KEY")
+    os.environ.get("GOOGLE_API_KEY")
     or os.environ.get("GEMINI_API_KEY")
+    or os.environ.get("OPENAI_API_KEY")
+    or os.environ.get("MAVIS_API_KEY")
     or ""
 )
 # Base URL: MAVIS_API_BASE → OPENAI_API_BASE → default OpenAI
-# Base URL: MAVIS_API_BASE / OPENAI_API_BASE / default Gemini OpenAI-uyumlu
-# Gemini OpenAI uyumlu: https://generativelanguage.googleapis.com/v1beta/openai
-# OpenAI: https://api.openai.com/v1
-MAVIS_API_BASE = (
-    os.environ.get("MAVIS_API_BASE")
-    or os.environ.get("OPENAI_API_BASE")
-    or "https://generativelanguage.googleapis.com/v1beta/openai"
-)
-# Model: env varsa onu kullan, yoksa gpt-4o-mini
-MAVIS_MODEL = os.environ.get("MAVIS_MODEL", "gpt-4o-mini")
+# Hardcoded Gemini OpenAI-uyumlu (Railway env override YOK)
+MAVIS_API_BASE = "https://generativelanguage.googleapis.com/v1beta/openai"
+# Hardcoded Gemini model (env override YOK)
+MAVIS_MODEL = "gemini-1.5-flash"
 EXEC_TIMEOUT = 8
 
 
