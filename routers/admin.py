@@ -1,3 +1,4 @@
+print("DEPLOY TRIGGER 2026-07-12")
 """Admin endpointleri — minimal iskelet.
 
 Sadece:
