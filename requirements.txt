@@ -19,3 +19,4 @@ pyotp>=2.9.0
 passlib[bcrypt]>=1.7.4
 qrcode[pil]>=7.4.0
 slowapi>=0.1.9
+starlette>=0.36.0  # slowapi dependency (fastapi[standard] zaten var ama explicit)
