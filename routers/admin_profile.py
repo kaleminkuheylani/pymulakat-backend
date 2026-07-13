@@ -27,6 +27,7 @@ from fastapi import APIRouter, Request, Response, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
 from supabase_client import get_supabase_admin
+from dependencies import get_client_ip
 
 log = logging.getLogger("pymulakat.admin_profile")
 
@@ -71,13 +72,6 @@ class LoginRequest(BaseModel):
 class SeedRequest(BaseModel):
     email: EmailStr
     password: str
-
-
-def get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
 
 
 def issue_session_token(profile_id: str, email: str) -> str:

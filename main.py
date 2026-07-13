@@ -141,7 +141,7 @@ for _sub_name in ("admin", "admin_auth", "audit", "analytics", "admin_setup", "a
         app.include_router(_mod.router)
         _admin_v2_loaded += 1
     except Exception as _e:
-        log.error(f"[main] admin sub-router '{_sub_name}' yuklenemedi: {_e}")
+        logger.error(f"[main] admin sub-router '{_sub_name}' yuklenemedi: {_e}")
 print(f"✅ admin facade: {_admin_v2_loaded}/6 sub-router yuklendi")
 admin_v2_module = _admin_v2_loaded > 0
 # audit endpoints: routers/admin.py üzerinden yüklenir (router prefix çakışması önlemek için)

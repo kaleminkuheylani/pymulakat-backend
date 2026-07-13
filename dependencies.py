@@ -9,6 +9,32 @@ from supabase_client import get_supabase
 logger = logging.getLogger("pymulakat")
 
 
+# ═══════════════════════════════════════════════════════════════
+# Request helpers (TEK KAYNAK — duplicate temizligi 2026-07-13)
+# Onceki: get_client_ip + get_user_agent 3 dosyada kopyalanmisti
+#   (admin_auth.py, admin_profile.py, analytics.py)
+# Simdi: TEK tanim, 3 dosya import eder.
+# ═══════════════════════════════════════════════════════════════
+
+def get_client_ip(request: Request, fallback: str = "unknown") -> str:
+    """x-forwarded-for header'indan ilk IP, yoksa request.client.host.
+
+    Args:
+        request: FastAPI Request
+        fallback: client.host da yoksa donulecek deger (default "unknown").
+                  analytics.py "0.0.0.0" bekliyor, override eder.
+    """
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else fallback
+
+
+def get_user_agent(request: Request, max_length: int = 500) -> str:
+    """user-agent header'i, max_length ile truncate."""
+    return request.headers.get("user-agent", "")[:max_length]
+
+
 async def get_current_user(request: Request):
     """Bearer <jwt> → Supabase ile doğrula.
 

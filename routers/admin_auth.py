@@ -27,6 +27,7 @@ from fastapi import APIRouter, Request, Response, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
 from supabase_client import get_supabase, get_supabase_admin
+from dependencies import get_client_ip, get_user_agent
 
 log = logging.getLogger("pymulakat.admin_auth")
 
@@ -57,17 +58,8 @@ class LoginRequest(BaseModel):
 # ═══════════════════════════════════════════════════════════════
 # Helpers
 # ═══════════════════════════════════════════════════════════════
-
-def get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
-
-
-def get_user_agent(request: Request) -> str:
-    return request.headers.get("user-agent", "")[:500]
-
+# get_client_ip + get_user_agent artik dependencies.py'den import ediliyor
+# (duplicate temizligi 2026-07-13, 3 dosyada kopyalanan tekrar tek kaynaga tasindi)
 
 def write_audit(user_id, email, action, ip, ua, success, detail=None):
     """Admin audit log (best-effort)."""
@@ -251,13 +243,17 @@ def login(req: LoginRequest, request: Request, response: Response):
 
     # Set-Cookie: JSONResponse headers dict ile güvenilir şekilde set edilir
     # (response.set_cookie() Starlette'ta bazen düşmüyor)
+    # Domain=pythonmulakat.com — frontend Vercel (pythonmulakat.com) üzerinden okuyabilsin
+    # SameSite=Lax (Strict cross-origin Set-Cookie reddederdi — d7c76fd fix)
+    # Secure=True (HTTPS only)
     cookie_parts = [
         f"admin_session={session_jwt}",
         f"Max-Age={SESSION_TTL_HOURS * 3600}",
         "Path=/",
+        "Domain=pythonmulakat.com",
         "HttpOnly",
         "Secure",
-        "SameSite=Strict",
+        "SameSite=Lax",
     ]
     set_cookie_header = "; ".join(cookie_parts)
 
@@ -296,7 +292,7 @@ def me(request: Request):
     # IP binding KAPALI: Vercel serverless fetch yaparken egress IP degisiyor
     # (login IP != /me IP, redirect loop olusuyor)
     # Production'da farkli IP'lerden ayni cookie ile giris kabul edilir
-    # (güvenlik: HttpOnly + Secure + SameSite=Strict cookie yeterli)
+    # (güvenlik: HttpOnly + Secure + SameSite=Lax cookie yeterli)
     return {
         "id": payload["sub"],
         "email": payload.get("email"),

@@ -26,6 +26,7 @@ from typing import Optional
 from fastapi import APIRouter, Request, HTTPException, Query
 from pydantic import BaseModel, Field
 from supabase_client import get_supabase, get_supabase_admin
+from dependencies import get_client_ip, get_user_agent
 
 log = logging.getLogger("pymulakat.analytics")
 
@@ -42,17 +43,6 @@ def anonymize_ip(ip: str) -> str:
     if not m:
         return ip
     return f"{m.group(1)}.{m.group(2)}.{m.group(3)}.0"
-
-
-def get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "0.0.0.0"
-
-
-def get_user_agent(request: Request) -> str:
-    return request.headers.get("user-agent", "")[:500]
 
 
 def extract_category(path: str) -> Optional[str]:
