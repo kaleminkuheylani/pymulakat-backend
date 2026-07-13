@@ -142,15 +142,8 @@ for _sub_name in ("admin", "admin_auth", "audit", "analytics", "admin_setup", "a
         _admin_v2_loaded += 1
     except Exception as _e:
         log.error(f"[main] admin sub-router '{_sub_name}' yuklenemedi: {_e}")
-    for _name, _r in _admin_v2_subs:
-        try:
-            app.include_router(_r)
-        except Exception:
-            pass
-    print(f"✅ admin v2 facade: {len(_admin_v2_subs)} sub-router (manuel flatten)")
-    admin_v2_module = True
-except Exception as e:
-    print(f"❌ admin v2 facade hatasi: {e}")
+print(f"✅ admin facade: {_admin_v2_loaded}/6 sub-router yuklendi")
+admin_v2_module = _admin_v2_loaded > 0
 # audit endpoints: routers/admin.py üzerinden yüklenir (router prefix çakışması önlemek için)
 # 📌 Mail koçu endpointleri kaldirildi (KVKK uyumu).
 # Sadece database tablolarinda varsa email gerekiyor, mail gonderimi YOK.
