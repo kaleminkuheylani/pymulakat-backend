@@ -216,15 +216,19 @@ def login(req: LoginRequest, request: Request):
     }).eq("id", profile["id"]).execute()
 
     # 5) Session JWT + admin_sessions tablosu
-    session_jwt = issue_session_token(profile["id"], email)
-    jti = jwt.decode(session_jwt, options={"verify_signature": False})["jti"]
-    sb.table("admin_sessions").insert({
-        "id": jti,
-        "user_id": profile["id"],
-        "ip": ip,
-        "user_agent": request.headers.get("user-agent", "")[:500],
-        "expires_at": (datetime.now(timezone.utc) + timedelta(hours=SESSION_TTL_HOURS)).isoformat(),
-    }).execute()
+    try:
+        session_jwt = issue_session_token(profile["id"], email)
+        jti = jwt.decode(session_jwt, options={"verify_signature": False})["jti"]
+        sb.table("admin_sessions").insert({
+            "id": jti,
+            "user_id": profile["id"],
+            "ip": ip,
+            "user_agent": request.headers.get("user-agent", "")[:500],
+            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=SESSION_TTL_HOURS)).isoformat(),
+        }).execute()
+    except Exception as e:
+        log.error(f"[admin_profile] session insert failed: {type(e).__name__}: {e}")
+        raise HTTPException(500, f"Session yazma hatasi: {str(e)[:200]}")
 
     # 6) Set-Cookie (hard header — JSONResponse guvenilir)
     cookie_parts = [
