@@ -135,7 +135,7 @@ guides_v1 = try_include("routers.guides", "guides (study materials)")
 admin_v2_module = None
 _admin_v2_loaded = 0
 # Her sub-router'i izole try/except ile ekle (biri patlarsa digerleri etkilenmesin)
-for _sub_name in ("admin", "admin_auth", "audit", "analytics", "admin_setup", "admin_profile", "user_check"):
+for _sub_name in ("admin", "admin_auth", "audit", "analytics", "admin_setup", "user_check"):
     try:
         _mod = __import__(f"routers.{_sub_name}", fromlist=["router"])
         app.include_router(_mod.router)
