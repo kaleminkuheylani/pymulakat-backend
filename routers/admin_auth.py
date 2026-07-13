@@ -249,19 +249,25 @@ def login(req: LoginRequest, request: Request, response: Response):
     except Exception as e:
         log.error(f"[admin_auth] audit log failed: {e}")
 
-    response.set_cookie(
-        key="admin_session",
-        value=session_jwt,
-        max_age=SESSION_TTL_HOURS * 3600,
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        path="/",
+    # Set-Cookie: JSONResponse headers dict ile güvenilir şekilde set edilir
+    # (response.set_cookie() Starlette'ta bazen düşmüyor)
+    cookie_parts = [
+        f"admin_session={session_jwt}",
+        f"Max-Age={SESSION_TTL_HOURS * 3600}",
+        "Path=/",
+        "HttpOnly",
+        "Secure",
+        "SameSite=Strict",
+    ]
+    set_cookie_header = "; ".join(cookie_parts)
+
+    return JSONResponse(
+        {
+            "authenticated": True,
+            "user": {"id": user_id, "email": email, "role": "admin"},
+        },
+        headers={"Set-Cookie": set_cookie_header},
     )
-    return JSONResponse({
-        "authenticated": True,
-        "user": {"id": user_id, "email": email, "role": "admin"},
-    })
 
 
 @router.post("/logout")
@@ -277,8 +283,9 @@ def logout(request: Request, response: Response):
             write_audit(payload["sub"], payload.get("email"), "logout", get_client_ip(request), get_user_agent(request), True, {})
         except Exception:
             pass
-    response.delete_cookie("admin_session", path="/")
-    return {"ok": True}
+    # Delete cookie — manuel header
+    delete_cookie_header = "admin_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict"
+    return JSONResponse({"ok": True}, headers={"Set-Cookie": delete_cookie_header})
 
 
 @router.get("/me")
