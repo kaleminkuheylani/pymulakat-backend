@@ -231,12 +231,15 @@ def login(req: LoginRequest, request: Request):
         raise HTTPException(500, f"Session yazma hatasi: {str(e)[:200]}")
 
     # 6) Set-Cookie (hard header — JSONResponse guvenilir)
+    # Domain=pythonmulakat.com — frontend Vercel (pythonmulakat.com)
+    #   üzerinden cookie'yi okuyabilsin
     # SameSite=Lax (Strict cross-origin Set-Cookie reddederdi)
     # Secure=True (HTTPS only)
     cookie_parts = [
         f"admin_session={session_jwt}",
         f"Max-Age={SESSION_TTL_HOURS * 3600}",
         "Path=/",
+        "Domain=pythonmulakat.com",
         "HttpOnly",
         "Secure",
         "SameSite=Lax",
