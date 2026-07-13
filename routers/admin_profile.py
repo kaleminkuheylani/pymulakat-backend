@@ -231,13 +231,15 @@ def login(req: LoginRequest, request: Request):
         raise HTTPException(500, f"Session yazma hatasi: {str(e)[:200]}")
 
     # 6) Set-Cookie (hard header — JSONResponse guvenilir)
+    # SameSite=Lax (Strict cross-origin Set-Cookie reddederdi)
+    # Secure=True (HTTPS only)
     cookie_parts = [
         f"admin_session={session_jwt}",
         f"Max-Age={SESSION_TTL_HOURS * 3600}",
         "Path=/",
         "HttpOnly",
         "Secure",
-        "SameSite=Strict",
+        "SameSite=Lax",
     ]
     set_cookie_header = "; ".join(cookie_parts)
 
