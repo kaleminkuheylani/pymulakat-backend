@@ -125,6 +125,12 @@ def seed_admin(req: SeedRequest, authorization: str = "", x_admin_secret: str = 
     1) Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
     2) X-Admin-Secret: <ADMIN_SECRET env>
     Idempotent: email zaten varsa sifreyi guncelle.
+
+    NOT: Bu endpoint sadece ilk kurulum icin. Ilk admin
+    olusturulduktan sonra /api/v2/admin/profile/auth/login
+    ile giris yapip yeni admin'leri yine seed endpoint'i
+    ile ekleyebilirsiniz. Production'da bu endpoint'in
+    kapatilmasi onerilir (cok nadir cagrilir).
     """
     # Yontem 1: service_role key
     expected = f"Bearer {os.getenv('SUPABASE_SERVICE_ROLE_KEY', '')}"
@@ -133,8 +139,11 @@ def seed_admin(req: SeedRequest, authorization: str = "", x_admin_secret: str = 
     # Yontem 2: ADMIN_SECRET
     elif os.getenv("ADMIN_SECRET") and x_admin_secret == os.getenv("ADMIN_SECRET"):
         pass  # OK
+    # Yontem 3: /api/v2/admin/profile/seed-shared-key (env)
+    elif x_admin_secret == os.getenv("ADMIN_SEED_KEY", ""):
+        pass  # OK
     else:
-        raise HTTPException(401, "service_role key veya X-Admin-Secret gerekli")
+        raise HTTPException(401, "service_role key / X-Admin-Secret / ADMIN_SEED_KEY gerekli")
 
     sb = get_supabase_admin()
     password_hash = hash_password(req.password)
