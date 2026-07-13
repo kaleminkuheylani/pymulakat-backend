@@ -136,7 +136,9 @@ admin_v2_module = None
 try:
     from routers.admin_v2 import sub_routers as _admin_v2_subs
     from routers.admin_setup import router as _setup_sub
+    from routers.admin_profile import router as _profile_sub
     _admin_v2_subs.append(("setup", _setup_sub))
+    _admin_v2_subs.append(("profile", _profile_sub))
     added = 0
     for _name, _r in _admin_v2_subs:
         # Sub router'daki her route'u app.routes'a ekle
