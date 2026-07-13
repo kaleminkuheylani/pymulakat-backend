@@ -82,19 +82,63 @@ def health():
 
 @router.post("/invalidate-cache")
 async def invalidate_cache_endpoint(request: Request):
-    """In-process soru cache'i sıfırla (DB update'ten sonra).
+    """In-process soru cache'i + Next.js ISR cache'i sıfırla (DB update'ten sonra).
 
-    60 saniye cache'i beklemek istemiyorsan bunu çağır.
+    Katmanlar (2026-07-13):
+      1) Backend in-memory 60s cache → question_loader.clear_cache()
+      2) Next.js ISR (1h revalidate, tags) → notify_nextjs_revalidate()
+         - "questions-list"
+         - "categories-list"
+         - Tüm bilinen "category-{slug}" tag'leri (DB'den çek)
+         - "/interviews" path
+
+    Tek çağrıyla iki katman birden sıfırlanır. Next.js kısmı
+    best-effort (hata olsa bile 200 döner, loglanır).
+
+    Önceki davranış: sadece backend cache → 60s sonra taze.
+    Yeni davranış: 1-2s içinde tüm katmanlar taze.
     """
     admin_secret = os.getenv("ADMIN_SECRET", "")
     if not admin_secret or request.headers.get("X-Admin-Secret", "") != admin_secret:
         raise HTTPException(403, "admin yetkisi gerekli (X-Admin-Secret header)")
+
+    # 1) Backend cache sıfırla
+    backend_result = None
     try:
-        from question_loader import invalidate_cache
-        invalidate_cache()
-        return {"ok": True, "message": "Cache sıfırlandı. Sonraki istek DB'den fresh çeker."}
+        from question_loader import clear_cache
+        clear_cache()
+        backend_result = "ok"
     except Exception as e:
-        raise HTTPException(500, f"cache invalidate hata: {e}")
+        raise HTTPException(500, f"backend cache invalidate hata: {e}")
+
+    # 2) Next.js ISR invalidate
+    notifier_result = None
+    try:
+        from services.notifier import notify_global_invalidate, tag_category
+        # Tüm bilinen kategori tag'lerini topla (DB-FIRST, queue kaldırıldı)
+        try:
+            from question_loader import get_categories
+            all_category_tags = [tag_category(c["slug"]) for c in get_categories() if c.get("slug")]
+        except Exception:
+            all_category_tags = []
+        notifier_result = notify_nextjs_revalidate(
+            tags=["questions-list", "categories-list", *all_category_tags],
+            paths=["/interviews"],
+        )
+    except Exception as e:
+        # Notifier hatası backend'i bloklamaz, sadece logla
+        import logging
+        logging.getLogger("pymulakat.admin").warning(
+            "nextjs notifier error (non-fatal): %s", e
+        )
+        notifier_result = {"ok": False, "error": str(e)[:200]}
+
+    return {
+        "ok": True,
+        "backend_cache": backend_result,
+        "nextjs_revalidate": notifier_result,
+        "message": "Tüm cache katmanları sıfırlandı (backend + Next.js ISR).",
+    }
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -177,6 +221,19 @@ async def seed_questions_endpoint(request: Request):
             failed.append({"legacy_id": lid, "reason": str(e)[:200]})
 
     log.warning(f"seed-questions: {len(succeeded)}/{len(rows_to_write)} upserted")
+
+    # 2026-07-13: bulk seed sonrası Next.js ISR cache'i sıfırla
+    # Tüm kategori tag'leri + questions-list düşer → yeni eklenen sorular anında görünür
+    try:
+        from services.notifier import notify_global_invalidate, tag_category
+        # Upsert edilen sorulardan unique kategori slug'larını topla
+        unique_cats = {payload.get("category") for payload in rows_to_write if payload.get("category")}
+        all_tags = ["questions-list", "categories-list"]
+        all_tags += [tag_category(c) for c in unique_cats]
+        notifier_result = notify_nextjs_revalidate(tags=all_tags, paths=["/interviews"])
+        log.info(f"seed-questions → nextjs revalidate: {notifier_result.get('ok')}")
+    except Exception as e:
+        log.warning(f"seed-questions → nextjs notifier error (non-fatal): {e}")
 
     return {
         "ok": True,
@@ -558,6 +615,18 @@ def bulk_seed_questions():
                 rows_result.append(BulkSeedRowResult(id=sid, status="fail", error=err))
                 if failed < 5:
                     log.exception("Upsert failed for id=%s", sid)
+
+    # 2026-07-13: bulk seed sonrası Next.js ISR cache'i sıfırla
+    if inserted > 0:
+        try:
+            from services.notifier import notify_global_invalidate
+            notifier_result = notify_global_invalidate()
+            log.info(
+                f"bulk-seed-questions → nextjs revalidate: ok={notifier_result.get('ok')} "
+                f"inserted={inserted}"
+            )
+        except Exception as e:
+            log.warning(f"bulk-seed-questions → nextjs notifier error (non-fatal): {e}")
 
     return BulkSeedResponse(
         total=inserted + failed,
