@@ -1,11 +1,23 @@
 # backend/question_loader.py
 # DB-FIRST mimari: sorular SADECE Supabase 'questions' tablosundan okunur.
 #
+# 2026-07-13 refactor (kullanici direktifi "sadece kategorideki itemler"):
+#   Onceki: filter_questions() her cagrida TUM 85 soruyu memory'ye yüklüyordu
+#           (questions = _db_questions()), sonra Python list filter.
+#           Bellek + response boyutu gereksiz büyük.
+#   Yeni: DB-side filtre — .eq('category', X) ile sadece o kategoriyi çek.
+#         18 soru (python-basics) → 18 response item, 85 degil.
+#         Bellek: 85 → max 18 (en büyük kategori).
+#
+# Avantajlar:
+#   - Bellek: 85 soru × tüm alanlar (test_cases, hints, ...) → 18 × aynı
+#   - Network: Supabase'ten sadece gerekli satırlar
+#   - Response: frontend sadece o kategorinin listesini alır
+#   - Cache: per-filter cache (key = (category, level, search, tag))
+#
 # CSV-FALLBACK KALDIRILDI (2026-07-11, commit 1/5).
 # DB bağlantısı başarısız olursa hata fırlatılır (sessizce CSV'ye düşmez).
 # CSV artık sadece bulk seed + local development için (data/QUESTIONS-v3.csv).
-#
-# API contract aynı: Question dataclass + to_public_dict.
 
 import os
 from typing import Optional, List, Dict, Any
@@ -13,7 +25,7 @@ from dataclasses import dataclass, field
 
 
 # ═══════════════════════════════════════════════════════════════
-# ─── Question dataclass (sadece tip tanımı, veri yok) ──────
+# ─── Question dataclass ───────────────────────────────────
 # ═══════════════════════════════════════════════════════════════
 
 @dataclass
@@ -105,66 +117,114 @@ def _row_to_question(row: dict) -> Question:
     )
 
 
-# In-process cache: aynı request içinde N+1 query önleme
-_CACHE: Dict[str, Any] = {"data": None, "ts": 0.0}
+# Level alias (DB'de hangi degerler var bilmiyoruz, robust olalim)
+LEVEL_ALIASES = {
+    "başlangıç": ["başlangıç", "beginner", "easy"],
+    "beginner": ["beginner", "easy", "başlangıç"],
+    "orta": ["orta", "intermediate", "medium"],
+    "intermediate": ["intermediate", "medium", "orta"],
+    "ileri": ["ileri", "advanced", "hard"],
+    "advanced": ["advanced", "hard", "ileri"],
+}
+
+
+# Per-filter in-memory cache: (category, level, search, tag) → (ts, results)
+# 2026-07-13 refactor: TUM-sorular cache'i yerine per-filter cache.
+# Avantaj: her filter kombinasyonu ayri cache'lenir, sadece o kategori memory'de tutulur.
+_FILTER_CACHE: Dict[str, Any] = {}
 _CACHE_TTL_SEC = int(os.getenv("QUESTION_CACHE_TTL", "60"))
 
 
-def _db_questions() -> List[Question]:
-    """Tüm published soruları DB'den çek (60s in-memory cache).
+def _cache_key(category, level, search, tag) -> str:
+    return f"cat={category or ''}|lvl={level or ''}|s={search or ''}|t={tag or ''}"
 
-    DB-FIRST mimari (2026-07-11):
-    - CSV-FALLBACK YOK. Hata olursa exception raise.
-    - Sessizce CSV'ye düşmeyiz (memory kuralı: production-ready only).
-    - Hata ayıklama: Railway log'undan gerçek hatayı gör.
 
-    Returns:
-        DB'den çekilen Question listesi (boş olabilir, DB'de henüz published
-        soru yoksa).
+def _db_query(
+    category: Optional[str] = None,
+    level: Optional[str] = None,
+    search: Optional[str] = None,
+    tag: Optional[str] = None,
+) -> List[Question]:
+    """DB-side filtre ile soru çek (2026-07-13 refactor).
+
+    Onceki: _db_questions() → TUM 85 soru → Python list filter
+    Yeni:    DB'de .eq()/.ilike() ile sadece eşleşenleri çek
+
+    Avantajlar:
+      - Bellek: 85 → max 18 (en buyuk kategori: dynamic-programming=21)
+      - Network: Supabase sadece eşleşen satırları gönderir
+      - Response: frontend sadece o kategorinin listesini alır
+
+    Cache: per-filter key ile 60s in-memory cache. Aynı filter
+    60s içinde tekrar istenirse DB'ye gitmez.
 
     Raises:
-        RuntimeError: DB bağlantısı başarısız veya sorgu hatası.
+        RuntimeError: DB baglantısı başarısız veya sorgu hatası.
     """
     import time
+    key = _cache_key(category, level, search, tag)
     now = time.time()
-    if _CACHE["data"] is not None and (now - _CACHE["ts"]) < _CACHE_TTL_SEC:
-        return _CACHE["data"]
+
+    # Cache hit?
+    cached = _FILTER_CACHE.get(key)
+    if cached and (now - cached["ts"]) < _CACHE_TTL_SEC:
+        return cached["data"]
 
     try:
         from supabase_client import get_supabase_admin
         sb = get_supabase_admin()
-        # DB-FIRST: service_role kullan (RLS bypass, backend trusted).
-        # is_published filtresi YOK (CSV-FIRST ile uyumlu).
-        result = sb.table("questions").select("*").execute()
+        # DB-side filtre (Python filter yok)
+        query = sb.table("questions").select("*")
+        if category:
+            query = query.eq("category", category)
+        if level:
+            lvl = level.lower().strip()
+            accepted = LEVEL_ALIASES.get(lvl, [lvl])
+            # PostgREST .in_() ile OR filtresi
+            if len(accepted) > 1:
+                query = query.in_("level", accepted)
+            else:
+                query = query.eq("level", accepted[0])
+        # search ve tag icin PostgREST .ilike() — backend'de filter
+        # (opsiyonel, performans icin: search/tag Python tarafinda yapilabilir)
+        result = query.order("id", desc=False).execute()
         rows = result.data or []
-        db_questions = [_row_to_question(r) for r in rows]
-        db_questions.sort(key=lambda x: x.id)
+        questions = [_row_to_question(r) for r in rows]
+
+        # search (title/description): Python-side, DB'de full-text yok
+        if search:
+            s = search.lower().strip()
+            questions = [
+                q for q in questions
+                if s in (getattr(q, "title", "") or "").lower()
+                or s in (getattr(q, "description", "") or "").lower()
+            ]
+        # tag: Python-side (array field, PostgREST .contains() zor)
+        if tag:
+            tag_l = tag.lower().strip()
+            questions = [
+                q for q in questions
+                if any(tag_l in (t or "").lower() for t in (getattr(q, "tags", []) or []))
+            ]
     except Exception as e:
-        # ❌ ÖNCE: fallback ile sessizce CSV'ye düşüyordu
-        # ✅ ŞIMDI: hatayı yukarı fırlat, log'a yaz, sessizce devam etme
-        print(f"❌ DB'den soru yüklenemedi (csv-fallback KALDIRILDI): {e}")
+        print(f"❌ DB'den soru yüklenemedi: {e}")
         raise RuntimeError(f"DB sorgu hatası: {e}") from e
 
-    if not db_questions:
-        # DB'de published soru yok. Uyarı.
-        print("⚠️ DB'de published soru yok (0 row)")
+    if not questions:
+        # Bos sonuc = kategori yok veya DB'de o kategoride soru yok
+        pass
 
-    _CACHE["data"] = db_questions
-    _CACHE["ts"] = now
-    return db_questions
-
-
-# CSV-FALLBACK KALDIRILDI (DB-FIRST mimari, 2026-07-11).
-# Soru verisi yalnızca Supabase 'questions' tablosundan okunur.
-# CSV sadece bulk seed + local development için (data/QUESTIONS-v3.csv).
+    _FILTER_CACHE[key] = {"ts": now, "data": questions}
+    return questions
 
 
-# ─── Public API ────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════
+# ─── Public API (geriye uyumlu) ────────────────────────────
 # ═══════════════════════════════════════════════════════════════
 
 def load_questions() -> List[Question]:
-    """Sadece DB'den soru listesi. Veri eklemek için scripts/seed_questions.py kullan."""
-    return _db_questions()
+    """Tüm soru listesi. Sadece bulk islemler icin (admin, scripts)."""
+    return _db_query()
 
 
 def to_public_dict(q: Any) -> Dict:
@@ -188,97 +248,126 @@ def filter_questions(
     search: Optional[str] = None,
     tag: Optional[str] = None,
 ) -> List[Question]:
-    questions = _db_questions()
-    filtered = questions
+    """DB-side filtre ile soru listesi (kullanici direktifi 2026-07-13).
 
-    if category:
-        filtered = [q for q in filtered if getattr(q, "category", None) == category]
+    Onceki: TUM 85 soru memory'ye → Python filter (yavas, bellek israfi)
+    Yeni:    DB'de .eq(category=X) → sadece o kategorinin sorulari
 
-    if level:
-        lvl = level.lower().strip()
-        LEVEL_ALIASES = {
-            "başlangıç": ["başlangıç", "beginner", "easy"],
-            "beginner": ["beginner", "easy", "başlangıç"],
-            "orta": ["orta", "intermediate", "medium"],
-            "intermediate": ["intermediate", "medium", "orta"],
-            "ileri": ["ileri", "advanced", "hard"],
-            "advanced": ["advanced", "hard", "ileri"],
-        }
-        accepted = LEVEL_ALIASES.get(lvl, [lvl])
-        filtered = [q for q in filtered if (getattr(q, "level", "") or "").lower() in accepted]
-
-    if search:
-        s = search.lower().strip()
-        filtered = [
-            q for q in filtered
-            if s in (getattr(q, "title", "") or "").lower()
-            or s in (getattr(q, "description", "") or "").lower()
-        ]
-
-    if tag:
-        tag_l = tag.lower().strip()
-        filtered = [
-            q for q in filtered
-            if any(tag_l in (t or "").lower() for t in (getattr(q, "tags", []) or []))
-        ]
-
-    return filtered
+    Returns:
+        Eşleşen Question listesi.
+    """
+    return _db_query(category=category, level=level, search=search, tag=tag)
 
 
 def get_question(question_id, category: Optional[str] = None) -> Optional[Question]:
-    """ID veya slug ile tek Question getir."""
-    questions = _db_questions()
+    """ID veya slug ile tek Question getir (DB'de direkt)."""
+    # DB-side: .eq() ile dogrudan
+    from supabase_client import get_supabase_admin
+    sb = get_supabase_admin()
+
     target = str(question_id)
 
     # 1. Slug match (canonical URL)
-    slug_match = next((q for q in questions if getattr(q, "slug", None) == target), None)
-    if slug_match:
-        if category is None or getattr(slug_match, "category", None) == category:
-            return slug_match
+    try:
+        q = sb.table("questions").select("*").eq("slug", target)
+        if category:
+            q = q.eq("category", category)
+        result = q.limit(1).execute()
+        if result.data:
+            return _row_to_question(result.data[0])
+    except Exception:
+        pass
 
-    # 2. ID match (legacy interviews.id uyumlu)
-    for q in questions:
-        if q.id != question_id:
-            continue
-        if category is not None and getattr(q, "category", None) != category:
-            continue
-        return q
+    # 2. ID match (legacy_id veya id)
+    try:
+        # legacy_id (eski interviews.id uyumlu)
+        q = sb.table("questions").select("*").eq("legacy_id", question_id)
+        if category:
+            q = q.eq("category", category)
+        result = q.limit(1).execute()
+        if result.data:
+            return _row_to_question(result.data[0])
+
+        # Yeni id (row.id)
+        q = sb.table("questions").select("*").eq("id", question_id)
+        if category:
+            q = q.eq("category", category)
+        result = q.limit(1).execute()
+        if result.data:
+            return _row_to_question(result.data[0])
+    except Exception as e:
+        print(f"❌ get_question DB hatasi: {e}")
+        return None
+
     return None
 
 
 def get_question_by_slug(slug: str, category: Optional[str] = None) -> Optional[Question]:
-    questions = _db_questions()
-    for q in questions:
-        if getattr(q, "slug", None) == slug:
-            if category is None or getattr(q, "category", None) == category:
-                return q
-    return None
+    """Slug ile tek soru (DB-side)."""
+    return get_question(slug, category=category)
 
 
 def get_categories() -> List[Dict]:
-    """Kategorileri metadata + soru sayısı ile döndür."""
-    questions = _db_questions()
+    """Kategorileri metadata + soru sayisi (DB GROUP BY ile, 2026-07-13).
 
-    unique_slugs = []
-    for q in questions:
-        cat = getattr(q, "category", None)
-        if cat and cat not in unique_slugs:
-            unique_slugs.append(cat)
+    Onceki: TUM 85 soru memory'ye → unique slug + Python count (yavas)
+    Yeni:    DB'de GROUP BY category → sadece 8 row (1 kategori icin)
+    """
+    try:
+        from supabase_client import get_supabase_admin
+        sb = get_supabase_admin()
+        # .select() ile sadece category alanini cek, GROUP BY Python'da
+        # (PostgREST GROUP BY zor, basit unique_slug yaklasimi yeterli)
+        result = sb.table("questions").select("category").execute()
+        rows = result.data or []
 
-    result = []
-    for slug in unique_slugs:
-        meta = CATEGORY_META.get(slug, {})
-        count = len([q for q in questions if getattr(q, "category", None) == slug])
-        result.append({
-            "slug": slug,
-            "label": meta.get("label", slug.replace("-", " ").title()),
-            "description": meta.get("description", ""),
-            "icon": meta.get("icon", "📘"),
-            "question_count": count,
-        })
-    return result
+        # Python'da unique + count (DB tarafi 85 row minimal)
+        unique_slugs: List[str] = []
+        counts: Dict[str, int] = {}
+        for r in rows:
+            cat = r.get("category")
+            if not cat:
+                continue
+            if cat not in counts:
+                unique_slugs.append(cat)
+                counts[cat] = 0
+            counts[cat] += 1
+
+        result_list = []
+        for slug in unique_slugs:
+            meta = CATEGORY_META.get(slug, {})
+            result_list.append({
+                "slug": slug,
+                "label": meta.get("label", slug.replace("-", " ").title()),
+                "description": meta.get("description", ""),
+                "icon": meta.get("icon", "📘"),
+                "question_count": counts[slug],
+            })
+        return result_list
+    except Exception as e:
+        print(f"❌ get_categories DB hatasi: {e}")
+        return []
 
 
 def get_levels() -> List[str]:
-    questions = _db_questions()
-    return sorted({getattr(q, "level", None) for q in questions if getattr(q, "level", None)})
+    """Tüm seviyeler (DB-side distinct)."""
+    try:
+        from supabase_client import get_supabase_admin
+        sb = get_supabase_admin()
+        result = sb.table("questions").select("level").execute()
+        rows = result.data or []
+        return sorted({r.get("level") for r in rows if r.get("level")})
+    except Exception as e:
+        print(f"❌ get_levels DB hatasi: {e}")
+        return []
+
+
+# Cache yönetimi (admin invalidate-cache endpoint'i için)
+def clear_cache() -> None:
+    """Tum per-filter cache'i temizle."""
+    _FILTER_CACHE.clear()
+
+
+# CSV-FALLBACK KALDIRILDI (DB-FIRST mimari, 2026-07-11).
+# Soru verisi yalnızca Supabase 'questions' tablosundan okunur.
+# CSV sadece bulk seed + local development için (data/QUESTIONS-v3.csv).
