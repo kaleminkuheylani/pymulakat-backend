@@ -133,27 +133,15 @@ guides_v1 = try_include("routers.guides", "guides (study materials)")
 # Admin v2: 4 sub-router route'larini manuel app.routes'a ekle
 # (app.include_router sub-routes flatten etmiyor, FastAPI quirk)
 admin_v2_module = None
-try:
-    from routers.admin_v2 import sub_routers as _admin_v2_subs
-    from routers.admin_setup import router as _setup_sub
-    from routers.admin_profile import router as _profile_sub
-    _admin_v2_subs.append(("setup", _setup_sub))
-    _admin_v2_subs.append(("profile", _profile_sub))
-    added = 0
-    for _name, _r in _admin_v2_subs:
-        # Sub router'daki her route'u app.routes'a ekle
-        for _route in _r.routes:
-            # APIRoute objesi ise ekle
-            if hasattr(_route, "path") and hasattr(_route, "endpoint"):
-                # Prefix'i ekle
-                if not hasattr(_route, "_admin_v2_added"):
-                    # app.include_router kullan AMA route zaten prefix'li (sub-router prefix ile)
-                    try:
-                        app.include_router(_r)  # idempotent
-                    except Exception:
-                        pass
-                    added += 1
-    # Yine app.include_router ile dene (duplicate safe)
+_admin_v2_loaded = 0
+# Her sub-router'i izole try/except ile ekle (biri patlarsa digerleri etkilenmesin)
+for _sub_name in ("admin", "admin_auth", "audit", "analytics", "admin_setup", "admin_profile"):
+    try:
+        _mod = __import__(f"routers.{_sub_name}", fromlist=["router"])
+        app.include_router(_mod.router)
+        _admin_v2_loaded += 1
+    except Exception as _e:
+        log.error(f"[main] admin sub-router '{_sub_name}' yuklenemedi: {_e}")
     for _name, _r in _admin_v2_subs:
         try:
             app.include_router(_r)

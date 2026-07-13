@@ -21,7 +21,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 import jwt
-import bcrypt
+import hashlib
+import secrets
 from fastapi import APIRouter, Request, Response, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
@@ -35,6 +36,31 @@ ADMIN_JWT_SECRET = os.getenv("ADMIN_JWT_SECRET", "pymulakat-admin-jwt-secret-DO-
 SESSION_TTL_HOURS = int(os.getenv("ADMIN_SESSION_TTL_HOURS", "8"))
 LOCKOUT_THRESHOLD = int(os.getenv("ADMIN_LOCKOUT_THRESHOLD", "5"))
 LOCKOUT_DURATION_MIN = int(os.getenv("ADMIN_LOCKOUT_DURATION_MIN", "15"))
+
+
+def hash_password(password: str) -> str:
+    """PBKDF2-HMAC-SHA256 password hash. Python stdlib, ek dep yok.
+    Format: pbkdf2_sha256$iter$salt$hash
+    """
+    salt = secrets.token_bytes(16)
+    iterations = 200_000
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
+    return f"pbkdf2_sha256${iterations}${salt.hex()}${dk.hex()}"
+
+
+def verify_password(password: str, stored: str) -> bool:
+    """PBKDF2 verify."""
+    try:
+        algo, iter_s, salt_hex, hash_hex = stored.split("$")
+        if algo != "pbkdf2_sha256":
+            return False
+        iterations = int(iter_s)
+        salt = bytes.fromhex(salt_hex)
+        expected = bytes.fromhex(hash_hex)
+        dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
+        return secrets.compare_digest(dk, expected)
+    except Exception:
+        return False
 
 
 class LoginRequest(BaseModel):
@@ -103,7 +129,7 @@ def seed_admin(req: SeedRequest, authorization: str = ""):
         raise HTTPException(401, "service_role key gerekli")
 
     sb = get_supabase_admin()
-    password_hash = bcrypt.hashpw(req.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    password_hash = hash_password(req.password)
 
     result = sb.table("profiles").select("id").eq("email", req.email).maybe_single().execute()
     if result.data:
@@ -158,7 +184,7 @@ def login(req: LoginRequest, request: Request):
 
     # 3) Password kontrol
     stored_hash = profile.get("password_hash", "")
-    if not stored_hash or not bcrypt.checkpw(req.password.encode("utf-8"), stored_hash.encode("utf-8")):
+    if not stored_hash or not verify_password(req.password, stored_hash):
         # Basarisiz — failed_count++
         sb.table("profiles").update({
             "failed_count": (profile.get("failed_count", 0) or 0) + 1,
