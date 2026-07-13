@@ -160,7 +160,12 @@ def list_questions(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
 ):
-    filtered = filter_questions(category=category, level=level, search=search, tag=tag)
+    try:
+        filtered = filter_questions(category=category, level=level, search=search, tag=tag)
+    except Exception as e:
+        import traceback
+        logger.error(f"[questions] filter_questions hatasi: {e}\n{traceback.format_exc()}")
+        raise HTTPException(500, f"DB hatasi: {str(e)[:200]}")
     total = len(filtered)
     total_pages = max(1, (total + limit - 1) // limit)
     if page > total_pages and total > 0:
@@ -183,9 +188,14 @@ def list_questions(
 @router.get("/all", response_model=AllQuestionsResponse)
 def list_all_questions():
     """Slug listesi için minimal payload (canonical URL üretimi)."""
-    filtered = filter_questions()
-    items = [_to_question_out(q, include_starter=False) for q in filtered]
-    return AllQuestionsResponse(data=items, total=len(items))
+    try:
+        filtered = filter_questions()
+        items = [_to_question_out(q, include_starter=False) for q in filtered]
+        return AllQuestionsResponse(data=items, total=len(items))
+    except Exception as e:
+        import traceback
+        logger.error(f"[questions/all] hatasi: {e}\n{traceback.format_exc()}")
+        raise HTTPException(500, f"DB hatasi: {str(e)[:200]}")
 
 
 # ═══════════════════════════════════════════════════════════════
