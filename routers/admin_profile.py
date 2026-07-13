@@ -120,13 +120,21 @@ def get_profile_session(request: Request) -> Optional[dict]:
 
 
 @router.post("/seed")
-def seed_admin(req: SeedRequest, authorization: str = ""):
-    """Service_role key ile ilk admin user olustur.
+def seed_admin(req: SeedRequest, authorization: str = "", x_admin_secret: str = ""):
+    """Ilk admin user olustur. Iki yontemle korunur:
+    1) Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
+    2) X-Admin-Secret: <ADMIN_SECRET env>
     Idempotent: email zaten varsa sifreyi guncelle.
     """
+    # Yontem 1: service_role key
     expected = f"Bearer {os.getenv('SUPABASE_SERVICE_ROLE_KEY', '')}"
-    if not os.getenv("SUPABASE_SERVICE_ROLE_KEY") or authorization != expected:
-        raise HTTPException(401, "service_role key gerekli")
+    if os.getenv("SUPABASE_SERVICE_ROLE_KEY") and authorization == expected:
+        pass  # OK
+    # Yontem 2: ADMIN_SECRET
+    elif os.getenv("ADMIN_SECRET") and x_admin_secret == os.getenv("ADMIN_SECRET"):
+        pass  # OK
+    else:
+        raise HTTPException(401, "service_role key veya X-Admin-Secret gerekli")
 
     sb = get_supabase_admin()
     password_hash = hash_password(req.password)
