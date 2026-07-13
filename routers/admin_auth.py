@@ -284,7 +284,7 @@ def logout(request: Request, response: Response):
         except Exception:
             pass
     # Delete cookie — manuel header
-    delete_cookie_header = "admin_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict"
+    delete_cookie_header = "admin_session=; Path=/; Domain=pythonmulakat.com; Max-Age=0; HttpOnly; Secure; SameSite=Lax"
     return JSONResponse({"ok": True}, headers={"Set-Cookie": delete_cookie_header})
 
 
