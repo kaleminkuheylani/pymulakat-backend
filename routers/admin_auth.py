@@ -293,13 +293,10 @@ def me(request: Request):
     payload = get_session_from_request(request)
     if not payload:
         raise HTTPException(status_code=401, detail="Session yok veya süresi dolmuş")
-    current_ip = get_client_ip(request)
-    if payload.get("ip") and payload["ip"] != current_ip:
-        write_audit(
-            payload["sub"], payload.get("email"), "guard_deny", current_ip, get_user_agent(request), False,
-            {"reason": "ip_mismatch", "session_ip": payload["ip"]}
-        )
-        raise HTTPException(status_code=401, detail="IP değişti, tekrar login gerekli")
+    # IP binding KAPALI: Vercel serverless fetch yaparken egress IP degisiyor
+    # (login IP != /me IP, redirect loop olusuyor)
+    # Production'da farkli IP'lerden ayni cookie ile giris kabul edilir
+    # (güvenlik: HttpOnly + Secure + SameSite=Strict cookie yeterli)
     return {
         "id": payload["sub"],
         "email": payload.get("email"),
