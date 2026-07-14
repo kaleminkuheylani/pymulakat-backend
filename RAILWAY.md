@@ -14,7 +14,7 @@
 In Railway Dashboard → Variables, add:
 
 ```
-SUPABASE_URL=https://lhuhfgpjbnngjxzlvywp.supabase.co
+SUPABASE_URL=https://wetzphluxsamlttszdzw.supabase.co
 SUPABASE_ANON_KEY=<your-anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
 ALLOWED_ORIGINS=https://www.pythonmulakat.com,https://pythonmulakat.com
