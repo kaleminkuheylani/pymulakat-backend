@@ -84,15 +84,39 @@ def _resolve_user(
     pymulakat_anon_id: Optional[str],
     response: Response,
     x_user_email: Optional[str] = None,
+    authorization: Optional[str] = None,
 ) -> tuple[Optional[str], str, int]:
     """
     Returns (user_id, anon_user_id, max_count).
-    2026-07-14 v3: X-User-Email header ile email-based match.
-      Supabase auth cookie Vercel domain'de yok, bu yüzden email-based.
-      Öncelik: Supabase token > email header > anon fallback.
-    user_id varsa (auth user) → 10/gün, anon_user_id set etme.
+    2026-07-14 v4: Backend-only auth. Öncelik:
+      1. Authorization: Bearer <jwt> (Supabase JWT, frontend'ten header)
+      2. sb-*-auth-token cookie (Supabase auth, Vercel'de olmayabilir)
+      3. pymulakat_auth=1 + email header (eski fallback, kaldırıldı)
+      4. Anon fallback (limit 0)
+    user_id varsa (auth user) → 10/gün.
     user_id yoksa (anon) → limit 0 (misafir AI kullanamaz).
     """
+    # 1) Authorization: Bearer <jwt> — frontend'ten header
+    if authorization and authorization.startswith("Bearer "):
+        jwt_token = authorization.replace("Bearer ", "").strip()
+        if jwt_token:
+            try:
+                import jwt
+                jwt_secret = os.environ.get("SUPABASE_JWT_SECRET")
+                if jwt_secret:
+                    payload = jwt.decode(
+                        jwt_token,
+                        jwt_secret,
+                        algorithms=["HS256"],
+                        audience="authenticated",
+                    )
+                    user_id = payload.get("sub")
+                    if user_id:
+                        return user_id, "", MAX_FREE_FEEDBACK_AUTH
+            except Exception:
+                pass  # Invalid token, cookie fallback
+
+    # 2) Supabase auth cookie
     if sb_access_token:
         try:
             sb = get_supabase_admin()
@@ -100,30 +124,9 @@ def _resolve_user(
             if user_response and user_response.user:
                 return user_response.user.id, "", MAX_FREE_FEEDBACK_AUTH
         except Exception:
-            pass  # Token invalid, email fallback
-
-    # Email header fallback — pymulakat kendi profiles.email ile eşleştir
-    if x_user_email:
-        try:
-            sb = get_supabase_admin()
-            result = (
-                sb.table("profiles")
-                .select("id, email, user_id")
-                .eq("email", x_user_email)
-                .limit(1)
-                .execute()
-            )
-            if result.data:
-                profile = result.data[0]
-                # 2026-07-14 v3: profiles.id (pymulakat'in kendi UUID) AI
-                #   feedback quota tracking için. profile.user_id (Supabase
-                #   auth FK) NULL olabilir (pymulakat kendi auth kullanır),
-                #   bu yüzden profiles.id ile eşleştirme yapılır.
-                return profile["id"], "", MAX_FREE_FEEDBACK_AUTH
-        except Exception:
             pass
 
-    # Anon user: limit 0 (misafir AI kullanamaz, MAX_FREE_FEEDBACK_ANON=0)
+    # 3) Anon fallback (limit 0)
     return None, "", MAX_FREE_FEEDBACK_ANON
 
     return None, pymulakat_anon_id, MAX_FREE_FEEDBACK_ANON
@@ -143,8 +146,8 @@ async def get_usage(
     #   fazla sb- cookie"yi dene (eski + yeni ref).
     sb_pymulakat_auth: Optional[str] = Cookie(None, alias="sb-pymulakat-auth-token"),
     sb_lhuhfgpjb_auth: Optional[str] = Cookie(None, alias="sb-lhuhfgpjbnngjxzlvywp-auth-token"),
-    # 2026-07-14 v3: X-User-Email header (Supabase auth cookie yoksa fallback)
-    x_user_email: Optional[str] = Header(None, alias="X-User-Email"),
+    # 2026-07-14 v4: Authorization header (Supabase JWT, frontend'ten gelir)
+    authorization: Optional[str] = Header(None),
 ):
     """Mevcut kullanıcının (auth veya anon) quota durumunu döner.
 
@@ -153,7 +156,8 @@ async def get_usage(
       user_id ile, anon user: limit 0 (kullanamaz).
     """
     user_id, anon_id, max_count = _resolve_user(
-        sb_access_token, pymulakat_anon_id, response, x_user_email
+        sb_access_token, pymulakat_anon_id, response,
+        authorization=authorization,
     )
 
     # Anon user: AI feedback yok (limit 0)
@@ -209,7 +213,7 @@ async def increment_usage(
     #   fazla sb- cookie"yi dene (eski + yeni ref).
     sb_pymulakat_auth: Optional[str] = Cookie(None, alias="sb-pymulakat-auth-token"),
     sb_lhuhfgpjb_auth: Optional[str] = Cookie(None, alias="sb-lhuhfgpjbnngjxzlvywp-auth-token"),
-    x_user_email: Optional[str] = Header(None, alias="X-User-Email"),
+    authorization: Optional[str] = Header(None),
 ):
     """
     AI feedback kullanımı sonrası quota arttır.
@@ -219,7 +223,8 @@ async def increment_usage(
       UPDATE (user_id ile). Anon user: limit 0, increment reject.
     """
     user_id, anon_id, max_count = _resolve_user(
-        sb_access_token, pymulakat_anon_id, response, x_user_email
+        sb_access_token, pymulakat_anon_id, response,
+        authorization=authorization,
     )
 
     # Anon user: AI feedback yok (limit 0)
