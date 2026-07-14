@@ -130,34 +130,46 @@ async def get_usage(
     sb_pymulakat_auth: Optional[str] = Cookie(None, alias="sb-pymulakat-auth-token"),
     sb_lhuhfgpjb_auth: Optional[str] = Cookie(None, alias="sb-lhuhfgpjbnngjxzlvywp-auth-token"),
 ):
-    """Mevcut kullanıcının (auth veya anon) quota durumunu döner."""
+    """Mevcut kullanıcının (auth veya anon) quota durumunu döner.
+
+    2026-07-14 v3: profiles tablosuna entegre (tek kaynak). Eski
+      ai_feedback_usage tablosu kaldırıldı. Auth user: profiles'da
+      user_id ile, anon user: limit 0 (kullanamaz).
+    """
     user_id, anon_id, max_count = _resolve_user(
         sb_access_token, pymulakat_anon_id, response
     )
 
+    # Anon user: AI feedback yok (limit 0)
+    if not user_id:
+        return UsageResponse(
+            used=0,
+            limit=0,
+            remaining=0,
+            periodEnd=_period_end().isoformat(),
+            isAnonymous=True,
+        )
+
     sb = get_supabase_admin()
     period = _period_start()
 
-    if user_id:
-        result = (
-            sb.table("ai_feedback_usage")
-            .select("used_count")
-            .eq("user_id", user_id)
-            .eq("period_start", period.isoformat())
-            .limit(1)
-            .execute()
-        )
-    else:
-        result = (
-            sb.table("ai_feedback_usage")
-            .select("used_count")
-            .eq("anon_user_id", anon_id)
-            .eq("period_start", period.isoformat())
-            .limit(1)
-            .execute()
-        )
+    # Auth user: profiles tablosundan user_id ile çek
+    result = (
+        sb.table("profiles")
+        .select("ai_feedback_used, ai_feedback_period_start")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
 
-    used = result.data[0]["used_count"] if result.data else 0
+    used = 0
+    if result.data:
+        row = result.data[0]
+        # Aynı gün mü? Eski günse reset
+        if row.get("ai_feedback_period_start") == period.isoformat():
+            used = row.get("ai_feedback_used") or 0
+        # Farklı günse used=0 (reset)
+
     remaining = max(0, max_count - used)
 
     return UsageResponse(
@@ -165,7 +177,7 @@ async def get_usage(
         limit=max_count,
         remaining=remaining,
         periodEnd=_period_end().isoformat(),
-        isAnonymous=user_id is None,
+        isAnonymous=False,
     )
 
 
@@ -185,82 +197,69 @@ async def increment_usage(
     """
     AI feedback kullanımı sonrası quota arttır.
     BYOK (kendi key) kullanan user bu endpoint'i çağırmaz (limit muaf).
+
+    2026-07-14 v3: profiles tablosuna entegre. Auth user: profiles
+      UPDATE (user_id ile). Anon user: limit 0, increment reject.
     """
     user_id, anon_id, max_count = _resolve_user(
         sb_access_token, pymulakat_anon_id, response
     )
 
+    # Anon user: AI feedback yok (limit 0)
+    if not user_id:
+        return IncrementResponse(
+            used=0,
+            limit=0,
+            remaining=0,
+            allowed=False,
+            message="Misafir kullanıcı AI feedback kullanamaz. Giriş yap veya kendi API key'ini kullan.",
+        )
+
     sb = get_supabase_admin()
     period = _period_start()
+    period_iso = period.isoformat()
 
-    if user_id:
-        # Auth user: get_or_create + increment
-        existing = (
-            sb.table("ai_feedback_usage")
-            .select("id, used_count")
-            .eq("user_id", user_id)
-            .eq("period_start", period.isoformat())
-            .limit(1)
-            .execute()
+    # Auth user: profiles tablosundan mevcut değeri çek
+    existing = (
+        sb.table("profiles")
+        .select("ai_feedback_used, ai_feedback_period_start")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+
+    # Mevcut kullanım (gün kontrolü ile)
+    current = 0
+    if existing.data:
+        row = existing.data[0]
+        if row.get("ai_feedback_period_start") == period_iso:
+            current = row.get("ai_feedback_used") or 0
+        # Farklı günse current=0 (reset)
+
+    # Limit dolu mu?
+    if current >= max_count:
+        return IncrementResponse(
+            used=current,
+            limit=max_count,
+            remaining=0,
+            allowed=False,
+            message="Günlük ücretsiz limit doldu. Kendi API key'ini kullan veya yeni günü bekle.",
         )
 
-        if existing.data:
-            current = existing.data[0]["used_count"]
-            if current >= max_count:
-                return IncrementResponse(
-                    used=current,
-                    limit=max_count,
-                    remaining=0,
-                    allowed=False,
-                    message="Aylık ücretsiz limit doldu. Kendi API key'ini kullan veya yeni ayı bekle.",
-                )
-            new_count = current + 1
-            sb.table("ai_feedback_usage").update({
-                "used_count": new_count,
-                "last_used_at": "now()",
-                "updated_at": "now()",
-            }).eq("id", existing.data[0]["id"]).execute()
-        else:
-            new_count = 1
-            sb.table("ai_feedback_usage").insert({
-                "user_id": user_id,
-                "period_start": period.isoformat(),
-                "used_count": new_count,
-            }).execute()
+    new_count = current + 1
+
+    # UPDATE profiles (user_id ile)
+    if existing.data:
+        sb.table("profiles").update({
+            "ai_feedback_used": new_count,
+            "ai_feedback_period_start": period_iso,
+        }).eq("user_id", user_id).execute()
     else:
-        # Anon user
-        existing = (
-            sb.table("ai_feedback_usage")
-            .select("id, used_count")
-            .eq("anon_user_id", anon_id)
-            .eq("period_start", period.isoformat())
-            .limit(1)
-            .execute()
-        )
-
-        if existing.data:
-            current = existing.data[0]["used_count"]
-            if current >= max_count:
-                return IncrementResponse(
-                    used=current,
-                    limit=max_count,
-                    remaining=0,
-                    allowed=False,
-                    message="Ücretsiz deneme hakkın doldu. Kayıt ol veya kendi API key'ini kullan.",
-                )
-            new_count = current + 1
-            sb.table("ai_feedback_usage").update({
-                "used_count": new_count,
-                "last_used_at": "now()",
-                "updated_at": "now()",
-            }).eq("id", existing.data[0]["id"]).execute()
-        else:
-            new_count = 1
-            sb.table("ai_feedback_usage").insert({
-                "anon_user_id": anon_id,
-                "period_start": period.isoformat(),
-                "used_count": new_count,
-            }).execute()
+        # Profile yok — sadece ilk AI feedback'de oluşur (zaten login user)
+        sb.table("profiles").update({
+            "ai_feedback_used": new_count,
+            "ai_feedback_period_start": period_iso,
+        }).eq("user_id", user_id).execute()
 
     remaining = max(0, max_count - new_count)
     return IncrementResponse(
