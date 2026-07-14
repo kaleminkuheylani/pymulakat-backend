@@ -208,6 +208,7 @@ async def get_usage(
         authorization=authorization,
         request=request,
     )
+    print(f"[AI /usage] user_id={user_id} anon_id={anon_id[:8] if anon_id else None} max_count={max_count}", flush=True)
 
     # Anon user: AI feedback yok (limit 0)
     if not user_id:
@@ -224,7 +225,6 @@ async def get_usage(
     period_iso = period.isoformat()
 
     # 2026-07-14 v5: ai_usage tablosundan çek (profiles'dan izole).
-    # user_id = profiles.id (pymulakat kendi UUID).
     result = (
         sb.table("ai_usage")
         .select("used_count")
@@ -233,6 +233,7 @@ async def get_usage(
         .limit(1)
         .execute()
     )
+    print(f"[AI /usage SELECT] user_id={user_id} period={period_iso} rows={len(result.data or [])} data={result.data}", flush=True)
 
     used = result.data[0]["used_count"] if result.data else 0
     remaining = max(0, max_count - used)
@@ -273,6 +274,7 @@ async def increment_usage(
         authorization=authorization,
         request=request,
     )
+    print(f"[AI /increment] user_id={user_id} anon_id={anon_id[:8] if anon_id else None} max_count={max_count}", flush=True)
 
     # Anon user: AI feedback yok (limit 0)
     if not user_id:
@@ -314,12 +316,14 @@ async def increment_usage(
 
     # UPSERT ai_usage (user_id, period_start) — atomik
     if existing.data:
+        print(f"[AI /increment UPDATE] id={existing.data[0]['id']} new_count={new_count}", flush=True)
         sb.table("ai_usage").update({
             "used_count": new_count,
             "last_used_at": "now()",
             "updated_at": "now()",
         }).eq("id", existing.data[0]["id"]).execute()
     else:
+        print(f"[AI /increment INSERT] user_id={user_id} period={period_iso} new_count={new_count}", flush=True)
         sb.table("ai_usage").insert({
             "user_id": user_id,
             "period_start": period_iso,
