@@ -55,7 +55,7 @@ async def get_current_user(request: Request):
     app_env = os.environ.get("APP_ENV", "development").lower()
 
     if jwt_secret:
-        # Secret varsa tam doğrulama yap
+        # Secret varsa tam doğrulama yap (HS256, legacy)
         try:
             payload = jwt.decode(
                 token,
@@ -72,8 +72,26 @@ async def get_current_user(request: Request):
             return {"id": str(user_id), "email": email}
         except jwt.ExpiredSignatureError:
             raise HTTPException(401, "Token süresi dolmuş.")
-        except jwt.InvalidTokenError as e:
-            raise HTTPException(401, f"Geçersiz token: {e}")
+        except (jwt.InvalidTokenError, Exception):
+            # HS256 başarısız (ES256 olabilir veya signature farklı),
+            # Supabase client fallback dene (JWKS otomatik)
+            pass
+
+    # HS256 başarısız veya secret yok — Supabase client fallback (ES256/JWKS)
+    try:
+        from supabase_client import get_supabase_admin
+        sb = get_supabase_admin()
+        user_response = sb.auth.get_user(token)
+        if user_response and user_response.user:
+            return {
+                "id": str(user_response.user.id),
+                "email": user_response.user.email,
+            }
+    except Exception:
+        pass
+
+    # HS256 + ES256 ikisi de başarısız → 401
+    raise HTTPException(401, "Token doğrulanamadı (HS256 + ES256 başarısız).")
 
     # Secret yoksa — fail fast in production, warn in dev
     if app_env == "production":
