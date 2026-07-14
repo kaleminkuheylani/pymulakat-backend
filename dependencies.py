@@ -36,19 +36,47 @@ def get_user_agent(request: Request, max_length: int = 500) -> str:
 
 
 async def get_current_user(request: Request):
-    """Bearer <jwt> → Supabase ile doğrula.
+    """Bearer <jwt> + sb-*-auth-token cookie → Supabase ile doğrula.
 
-    Header(...) yerine Request kullan — daha güvenilir.
+    2026-07-14: Cookie fallback eklendi. Supabase SSR httpOnly cookie
+    kullaniyor (sb-{project_ref}-auth-token), JS erisemez, sadece
+    server'a gider. Authorization header yoksa cookie'den user al.
     """
     # Header'ı manuel olarak al
     auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
 
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(401, "Geçersiz token formatı.")
+    # 1) Authorization: Bearer <jwt> (varsa)
+    token = None
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.replace("Bearer ", "").strip()
 
-    token = auth_header.replace("Bearer ", "").strip()
+    # 2) Cookie fallback — sb-*-auth-token (httpOnly, supabase-ssr)
+    # JSON encoded: { access_token, refresh_token, expires_at, ... }
     if not token:
-        raise HTTPException(401, "Token boş olamaz.")
+        try:
+            import json as _json
+            for cookie_name, cookie_value in request.cookies.items():
+                if cookie_name.startswith("sb-") and cookie_name.endswith("-auth-token"):
+                    try:
+                        parsed = _json.loads(cookie_value)
+                        if isinstance(parsed, list):
+                            for chunk in parsed:
+                                if isinstance(chunk, dict) and chunk.get("access_token"):
+                                    token = chunk["access_token"]
+                                    break
+                        elif isinstance(parsed, dict) and parsed.get("access_token"):
+                            token = parsed["access_token"]
+                        if token:
+                            break
+                    except Exception:
+                        if cookie_value.startswith("eyJ"):
+                            token = cookie_value
+                            break
+        except Exception:
+            pass
+
+    if not token:
+        raise HTTPException(401, "Geçersiz token formatı.")
 
     # JWT decode yöntemi (Supabase v2'de get_user() çalışmıyor)
     jwt_secret = os.environ.get("SUPABASE_JWT_SECRET")
