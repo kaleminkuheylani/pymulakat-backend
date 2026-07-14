@@ -348,9 +348,17 @@ async def register(request: Request, payload: RegisterPayload):
 
         logger.info(f"📧 Registered: {payload.email} → code: {code}")
 
+        # 2026-07-14: Dev mode'da kodu response'a ekle (test kolaylığı).
+        # Production'da sadece email'e gönderilir, response'da dönmez.
+        import os as _os
+        is_dev = _os.getenv("APP_ENV", "development").lower() in ("development", "dev", "staging")
+        msg = f"Doğrulama kodu {payload.email} adresine gönderildi."
+        if is_dev:
+            msg += f" (dev: kod {code})"
+
         return MessageResponse(
             ok=True,
-            message=f"Doğrulama kodu {payload.email} adresine gönderildi.",
+            message=msg,
             verified=False,
             expires_in_minutes=CODE_TTL_MINUTES,
         )
