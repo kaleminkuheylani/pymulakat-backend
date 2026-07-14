@@ -97,18 +97,35 @@ def _resolve_user(
     user_id yoksa (anon) → limit 0 (misafir AI kullanamaz).
     """
     # 1) Authorization: Bearer <jwt> — frontend'ten header
-    # 2026-07-14 v5: Supabase yeni project'lerde ES256 (asymmetric, JWKS)
-    #   kullanıyor. SUPABASE_JWT_SECRET (HS256) legacy — yeni project'te
-    #   yok. Supabase client'in auth.get_user() JWKS'i kendi yönetir,
-    #   verify eder, user_id döner.
+    # 2026-07-14 v6: HS256 local verify (daha hizli, network yok).
+    #   SUPABASE_JWT_SECRET (Legacy HS256) Supabase dashboard'dan alinir.
+    #   Edge case: secret yoksa veya token ES256 ise supabase.auth.get_user()
+    #   fallback (JWKS otomatik).
     if authorization and authorization.startswith("Bearer "):
         jwt_token = authorization.replace("Bearer ", "").strip()
         if jwt_token:
+            # Önce HS256 local verify (hızlı)
+            jwt_secret = os.environ.get("SUPABASE_JWT_SECRET")
+            if jwt_secret:
+                try:
+                    import jwt
+                    payload = jwt.decode(
+                        jwt_token,
+                        jwt_secret,
+                        algorithms=["HS256"],
+                        audience="authenticated",
+                    )
+                    user_id = payload.get("sub")
+                    if user_id:
+                        return user_id, "", MAX_FREE_FEEDBACK_AUTH
+                except Exception:
+                    pass  # HS256 başarısız, ES256/JWKS dene
+
+            # Fallback: Supabase client (ES256 + JWKS)
             try:
                 sb = get_supabase_admin()
                 user_response = sb.auth.get_user(jwt_token)
                 if user_response and user_response.user:
-                    # user_response.user.id = Supabase auth.users.id
                     return user_response.user.id, "", MAX_FREE_FEEDBACK_AUTH
             except Exception:
                 pass  # Invalid token, cookie fallback
