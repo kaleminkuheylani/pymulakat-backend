@@ -15,7 +15,7 @@ import uuid
 from datetime import date, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Cookie, Header, HTTPException, Response
+from fastapi import APIRouter, Cookie, Header, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from supabase_client import get_supabase_admin
@@ -85,6 +85,7 @@ def _resolve_user(
     response: Response,
     x_user_email: Optional[str] = None,
     authorization: Optional[str] = None,
+    request: Optional["Request"] = None,
 ) -> tuple[Optional[str], str, int]:
     """
     Returns (user_id, anon_user_id, max_count).
@@ -130,11 +131,44 @@ def _resolve_user(
             except Exception:
                 pass  # Invalid token, cookie fallback
 
-    # 2) Supabase auth cookie
-    if sb_access_token:
+    # 2) Supabase auth cookie — httpOnly (JS erişemez, server'a gider)
+    # 2026-07-14 v6: supabase-ssr httpOnly cookie kullaniyor (localStorage'a
+    #   yazmaz). Cookie adı 'sb-{project_ref}-auth-token' formatında.
+    #   Eski alias 'sb-lhuhfgpjbnngjxzlvywp-auth-token' (eski project ref)
+    #   calismayabilir. Tum 'sb-*-auth-token' cookie'leri tara.
+    import json as _json
+    sb_cookie_token = sb_access_token
+    # 2026-07-14 v7: supabase-ssr httpOnly cookie kullaniyor. Cookie
+    #   JSON encoded ({ access_token, refresh_token, ... }). Tum
+    #   'sb-*-auth-token' cookie'leri tara (eski alias calismayabilir,
+    #   yeni project ref farkli).
+    if not sb_cookie_token and request is not None:
+        try:
+            for cookie_name, cookie_value in request.cookies.items():
+                if cookie_name.startswith("sb-") and cookie_name.endswith("-auth-token"):
+                    try:
+                        parsed = _json.loads(cookie_value)
+                        if isinstance(parsed, list):
+                            for chunk in parsed:
+                                if isinstance(chunk, dict) and chunk.get("access_token"):
+                                    sb_cookie_token = chunk["access_token"]
+                                    break
+                        elif isinstance(parsed, dict) and parsed.get("access_token"):
+                            sb_cookie_token = parsed["access_token"]
+                        if sb_cookie_token:
+                            break
+                    except Exception:
+                        # raw JWT (nadir)
+                        if cookie_value.startswith("eyJ"):
+                            sb_cookie_token = cookie_value
+                            break
+        except Exception:
+            pass
+
+    if sb_cookie_token:
         try:
             sb = get_supabase_admin()
-            user_response = sb.auth.get_user(sb_access_token)
+            user_response = sb.auth.get_user(sb_cookie_token)
             if user_response and user_response.user:
                 return user_response.user.id, "", MAX_FREE_FEEDBACK_AUTH
         except Exception:
@@ -151,10 +185,10 @@ def _resolve_user(
 # ═══════════════════════════════════════════════════════════════
 @router.get("/usage", response_model=UsageResponse)
 async def get_usage(
+    request: Request,
     response: Response,
-    sb_access_token: Optional[str] = Cookie(None, alias="sb-lhuhfgpjbnngjxzlvywp-auth-token"),
+    sb_access_token: Optional[str] = Cookie(None, alias="sb-wetzphluxsamlttszdzw-auth-token"),
     pymulakat_anon_id: Optional[str] = Cookie(None, alias=ANON_COOKIE_NAME),
-    # 2026-07-14 v2: Tüm sb-* cookie"lerini pattern matching ile bul.
     #   Supabase auth cookie name = sb-{project_ref}-auth-token, ama
     #   project ref degisebilir, eski cookie kalmis olabilir. Birden
     #   fazla sb- cookie"yi dene (eski + yeni ref).
@@ -172,6 +206,7 @@ async def get_usage(
     user_id, anon_id, max_count = _resolve_user(
         sb_access_token, pymulakat_anon_id, response,
         authorization=authorization,
+        request=request,
     )
 
     # Anon user: AI feedback yok (limit 0)
@@ -213,9 +248,10 @@ async def get_usage(
 
 @router.post("/increment", response_model=IncrementResponse)
 async def increment_usage(
+    request: Request,
     req: IncrementRequest,
     response: Response,
-    sb_access_token: Optional[str] = Cookie(None, alias="sb-lhuhfgpjbnngjxzlvywp-auth-token"),
+    sb_access_token: Optional[str] = Cookie(None, alias="sb-wetzphluxsamlttszdzw-auth-token"),
     pymulakat_anon_id: Optional[str] = Cookie(None, alias=ANON_COOKIE_NAME),
     # 2026-07-14 v2: Tüm sb-* cookie"lerini pattern matching ile bul.
     #   Supabase auth cookie name = sb-{project_ref}-auth-token, ama
@@ -235,6 +271,7 @@ async def increment_usage(
     user_id, anon_id, max_count = _resolve_user(
         sb_access_token, pymulakat_anon_id, response,
         authorization=authorization,
+        request=request,
     )
 
     # Anon user: AI feedback yok (limit 0)
