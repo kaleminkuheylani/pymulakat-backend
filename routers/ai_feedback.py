@@ -28,8 +28,13 @@ router = APIRouter(prefix="/api/ai-feedback", tags=["ai-feedback"])
 # Auth user (login) aylık limit. BYOK kullanan user bu limit'ten muaf
 # (ayrı kontrol aşağıda).
 MAX_FREE_FEEDBACK_AUTH = 10
-# Anon (misafir) aylık limit. Daha kısıtlı (abuse risk).
-MAX_FREE_FEEDBACK_ANON = 5
+# Anon (misafir) aylık limit.
+# 2026-07-14: 5 -> 0. Misafir user AI feedback kullanamaz, login zorunlu.
+#   Frontend 'isGuest' ise 'Giriş Yap' CTA'sı gösterir, backend
+#   authoritative olarak 0 limit ile AI feedback engellenir (DB quota
+#   oluşmaz, increment reject olur). Bu değişikliğin sebebi: misafir
+#   kullanıcı için DeepSeek maliyet kontrolü ve abuse engelleme.
+MAX_FREE_FEEDBACK_ANON = 0
 
 ANON_COOKIE_NAME = "pymulakat_anon_id"
 ANON_COOKIE_MAX_AGE = 60 * 60 * 24 * 365  # 1 yıl
@@ -116,6 +121,12 @@ async def get_usage(
     response: Response,
     sb_access_token: Optional[str] = Cookie(None, alias="sb-lhuhfgpjbnngjxzlvywp-auth-token"),
     pymulakat_anon_id: Optional[str] = Cookie(None, alias=ANON_COOKIE_NAME),
+    # 2026-07-14 v2: Tüm sb-* cookie"lerini pattern matching ile bul.
+    #   Supabase auth cookie name = sb-{project_ref}-auth-token, ama
+    #   project ref degisebilir, eski cookie kalmis olabilir. Birden
+    #   fazla sb- cookie"yi dene (eski + yeni ref).
+    sb_pymulakat_auth: Optional[str] = Cookie(None, alias="sb-pymulakat-auth-token"),
+    sb_lhuhfgpjb_auth: Optional[str] = Cookie(None, alias="sb-lhuhfgpjbnngjxzlvywp-auth-token"),
 ):
     """Mevcut kullanıcının (auth veya anon) quota durumunu döner."""
     user_id, anon_id, max_count = _resolve_user(
@@ -162,6 +173,12 @@ async def increment_usage(
     response: Response,
     sb_access_token: Optional[str] = Cookie(None, alias="sb-lhuhfgpjbnngjxzlvywp-auth-token"),
     pymulakat_anon_id: Optional[str] = Cookie(None, alias=ANON_COOKIE_NAME),
+    # 2026-07-14 v2: Tüm sb-* cookie"lerini pattern matching ile bul.
+    #   Supabase auth cookie name = sb-{project_ref}-auth-token, ama
+    #   project ref degisebilir, eski cookie kalmis olabilir. Birden
+    #   fazla sb- cookie"yi dene (eski + yeni ref).
+    sb_pymulakat_auth: Optional[str] = Cookie(None, alias="sb-pymulakat-auth-token"),
+    sb_lhuhfgpjb_auth: Optional[str] = Cookie(None, alias="sb-lhuhfgpjbnngjxzlvywp-auth-token"),
 ):
     """
     AI feedback kullanımı sonrası quota arttır.
