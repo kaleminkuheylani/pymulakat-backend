@@ -64,17 +64,19 @@ class IncrementResponse(BaseModel):
 # Helpers
 # ═══════════════════════════════════════════════════════════════
 def _period_start() -> date:
-    """Ay başlangıcı (YYYY-MM-01). UTC."""
-    today = date.today()
-    return date(today.year, today.month, 1)
+    """Gün başlangıcı (YYYY-MM-DD). UTC.
+
+    2026-07-14: Aylık -> günlük kota. Kullanıcı günlük 10 hak,
+    gece yarısı sıfırlanır. Kötüye kullanımı önleme (multi-account
+    ile aylık 30+ hak yerine günlük sınırlama).
+    """
+    return date.today()
 
 
 def _period_end() -> date:
-    """Ay sonu (exclusive)."""
-    period_start = _period_start()
-    if period_start.month == 12:
-        return date(period_start.year + 1, 1, 1)
-    return date(period_start.year, period_start.month + 1, 1)
+    """Sonraki gün (exclusive)."""
+    from datetime import timedelta
+    return _period_start() + timedelta(days=1)
 
 
 def _resolve_user(
