@@ -314,6 +314,10 @@ async def register(request: Request, payload: RegisterPayload):
         sb_admin = get_supabase_admin()
 
         # 1. User oluştur (Supabase Admin API — service_role)
+        import os as _os_debug
+        supabase_url = _os_debug.getenv("SUPABASE_URL", "?")
+        supabase_key_prefix = (_os_debug.getenv("SUPABASE_SERVICE_ROLE_KEY") or "?")[:20]
+        logger.info(f"🔎 Register attempt: email={payload.email} url={supabase_url} svc={supabase_key_prefix}...")
         try:
             auth_result = sb_admin.auth.admin.create_user({
                 "email": payload.email,
@@ -325,6 +329,7 @@ async def register(request: Request, payload: RegisterPayload):
             logger.info(f"✅ User created: {user_id}")
         except Exception as e:
             error_msg = str(e).lower()
+            logger.exception(f"❌ create_user FAILED: email={payload.email} url={supabase_url} svc={supabase_key_prefix}... exc={repr(e)}")
             if "already" in error_msg or "exists" in error_msg:
                 raise HTTPException(409, "Bu e-posta zaten kayıtlı")
             raise HTTPException(400, f"Kayıt hatası: {str(e)}")
