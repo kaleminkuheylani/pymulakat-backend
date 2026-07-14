@@ -394,6 +394,21 @@ async def verify_email(payload: VerifyPayload):
         if not ok:
             raise HTTPException(400, "Geçersiz veya süresi dolmuş kod")
 
+        # 2026-07-14 FIX: Supabase auth.users.email_confirmed_at da güncellenmeli
+        # (signIn 'Email not confirmed' reddetmesin diye). Yoksa local
+        # verification_codes tablosu doğrulanır ama Supabase signIn
+        # hâlâ 'email not confirmed' döner.
+        user_id = rows[0].get("id")
+        if user_id:
+            try:
+                sb_admin.auth.admin.update_user_by_id(
+                    user_id,
+                    {"email_confirm": True},
+                )
+                logger.info(f"✅ Supabase auth.users.email_confirmed_at set: {payload.email}")
+            except Exception as e:
+                logger.warning(f"⚠️ Supabase email_confirm update failed: {e}")
+
         logger.info(f"✅ Email verified: {payload.email}")
 
         return MessageResponse(
