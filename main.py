@@ -138,6 +138,7 @@ audit_v2 = try_include("routers.audit", "admin audit (Mavis API)")
 analytics_v2 = try_include("routers.analytics", "analytics (page views)")
 admin_setup_v2 = try_include("routers.admin_setup", "admin setup (schema)")
 user_check_v2 = try_include("routers.user_check", "user check (is_admin)")
+ai_feedback_v2 = try_include("routers.ai_feedback", "ai feedback (DB quota tracking)")
 admin_v2_module = any([admin_v2, admin_auth_v2, audit_v2, analytics_v2, admin_setup_v2, user_check_v2])
 # audit endpoints: routers/admin.py üzerinden yüklenir (router prefix çakışması önlemek için)
 # 📌 Mail koçu endpointleri kaldirildi (KVKK uyumu).
