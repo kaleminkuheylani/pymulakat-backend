@@ -172,24 +172,20 @@ async def get_usage(
 
     sb = get_supabase_admin()
     period = _period_start()
+    period_iso = period.isoformat()
 
-    # Auth user: profiles tablosundan user_id ile çek
+    # 2026-07-14 v5: ai_usage tablosundan çek (profiles'dan izole).
+    # user_id = profiles.id (pymulakat kendi UUID).
     result = (
-        sb.table("profiles")
-        .select("ai_feedback_used, ai_feedback_period_start")
-        .eq("id", user_id)
+        sb.table("ai_usage")
+        .select("used_count")
+        .eq("user_id", user_id)
+        .eq("period_start", period_iso)
         .limit(1)
         .execute()
     )
 
-    used = 0
-    if result.data:
-        row = result.data[0]
-        # Aynı gün mü? Eski günse reset
-        if row.get("ai_feedback_period_start") == period.isoformat():
-            used = row.get("ai_feedback_used") or 0
-        # Farklı günse used=0 (reset)
-
+    used = result.data[0]["used_count"] if result.data else 0
     remaining = max(0, max_count - used)
 
     return UsageResponse(
@@ -241,22 +237,17 @@ async def increment_usage(
     period = _period_start()
     period_iso = period.isoformat()
 
-    # Auth user: profiles tablosundan mevcut değeri çek
+    # 2026-07-14 v5: ai_usage tablosundan SELECT (günlük satır).
     existing = (
-        sb.table("profiles")
-        .select("ai_feedback_used, ai_feedback_period_start")
-        .eq("id", user_id)
+        sb.table("ai_usage")
+        .select("id, used_count")
+        .eq("user_id", user_id)
+        .eq("period_start", period_iso)
         .limit(1)
         .execute()
     )
 
-    # Mevcut kullanım (gün kontrolü ile)
-    current = 0
-    if existing.data:
-        row = existing.data[0]
-        if row.get("ai_feedback_period_start") == period_iso:
-            current = row.get("ai_feedback_used") or 0
-        # Farklı günse current=0 (reset)
+    current = existing.data[0]["used_count"] if existing.data else 0
 
     # Limit dolu mu?
     if current >= max_count:
@@ -270,18 +261,19 @@ async def increment_usage(
 
     new_count = current + 1
 
-    # UPDATE profiles (user_id ile)
+    # UPSERT ai_usage (user_id, period_start) — atomik
     if existing.data:
-        sb.table("profiles").update({
-            "ai_feedback_used": new_count,
-            "ai_feedback_period_start": period_iso,
-        }).eq("id", user_id).execute()
+        sb.table("ai_usage").update({
+            "used_count": new_count,
+            "last_used_at": "now()",
+            "updated_at": "now()",
+        }).eq("id", existing.data[0]["id"]).execute()
     else:
-        # Profile yok — sadece ilk AI feedback'de oluşur (zaten login user)
-        sb.table("profiles").update({
-            "ai_feedback_used": new_count,
-            "ai_feedback_period_start": period_iso,
-        }).eq("id", user_id).execute()
+        sb.table("ai_usage").insert({
+            "user_id": user_id,
+            "period_start": period_iso,
+            "used_count": new_count,
+        }).execute()
 
     remaining = max(0, max_count - new_count)
     return IncrementResponse(
