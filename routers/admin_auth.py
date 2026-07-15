@@ -61,6 +61,7 @@ class LoginRequest(BaseModel):
 
 class MagicLinkRequest(BaseModel):
     email: EmailStr
+    password: str  # 2026-07-15: Railway env'deki ADMIN_PASSWORD ile dogrulanir
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -317,37 +318,69 @@ def logout(request: Request, response: Response):
 
 @router.post("/magic-link")
 def magic_link(req: MagicLinkRequest, request: Request):
-    """Email-only admin login — Resend ile magic link gonderir.
+    """Email + password admin login — Resend ile magic link gonderir.
+
+    2026-07-15: Railway env tabanli dogrulama:
+      - email == ADMIN_EMAIL (env)
+      - password == ADMIN_PASSWORD (env)
+      Supabase user kontrolu YOK (env-only).
 
     Akis:
-      1. email → Supabase'de user var mi kontrol (admin_metadata.role=admin)
+      1. Email + password dogrula (ADMIN_EMAIL/ADMIN_PASSWORD env)
       2. Token uret (secrets.token_urlsafe(32)), hash'le (SHA256)
       3. DB'ye kaydet (expires_at = +15dk, ip, ua)
       4. Resend ile email gonder (link: /admin/auth/verify?token=...)
       5. Response: dev mode'da link doner, prod'da sadece 'gonderildi'
-
-    Onemli: her durumda 200 doner (email enumeration onleme).
     """
     ip = get_client_ip(request)
     ua = get_user_agent(request)
     email = req.email.lower().strip()
 
-    # Admin kontrol: sadece admin user'lara gonder
-    sb = get_supabase_admin()
-    admin_user = None
-    try:
-        result = sb.auth.admin.list_users()
-        for u in result:
-            if (u.email or "").lower() == email and (u.app_metadata or {}).get("role") == "admin":
-                admin_user = u
-                break
-    except Exception as e:
-        log.error(f"[admin_auth] list_users exception: {type(e).__name__}: {e}")
+    # 2026-07-15: Railway env tabanli dogrulama (Supabase user kontrolu YOK)
+    env_email = os.getenv("ADMIN_EMAIL", "").lower().strip()
+    env_password = os.getenv("ADMIN_PASSWORD", "")
 
-    if not admin_user:
-        # Email enumeration onleme: hata olsa bile 200 don
-        log.info(f"[admin_auth] magic-link requested for non-admin: {email}")
-        return {"ok": True, "sent": True}
+    if not env_email or not env_password:
+        log.error("[admin_auth] ADMIN_EMAIL veya ADMIN_PASSWORD env set edilmemis")
+        raise HTTPException(500, "Admin auth yapilandirilmamis")
+
+    # Email + password dogrulama (constant-time compare timing attack onlemi)
+    import hmac
+    if not hmac.compare_digest(email, env_email) or not hmac.compare_digest(req.password, env_password):
+        record_failed_login(email)
+        write_audit(None, email, "magic_link_request", ip, ua, False, {"reason": "auth_failed"})
+        log.info(f"[admin_auth] magic-link auth_failed for {email}")
+        raise HTTPException(401, "Geçersiz email veya şifre")
+
+    # Basarili: token uret + DB
+    raw_token, token_hash = generate_magic_token()
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=RESEND_MAGIC_LINK_TTL_MIN)
+
+    sb = get_supabase_admin()
+    try:
+        sb.table("admin_magic_tokens").insert({
+            "user_email": email,
+            "token_hash": token_hash,
+            "expires_at": expires_at.isoformat(),
+            "ip": ip,
+            "user_agent": ua,
+        }).execute()
+    except Exception as e:
+        log.error(f"[admin_auth] magic_tokens insert error: {type(e).__name__}: {e}")
+        raise HTTPException(500, "Token olusturulamadi")
+
+    # Magic link olustur
+    base_url = os.getenv("ADMIN_VERIFY_URL", "https://pythonmulakat.com")
+    magic_link = f"{base_url}/admin/auth/verify?token={raw_token}"
+
+    # Resend ile gonder
+    sent = send_magic_link_email(email, magic_link)
+    write_audit(None, email, "magic_link_request", ip, ua, True, {"sent": sent})
+
+    response = {"ok": True, "sent": sent}
+    if not sent:
+        response["dev_link"] = magic_link
+    return response
 
     # Token uret + DB'ye kaydet
     raw_token, token_hash = generate_magic_token()
