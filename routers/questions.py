@@ -186,10 +186,19 @@ def list_questions(
 # ═══════════════════════════════════════════════════════════════
 
 @router.get("/all", response_model=AllQuestionsResponse)
-def list_all_questions():
-    """Slug listesi için minimal payload (canonical URL üretimi)."""
+def list_all_questions(
+    category: Optional[str] = Query(None, description="Kategori slug filtresi (örn. python-basics)"),
+    limit: Optional[int] = Query(None, ge=1, le=1000, description="Max sonuç (default: hepsi)"),
+):
+    """Slug listesi için minimal payload (canonical URL üretimi).
+
+    2026-07-15: category + limit query eklendi. /interviews sayfasi
+    kategori filtresi icin bunu kullaniyor (eski: yoksayiliyordu).
+    """
     try:
-        filtered = filter_questions()
+        filtered = filter_questions(category=category) if category else filter_questions()
+        if limit:
+            filtered = filtered[:limit]
         items = [_to_question_out(q, include_starter=False) for q in filtered]
         return AllQuestionsResponse(data=items, total=len(items))
     except Exception as e:
