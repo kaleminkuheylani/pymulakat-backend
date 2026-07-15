@@ -487,11 +487,17 @@ def verify_magic_link(request: Request, response: Response, token: str):
     # SameSite=None; Secure zorunlu (Chrome 80+ cross-origin icin)
     frontend_url = os.getenv("FRONTEND_URL", "https://pythonmulakat.com")
     response = RedirectResponse(url=f"{frontend_url}/admin", status_code=302)
+    # 2026-07-15: Domain=".pythonmulakat.com" — cookie frontend domain'inde set
+    # Backend (railway.app) Set-Cookie gönderiyor, browser'a kabul etmesi
+    # icin domain belirtilmeli (host-only cookie backend'de kalir, frontend'de gecersiz).
+    # Wildcard subdomain: app.pythonmulakat.com, www.pythonmulakat.com, vs.
+    cookie_domain = os.getenv("FRONTEND_COOKIE_DOMAIN", ".pythonmulakat.com")
     response.set_cookie(
         key="admin_session",
         value=session_jwt,
+        domain=cookie_domain,
         httponly=True,
-        secure=True,  # SameSite=None zorunlu Secure=True
+        secure=True,
         samesite="none",
         max_age=SESSION_TTL_HOURS * 3600,
         path="/",
