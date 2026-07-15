@@ -125,22 +125,12 @@ play_count_v2 = try_include("routers.play_count", "play count (user activity)")
 guides_v1 = try_include("routers.guides", "guides (study materials)")
 
 # ═══════════════════════════════════════════════════════════════
-# Admin v2: 4 eski router'ı (admin, admin_auth, audit, analytics)
 # TEK router'da toplar. main.py'de tek include yeterli.
 # URL prefix'leri korundu → frontend değişmedi.
 # ═══════════════════════════════════════════════════════════════
-# Admin v2: 4 eski router tek dosyada (admin_v2.py)
 # try_include ile güvenli yükleme (bir router patlarsa diğerleri çalışır)
-admin_v2_module = None
-admin_v2 = try_include("routers.admin", "admin (data tools, users)")
-admin_auth_v2 = try_include("routers.admin_auth", "admin_auth (login, me, logout)")
-audit_v2 = try_include("routers.audit", "admin audit (Mavis API)")
-analytics_v2 = try_include("routers.analytics", "analytics (page views)")
-admin_setup_v2 = try_include("routers.admin_setup", "admin setup (schema)")
-user_check_v2 = try_include("routers.user_check", "user check (is_admin)")
+
 ai_feedback_v2 = try_include("routers.ai_feedback", "ai feedback (DB quota tracking)")
-admin_v2_module = any([admin_v2, admin_auth_v2, audit_v2, analytics_v2, admin_setup_v2, user_check_v2])
-# audit endpoints: routers/admin.py üzerinden yüklenir (router prefix çakışması önlemek için)
 # 📌 Mail koçu endpointleri kaldirildi (KVKK uyumu).
 # Sadece database tablolarinda varsa email gerekiyor, mail gonderimi YOK.
 
@@ -160,7 +150,7 @@ def health():
         "questions_v2": questions_v2 is not None,
         "categories_v2": categories_v2 is not None,
         "tutorials_v2": tutorials_v2 is not None,
-        "admin": admin_v2_module is not None,
+
         "account_v2": account_v2 is not None,
     }
 
