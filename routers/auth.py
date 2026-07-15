@@ -313,6 +313,19 @@ async def register(request: Request, payload: RegisterPayload):
 
         sb_admin = get_supabase_admin()
 
+        # 2026-07-15: Duplicate kontrolü ÖNCE yap (Supabase GoTrue bazen
+        # duplicate durumda 'User not allowed' dönüyor, kontrolü atlamak için)
+        try:
+            existing = sb_admin.table("profiles").select("id, email").eq("email", payload.email).limit(1).execute()
+            existing_rows = (existing.data if existing and getattr(existing, "data", None) else []) or []
+            if existing_rows:
+                raise HTTPException(409, "Bu e-posta zaten kayıtlı")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning(f"duplicate check failed for {payload.email}: {e}")
+            # devam et, Supabase zaten reddeder
+
         # 1. User oluştur (Supabase Admin API — service_role)
         import os as _os_debug
         supabase_url = _os_debug.getenv("SUPABASE_URL", "?")
