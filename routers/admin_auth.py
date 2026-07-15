@@ -465,21 +465,11 @@ def verify_magic_link(request: Request, response: Response, token: str):
 
     email = row["user_email"]
 
-    # Supabase user_id al (admin kontrol)
-    admin_user = None
-    try:
-        result = sb.auth.admin.list_users()
-        for u in result:
-            if (u.email or "").lower() == email and (u.app_metadata or {}).get("role") == "admin":
-                admin_user = u
-                break
-    except Exception as e:
-        log.error(f"[admin_auth] verify list_users error: {type(e).__name__}: {e}")
-        raise HTTPException(500, "User kontrol edilemedi")
-
-    if not admin_user:
-        write_audit(None, email, "magic_link_verify", ip, ua, False, {"reason": "user_not_admin"})
-        raise HTTPException(403, "Admin yetkisi yok")
+    # 2026-07-15: Env-based auth (Supabase user kontrolu YOK)
+    # Email ADMIN_EMAIL (env) ile eslemis, password zaten dogrulanmis.
+    # User ID olarak email hash kullanalim (Supabase bagimliligi yok).
+    import hashlib as _h
+    admin_user_id = "env_" + _h.md5(email.encode()).hexdigest()[:16]
 
     # Token used_at isaretle
     sb.table("admin_magic_tokens").update({
@@ -487,7 +477,7 @@ def verify_magic_link(request: Request, response: Response, token: str):
     }).eq("token_hash", token_hash).execute()
 
     # Session JWT olustur
-    session_jwt = issue_session_token(admin_user.id, email, ip)
+    session_jwt = issue_session_token(admin_user_id, email, ip)
     jti = jwt.decode(session_jwt, options={"verify_signature": False})["jti"]
     try:
         sb.table("admin_sessions").insert({
@@ -501,7 +491,7 @@ def verify_magic_link(request: Request, response: Response, token: str):
         log.error(f"[admin_auth] admin_sessions insert failed: {e}")
         raise HTTPException(500, "Session yazma hatasi")
 
-    write_audit(admin_user.id, email, "magic_link_verify", ip, ua, True, {"jti": jti})
+    write_audit(admin_user_id, email, "magic_link_verify", ip, ua, True, {"jti": jti})
 
     # 2026-07-15: 302 redirect (HTML response yerine — cross-origin cookie icin)
     # Cross-domain redirect: Railway (backend) → Vercel (frontend /admin)
