@@ -332,6 +332,12 @@ async def register(request: Request, payload: RegisterPayload):
             logger.exception(f"❌ create_user FAILED: email={payload.email} url={supabase_url} svc={supabase_key_prefix}... exc={repr(e)}")
             if "already" in error_msg or "exists" in error_msg:
                 raise HTTPException(409, "Bu e-posta zaten kayıtlı")
+            # 2026-07-15: User not allowed — Supabase Auth sign-up disabled veya trigger hatası
+            if "user not allowed" in error_msg or "not allowed" in error_msg:
+                raise HTTPException(
+                    403,
+                    f"Kayıt şu an kapalı. Supabase Dashboard > Authentication > Sign Up > 'Allow new users to sign up' enable edin. Detay: {str(e)}",
+                )
             raise HTTPException(400, f"Kayıt hatası: {str(e)}")
 
         # 2. Profile oluştur
