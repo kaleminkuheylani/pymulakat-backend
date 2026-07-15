@@ -476,22 +476,11 @@ def verify_magic_link(request: Request, response: Response, token: str):
         "used_at": datetime.now(timezone.utc).isoformat(),
     }).eq("token_hash", token_hash).execute()
 
-    # Session JWT olustur
+    # 2026-07-15: Stateless JWT — admin_sessions tablosu YOK
+    # Avantaj: DB'ye yazma yok, hizli
+    # Dezavantaj: Session revoke yok (8 saatlik TTL, kisa sureli kullanim)
     session_jwt = issue_session_token(admin_user_id, email, ip)
-    jti = jwt.decode(session_jwt, options={"verify_signature": False})["jti"]
-    try:
-        sb.table("admin_sessions").insert({
-            "id": jti,
-            "user_id": admin_user.id,
-            "ip": ip,
-            "user_agent": ua,
-            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=SESSION_TTL_HOURS)).isoformat(),
-        }).execute()
-    except Exception as e:
-        log.error(f"[admin_auth] admin_sessions insert failed: {e}")
-        raise HTTPException(500, "Session yazma hatasi")
-
-    write_audit(admin_user_id, email, "magic_link_verify", ip, ua, True, {"jti": jti})
+    write_audit(admin_user_id, email, "magic_link_verify", ip, ua, True, {"jti": "stateless"})
 
     # 2026-07-15: 302 redirect (HTML response yerine — cross-origin cookie icin)
     # Cross-domain redirect: Railway (backend) → Vercel (frontend /admin)
