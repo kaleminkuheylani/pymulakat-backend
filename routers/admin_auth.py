@@ -96,11 +96,16 @@ def get_lockout_status(email: str) -> dict:
 
 
 def record_failed_login(email: str):
-    sb = get_supabase_admin()
+    """2026-07-15: Defensive — admin_lockout tablosu yoksa sessizce skip et.
+    Login akisini bozmamali (sadece lockout tracking kaybi)."""
     try:
+        sb = get_supabase_admin()
         result = sb.table("admin_lockout").select("*").eq("user_email", email).maybe_single().execute()
+        # result None veya result.data None olabilir (tablo yok / row yok)
+        if result is None or result.data is None:
+            return  # lockout tracking skip — login devam etsin
         if result.data:
-            failed = result.data["failed_count"] + 1
+            failed = result.data.get("failed_count", 0) + 1
             update = {
                 "failed_count": failed,
                 "last_attempt_at": datetime.now(timezone.utc).isoformat(),
@@ -117,7 +122,8 @@ def record_failed_login(email: str):
                 "last_attempt_at": datetime.now(timezone.utc).isoformat(),
             }).execute()
     except Exception as e:
-        log.error(f"[admin_auth] record_failed_login hatası: {e}")
+        # Lockout tracking hatasi → log + skip (login devam etsin)
+        log.warning(f"[admin_auth] record_failed_login skip: {type(e).__name__}: {str(e)[:200]}")
 
 
 def clear_lockout(email: str):
