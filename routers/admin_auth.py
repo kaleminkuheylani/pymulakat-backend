@@ -196,10 +196,26 @@ def login(req: LoginRequest, request: Request, response: Response):
             detail="Hesap kilitli. 15dk sonra tekrar deneyin.",
         )
 
+    # 2026-07-15: Admin password env fallback (kullanici talebi)
+    # Frontend bos gonderirse ve ADMIN_EMAIL+ADMIN_PASSWORD env'de eslesirse
+    # Supabase signIn icin o password kullanilir. Plain text env — internal
+    # single-user tool icin kabul edilebilir, SAKIN LOGLAMA.
+    password = req.password
+    if not password:
+        env_email = os.getenv("ADMIN_EMAIL", "").lower().strip()
+        env_password = os.getenv("ADMIN_PASSWORD", "")
+        if env_email and env_password and env_email == email:
+            password = env_password
+            log.info(f"[admin_auth] env password fallback used for {email}")
+        else:
+            record_failed_login(email)
+            write_audit(None, email, "login", ip, ua, False, {"reason": "empty_password"})
+            raise HTTPException(status_code=401, detail="Geçersiz email veya şifre")
+
     # 2) Supabase signIn
     sb = get_supabase()
     try:
-        result = sb.auth.sign_in_with_password({"email": email, "password": req.password})
+        result = sb.auth.sign_in_with_password({"email": email, "password": password})
     except Exception as e:
         log.error(f"[admin_auth] signIn exception: {type(e).__name__}: {e}")
         record_failed_login(email)
