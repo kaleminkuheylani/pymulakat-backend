@@ -369,11 +369,11 @@ def magic_link(req: MagicLinkRequest, request: Request):
         log.error(f"[admin_auth] magic_tokens insert error: {type(e).__name__}: {e}")
         raise HTTPException(500, "Token olusturulamadi")
 
-    # 2026-07-15: Magic link — backend API endpoint (prefix zorunlu)
-    # base_url = backend URL (ADMIN_VERIFY_URL)
-    # Tam path: {base_url}/api/v2/admin/auth/verify?token=...
-    base_url = os.getenv("ADMIN_VERIFY_URL", "https://pythonmulakat.com")
-    magic_link = f"{base_url}/api/v2/admin/auth/verify?token={raw_token}"
+    # 2026-07-15: Magic link — frontend URL (Next.js API route proxy)
+    # Frontend /api/admin/auth/callback server-side backend'e fetch eder,
+    # Set-Cookie'yi same-origin'de set eder (cross-domain cookie sorunu yok).
+    frontend_url = os.getenv("FRONTEND_URL", "https://pythonmulakat.com")
+    magic_link = f"{frontend_url}/api/admin/auth/callback?token={raw_token}"
 
     # Resend ile gonder
     sent = send_magic_link_email(email, magic_link)
@@ -400,11 +400,11 @@ def magic_link(req: MagicLinkRequest, request: Request):
         log.error(f"[admin_auth] magic_tokens insert error: {type(e).__name__}: {e}")
         raise HTTPException(500, "Token olusturulamadi")
 
-    # 2026-07-15: Magic link — backend API endpoint (prefix zorunlu)
-    # base_url = backend URL (ADMIN_VERIFY_URL)
-    # Tam path: {base_url}/api/v2/admin/auth/verify?token=...
-    base_url = os.getenv("ADMIN_VERIFY_URL", "https://pythonmulakat.com")
-    magic_link = f"{base_url}/api/v2/admin/auth/verify?token={raw_token}"
+    # 2026-07-15: Magic link — frontend URL (Next.js API route proxy)
+    # Frontend /api/admin/auth/callback server-side backend'e fetch eder,
+    # Set-Cookie'yi same-origin'de set eder (cross-domain cookie sorunu yok).
+    frontend_url = os.getenv("FRONTEND_URL", "https://pythonmulakat.com")
+    magic_link = f"{frontend_url}/api/admin/auth/callback?token={raw_token}"
 
     # Resend ile gonder
     sent = send_magic_link_email(email, magic_link)
