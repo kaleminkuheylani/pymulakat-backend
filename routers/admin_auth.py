@@ -24,7 +24,7 @@ from typing import Optional
 
 import jwt
 from fastapi import APIRouter, Request, Response, HTTPException
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel, EmailStr
 from supabase_client import get_supabase, get_supabase_admin
 from dependencies import get_client_ip, get_user_agent
@@ -499,42 +499,21 @@ def verify_magic_link(request: Request, response: Response, token: str):
 
     write_audit(admin_user.id, email, "magic_link_verify", ip, ua, True, {"jti": jti})
 
-    # Cookie set
-    is_prod = os.getenv("APP_ENV", "development") == "production"
+    # 2026-07-15: 302 redirect (HTML response yerine — cross-origin cookie icin)
+    # Cross-domain redirect: Railway (backend) → Vercel (frontend /admin)
+    # SameSite=None; Secure zorunlu (Chrome 80+ cross-origin icin)
+    frontend_url = os.getenv("FRONTEND_URL", "https://pythonmulakat.com")
+    response = RedirectResponse(url=f"{frontend_url}/admin", status_code=302)
     response.set_cookie(
         key="admin_session",
         value=session_jwt,
         httponly=True,
-        secure=is_prod,
-        samesite="strict",
+        secure=True,  # SameSite=None zorunlu Secure=True
+        samesite="none",
         max_age=SESSION_TTL_HOURS * 3600,
         path="/",
     )
-
-    # HTML response (link tiklama sonucu browser'da acilir)
-    html = """<!DOCTYPE html>
-<html lang="tr">
-<head>
-  <meta charset="utf-8">
-  <meta http-equiv="refresh" content="2;url=/admin">
-  <title>Admin Giris Basarili</title>
-  <style>
-    body { font-family: system-ui; background: #050816; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 40px; text-align: center; max-width: 400px; }
-    h1 { color: #f59e0b; }
-    p { color: rgba(255,255,255,0.6); }
-    a { color: #f59e0b; text-decoration: none; font-weight: bold; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>Giris Basarili</h1>
-    <p>Admin paneline yonlendiriliyorsunuz...</p>
-    <p><a href="/admin">Hemen git</a></p>
-  </div>
-</body>
-</html>"""
-    return HTMLResponse(content=html, status_code=200)
+    return response
 
 
 @router.get("/me")
