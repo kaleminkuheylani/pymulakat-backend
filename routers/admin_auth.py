@@ -369,9 +369,11 @@ def magic_link(req: MagicLinkRequest, request: Request):
         log.error(f"[admin_auth] magic_tokens insert error: {type(e).__name__}: {e}")
         raise HTTPException(500, "Token olusturulamadi")
 
-    # Magic link olustur
+    # 2026-07-15: Magic link — backend API endpoint (prefix zorunlu)
+    # base_url = backend URL (ADMIN_VERIFY_URL)
+    # Tam path: {base_url}/api/v2/admin/auth/verify?token=...
     base_url = os.getenv("ADMIN_VERIFY_URL", "https://pythonmulakat.com")
-    magic_link = f"{base_url}/admin/auth/verify?token={raw_token}"
+    magic_link = f"{base_url}/api/v2/admin/auth/verify?token={raw_token}"
 
     # Resend ile gonder
     sent = send_magic_link_email(email, magic_link)
@@ -398,9 +400,11 @@ def magic_link(req: MagicLinkRequest, request: Request):
         log.error(f"[admin_auth] magic_tokens insert error: {type(e).__name__}: {e}")
         raise HTTPException(500, "Token olusturulamadi")
 
-    # Magic link olustur
+    # 2026-07-15: Magic link — backend API endpoint (prefix zorunlu)
+    # base_url = backend URL (ADMIN_VERIFY_URL)
+    # Tam path: {base_url}/api/v2/admin/auth/verify?token=...
     base_url = os.getenv("ADMIN_VERIFY_URL", "https://pythonmulakat.com")
-    magic_link = f"{base_url}/admin/auth/verify?token={raw_token}"
+    magic_link = f"{base_url}/api/v2/admin/auth/verify?token={raw_token}"
 
     # Resend ile gonder
     sent = send_magic_link_email(email, magic_link)
