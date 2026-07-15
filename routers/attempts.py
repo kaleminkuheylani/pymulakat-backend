@@ -90,6 +90,8 @@ async def create_attempt(
             "success": bool(payload.get("success", False)),
             "execution_time_ms": int(payload.get("execution_time_ms", 0)),
             "hints_used": int(payload.get("hints_used", 0)),
+            # 2026-07-15: Hangi dilde denendi (python/javascript/rust) - istatistik + filtering
+            "language": str(payload.get("language", "python")).lower()[:20],
             # 📌 user_code KALDIRILDI — sadece stats kaydedilir
         }
 
