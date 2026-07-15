@@ -24,10 +24,14 @@ from typing import Optional
 
 import jwt
 from fastapi import APIRouter, Request, Response, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel, EmailStr
 from supabase_client import get_supabase, get_supabase_admin
 from dependencies import get_client_ip, get_user_agent
+from services.email import (
+    generate_magic_token, send_magic_link_email, RESEND_MAGIC_LINK_TTL_MIN
+)
+import hashlib
 
 log = logging.getLogger("pymulakat.admin_auth")
 
@@ -53,6 +57,10 @@ LOCKOUT_DURATION_MIN = int(os.getenv("ADMIN_LOCKOUT_DURATION_MIN", "15"))
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+
+class MagicLinkRequest(BaseModel):
+    email: EmailStr
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -304,6 +312,196 @@ def logout(request: Request, response: Response):
     # Delete cookie — manuel header
     delete_cookie_header = "admin_session=; Path=/; Domain=pythonmulakat.com; Max-Age=0; HttpOnly; Secure; SameSite=Lax"
     return JSONResponse({"ok": True}, headers={"Set-Cookie": delete_cookie_header})
+
+
+
+@router.post("/magic-link")
+def magic_link(req: MagicLinkRequest, request: Request):
+    """Email-only admin login — Resend ile magic link gonderir.
+
+    Akis:
+      1. email → Supabase'de user var mi kontrol (admin_metadata.role=admin)
+      2. Token uret (secrets.token_urlsafe(32)), hash'le (SHA256)
+      3. DB'ye kaydet (expires_at = +15dk, ip, ua)
+      4. Resend ile email gonder (link: /admin/auth/verify?token=...)
+      5. Response: dev mode'da link doner, prod'da sadece 'gonderildi'
+
+    Onemli: her durumda 200 doner (email enumeration onleme).
+    """
+    ip = get_client_ip(request)
+    ua = get_user_agent(request)
+    email = req.email.lower().strip()
+
+    # Admin kontrol: sadece admin user'lara gonder
+    sb = get_supabase_admin()
+    admin_user = None
+    try:
+        result = sb.auth.admin.list_users()
+        for u in result:
+            if (u.email or "").lower() == email and (u.app_metadata or {}).get("role") == "admin":
+                admin_user = u
+                break
+    except Exception as e:
+        log.error(f"[admin_auth] list_users exception: {type(e).__name__}: {e}")
+
+    if not admin_user:
+        # Email enumeration onleme: hata olsa bile 200 don
+        log.info(f"[admin_auth] magic-link requested for non-admin: {email}")
+        return {"ok": True, "sent": True}
+
+    # Token uret + DB'ye kaydet
+    raw_token, token_hash = generate_magic_token()
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=RESEND_MAGIC_LINK_TTL_MIN)
+
+    try:
+        sb.table("admin_magic_tokens").insert({
+            "user_email": email,
+            "token_hash": token_hash,
+            "expires_at": expires_at.isoformat(),
+            "ip": ip,
+            "user_agent": ua,
+        }).execute()
+    except Exception as e:
+        log.error(f"[admin_auth] magic_tokens insert error: {type(e).__name__}: {e}")
+        raise HTTPException(500, "Token olusturulamadi")
+
+    # Magic link olustur
+    base_url = os.getenv("ADMIN_VERIFY_URL", "https://pythonmulakat.com")
+    magic_link = f"{base_url}/admin/auth/verify?token={raw_token}"
+
+    # Resend ile gonder
+    sent = send_magic_link_email(email, magic_link)
+
+    # Audit
+    write_audit(admin_user.id, email, "magic_link_request", ip, ua, True, {"sent": sent})
+
+    response = {"ok": True, "sent": sent}
+    # Dev mode: link response'da (RESEND_API_KEY yoksa)
+    if not sent:
+        response["dev_link"] = magic_link
+    return response
+
+
+@router.get("/verify")
+def verify_magic_link(request: Request, response: Response, token: str):
+    """Magic link tiklandiginda cagrilir.
+
+    Akis:
+      1. token → SHA256 hash
+      2. DB'de hash ile ara (kullanilmamis, expires > now)
+      3. User email ile Supabase admin kontrol
+      4. Session JWT olustur, cookie set
+      5. used_at = now (tek kullanimlik)
+      6. /admin'e redirect (HTML response)
+    """
+    ip = get_client_ip(request)
+    ua = get_user_agent(request)
+
+    if not token or len(token) < 10:
+        raise HTTPException(400, "Gecersiz token")
+
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+
+    # DB'de token ara
+    sb = get_supabase_admin()
+    try:
+        result = sb.table("admin_magic_tokens").select("*").eq("token_hash", token_hash).maybe_single().execute()
+    except Exception as e:
+        log.error(f"[admin_auth] verify select error: {type(e).__name__}: {e}")
+        raise HTTPException(500, "Token kontrol edilemedi")
+
+    if not result or not result.data:
+        write_audit(None, "?", "magic_link_verify", ip, ua, False, {"reason": "not_found"})
+        raise HTTPException(404, "Token bulunamadi veya zaten kullanilmis")
+
+    row = result.data
+    # expires_at kontrol
+    expires_at = datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00"))
+    if datetime.now(timezone.utc) > expires_at:
+        write_audit(None, row.get("user_email"), "magic_link_verify", ip, ua, False, {"reason": "expired"})
+        raise HTTPException(410, "Token suresi dolmus")
+
+    # used_at kontrol
+    if row.get("used_at"):
+        write_audit(None, row.get("user_email"), "magic_link_verify", ip, ua, False, {"reason": "already_used"})
+        raise HTTPException(410, "Token zaten kullanilmis")
+
+    email = row["user_email"]
+
+    # Supabase user_id al (admin kontrol)
+    admin_user = None
+    try:
+        result = sb.auth.admin.list_users()
+        for u in result:
+            if (u.email or "").lower() == email and (u.app_metadata or {}).get("role") == "admin":
+                admin_user = u
+                break
+    except Exception as e:
+        log.error(f"[admin_auth] verify list_users error: {type(e).__name__}: {e}")
+        raise HTTPException(500, "User kontrol edilemedi")
+
+    if not admin_user:
+        write_audit(None, email, "magic_link_verify", ip, ua, False, {"reason": "user_not_admin"})
+        raise HTTPException(403, "Admin yetkisi yok")
+
+    # Token used_at isaretle
+    sb.table("admin_magic_tokens").update({
+        "used_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("token_hash", token_hash).execute()
+
+    # Session JWT olustur
+    session_jwt = issue_session_token(admin_user.id, email, ip)
+    jti = jwt.decode(session_jwt, options={"verify_signature": False})["jti"]
+    try:
+        sb.table("admin_sessions").insert({
+            "id": jti,
+            "user_id": admin_user.id,
+            "ip": ip,
+            "user_agent": ua,
+            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=SESSION_TTL_HOURS)).isoformat(),
+        }).execute()
+    except Exception as e:
+        log.error(f"[admin_auth] admin_sessions insert failed: {e}")
+        raise HTTPException(500, "Session yazma hatasi")
+
+    write_audit(admin_user.id, email, "magic_link_verify", ip, ua, True, {"jti": jti})
+
+    # Cookie set
+    is_prod = os.getenv("APP_ENV", "development") == "production"
+    response.set_cookie(
+        key="admin_session",
+        value=session_jwt,
+        httponly=True,
+        secure=is_prod,
+        samesite="strict",
+        max_age=SESSION_TTL_HOURS * 3600,
+        path="/",
+    )
+
+    # HTML response (link tiklama sonucu browser'da acilir)
+    html = """<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="2;url=/admin">
+  <title>Admin Giris Basarili</title>
+  <style>
+    body { font-family: system-ui; background: #050816; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 40px; text-align: center; max-width: 400px; }
+    h1 { color: #f59e0b; }
+    p { color: rgba(255,255,255,0.6); }
+    a { color: #f59e0b; text-decoration: none; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Giris Basarili</h1>
+    <p>Admin paneline yonlendiriliyorsunuz...</p>
+    <p><a href="/admin">Hemen git</a></p>
+  </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html, status_code=200)
 
 
 @router.get("/me")
