@@ -278,25 +278,34 @@ def get_question(question_id, category: Optional[str] = None) -> Optional[Questi
     except Exception:
         pass
 
-    # 2. ID match (legacy_id veya id)
+    # 2. ID match (legacy_id veya id) — sadece numeric input icin
+    # 2026-07-16: Slug "ilk-tekrarlan-etmeyen-karakter2" gibi string'ler
+    # integer'a cast edilemez, "invalid input syntax for type integer" hata
+    # firlatiyordu. Bundan sonra sadece digit string'ler icin dene.
+    if not target.isdigit():
+        return None
+
     try:
         # legacy_id (eski interviews.id uyumlu)
-        q = sb.table("questions").select("*").eq("legacy_id", question_id)
+        q = sb.table("questions").select("*").eq("legacy_id", int(target))
         if category:
             q = q.eq("category", category)
         result = q.limit(1).execute()
         if result.data:
             return _row_to_question(result.data[0])
 
-        # Yeni id (row.id)
-        q = sb.table("questions").select("*").eq("id", question_id)
+        # Yeni id (row.id) — UUID ise str olarak dene
+        q = sb.table("questions").select("*").eq("id", target)
         if category:
             q = q.eq("category", category)
         result = q.limit(1).execute()
         if result.data:
             return _row_to_question(result.data[0])
     except Exception as e:
-        print(f"❌ get_question DB hatasi: {e}")
+        # 2026-07-16: Hata loglamasini azalt — DB yoksa spam olur
+        # Once print ile log tutuluyordu, simdi sadece bir kere uyari
+        import logging
+        logging.warning(f"get_question ID match hatasi: {e}")
         return None
 
     return None
