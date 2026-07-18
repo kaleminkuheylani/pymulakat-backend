@@ -131,6 +131,8 @@ guides_v1 = try_include("routers.guides", "guides (study materials)")
 # try_include ile güvenli yükleme (bir router patlarsa diğerleri çalışır)
 
 ai_feedback_v2 = try_include("routers.ai_feedback", "ai feedback (DB quota tracking)")
+# 2026-07-17: Kullanici "Soru hataliysa bildir" butonu icin
+question_reports_v2 = try_include("routers.question_reports", "question reports (soru hata bildirimi)")
 # 📌 Mail koçu endpointleri kaldirildi (KVKK uyumu).
 # Sadece database tablolarinda varsa email gerekiyor, mail gonderimi YOK.
 
