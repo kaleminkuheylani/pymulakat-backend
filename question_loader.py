@@ -57,10 +57,11 @@ class Question:
 # ═══════════════════════════════════════════════════════════════
 
 CATEGORY_META: Dict[str, Dict[str, str]] = {
-    "python-basics": {"label": "Python Temelleri", "description": "Değişkenler, döngüler, koşullar, fonksiyonlar, string islemleri.", "icon": "🐍"},
+    "programlama-temelleri": {"label": "Programlama Temelleri", "description": "Değişkenler, döngüler, koşullar, fonksiyonlar, string islemleri. Python ve JavaScript için ortak temel.", "icon": "🐍"},
+    "python-basics": {"label": "Programlama Temelleri (legacy)", "description": "Legacy alias — DB-FIRST artık programlama-temelleri kullanıyor.", "icon": "🐍"},
     "strings": {"label": "String İşlemleri", "description": "String slicing, formatlama, arama, regex, encode/decode.", "icon": "🔤"},
     "data-structures": {"label": "Veri Yapıları", "description": "List, dict, set, tuple, frozenset, deque, heapq, generators. Mulakat prensibi: veri yapisini kullanici secer!", "icon": "🗂️"},
-    "list-dict": {"label": "Liste & Sözlük", "description": "Temel liste ve sözlük uygulamaları.", "icon": "📋"},
+    "list-dict": {"label": "Listeler & Sözlükler", "description": "Listeler, sözlükler, setler. Arama, ekleme, silme, sıralama pratikleri.", "icon": "📋"},
     "pandas": {"label": "Pandas", "description": "Veri analizi.", "icon": "🐼"},
     "algorithms": {"label": "Algoritmalar", "description": "Sıralama, arama, DP, iki işaretçi.", "icon": "🧮"},
     "dynamic-programming": {"label": "Dinamik Programlama", "description": "Memoization, tabulation, optimal substructure. Fibonacci, knapsack, LCS.", "icon": "🧠"},
