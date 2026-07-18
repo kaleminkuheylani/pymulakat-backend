@@ -106,17 +106,31 @@ async def get_current_user(request: Request):
             pass
 
     # HS256 başarısız veya secret yok — Supabase client fallback (ES256/JWKS)
+    # 2026-07-18: Google/GitHub OAuth token RS256 (Supabase public key ile imzali),
+    # service_role key ile get_user(jwt=token) Supabase Auth API'sini cagirir.
+    # Supabase v2 SDK yeni yontem: supabase.auth.get_user(jwt=token)
     try:
-        from supabase_client import get_supabase_admin
-        sb = get_supabase_admin()
-        user_response = sb.auth.get_user(token)
+        from supabase_client import get_supabase
+        sb = get_supabase()  # anon key, public key JWKS otomatik ceker
+        user_response = sb.auth.get_user(jwt=token)
         if user_response and user_response.user:
             return {
                 "id": str(user_response.user.id),
                 "email": user_response.user.email,
             }
-    except Exception:
-        pass
+    except Exception as e1:
+        # Service role fallback (RLS bypass, user kontrolu icin)
+        try:
+            from supabase_client import get_supabase_admin
+            sb_admin = get_supabase_admin()
+            user_response = sb_admin.auth.get_user(jwt=token)
+            if user_response and user_response.user:
+                return {
+                    "id": str(user_response.user.id),
+                    "email": user_response.user.email,
+                }
+        except Exception as e2:
+            logger.warning("get_user_failed anon=%s admin=%s", str(e1)[:80], str(e2)[:80])
 
     # HS256 + ES256 ikisi de başarısız → 401
     raise HTTPException(401, "Token doğrulanamadı (HS256 + ES256 başarısız).")
