@@ -345,7 +345,12 @@ def get_categories() -> List[Dict]:
 
         result_list = []
         for slug in unique_slugs:
-            meta = CATEGORY_META.get(slug, {})
+            # 2026-07-18: Canonical whitelist — CATEGORY_META'da olmayan slug'lar
+            # (örn. typo "programalama-temelleri", eski "python-basics", DB kirli
+            # veri) filtrelenir. Frontend'de de CATEGORY_SLUGS whitelist var.
+            if slug not in CATEGORY_META:
+                continue
+            meta = CATEGORY_META[slug]
             result_list.append({
                 "slug": slug,
                 "label": meta.get("label", slug.replace("-", " ").title()),
