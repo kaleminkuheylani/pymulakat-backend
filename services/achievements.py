@@ -2,6 +2,7 @@
 # Static achievement definitions + evaluation logic.
 # Definitions are code-side; unlocked state lives in user_achievements table.
 
+import math
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Dict, Any, Callable, Optional, Set
@@ -30,13 +31,22 @@ def _as_date(ts) -> Optional[datetime]:
 
 
 def _augment(attempts: List[Dict[str, Any]], questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    qmeta = {q.get("id"): q for q in questions if q.get("id") is not None}
+    qmeta = {}
+    for q in questions:
+        qid = q.get("id")
+        if qid is not None:
+            qmeta[str(qid)] = q
+        legacy = q.get("legacy_id")
+        if legacy is not None:
+            qmeta[str(legacy)] = q
     out = []
     for a in attempts:
-        q = qmeta.get(a.get("question_id"))
+        raw_qid = a.get("question_id")
+        q = qmeta.get(str(raw_qid)) if raw_qid is not None else None
         qa = dict(a)
         qa["category"] = (q.get("category") or "") if q else ""
         qa["level"] = (q.get("level") or "") if q else ""
+        qa["language"] = a.get("language") or "python"
         out.append(qa)
     return out
 
@@ -182,6 +192,8 @@ def _category_n(category, n):
 def _cat_explorer(atts, questions):
     excluded = {"pandas", "queue"}
     valid_cats = {q.get("category") for q in questions if q.get("category") not in excluded}
+    if not valid_cats:
+        return False
     solved_cats = {a.get("category") for a in atts if a.get("success") and a.get("category") in valid_cats}
     return len(solved_cats) >= min(6, len(valid_cats))
 
@@ -192,9 +204,12 @@ def _level_n(level, n):
     return check
 
 
-def _level_all(atts, *_):
+def _level_all(atts, questions):
+    all_levels = {q.get("level") for q in questions if q.get("level")}
+    if not all_levels:
+        all_levels = {"beginner", "intermediate", "advanced"}
     solved_levels = {a.get("level") for a in atts if a.get("success") and a.get("level")}
-    return all(l in solved_levels for l in ("beginner", "intermediate", "advanced"))
+    return all_levels.issubset(solved_levels)
 
 
 def _level_advanced_first_try(atts, *_):
@@ -217,7 +232,7 @@ def _solved_percent(percent):
         solved = {a.get("question_id") for a in atts if a.get("success") and a.get("question_id")}
         if total == 0:
             return False
-        return len(solved) >= int(total * percent / 100)
+        return len(solved) >= math.ceil(total * percent / 100)
     return check
 
 
