@@ -1,39 +1,6 @@
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
-
-# ─── Auth Schemas ────────────────────────────────────────────────
-
-class RegisterRequest(BaseModel):
-    username: str = Field(..., min_length=3, max_length=30)
-    email: EmailStr
-    password: str = Field(..., min_length=8)
-    privacy_policy_consent: bool
-
-    @field_validator("privacy_policy_consent")
-    @classmethod
-    def kvkk_must_be_true(cls, v: bool) -> bool:
-        if not v:
-            raise ValueError("KVKK onayı zorunludur (madde 5/6 - Açık Rıza).")
-        return v
-
-
-class VerifyEmailRequest(BaseModel):
-    email: EmailStr
-    code: int = Field(..., ge=100000, le=999999)
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: Optional[str] = None
-    user: dict
-    code: Optional[int] = None
-
 
 # ─── Interview Schemas ───────────────────────────────────────────
 

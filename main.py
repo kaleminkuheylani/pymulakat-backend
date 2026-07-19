@@ -194,10 +194,8 @@ def root():
         "service": "PythonMulakat API",
         "version": "2.5",
         "endpoints": {
-            "register": "POST /auth/register",
-            "verify_email": "POST /auth/verify-email",
-            "login": "POST /auth/login",
             "me": "GET /auth/me",
+            "logout": "POST /auth/logout",
             "categories": "GET /api/v2/categories",
             "all_questions": "GET /api/v2/questions/all",
             "questions": "GET /api/v2/questions?category=python-basics",
