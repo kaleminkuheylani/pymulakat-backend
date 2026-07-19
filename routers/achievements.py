@@ -52,6 +52,47 @@ async def list_achievements(request: Request):
         questions = []
 
     unlocked = evaluate(attempts, questions)
+
+    try:
+        share_res = (
+            sb.table("forms")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("category", "share")
+            .limit(1)
+            .execute()
+        )
+        if share_res.data:
+            unlocked.append("share_first")
+    except Exception as e:
+        logger.warning("achievements.forms.fetch_failed user=%s err=%s", user_id, e)
+
+    try:
+        report_res = (
+            sb.table("question_reports")
+            .select("id")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        if report_res.data:
+            unlocked.append("report_question")
+    except Exception as e:
+        logger.warning("achievements.reports.fetch_failed user=%s err=%s", user_id, e)
+
+    try:
+        ai_res = (
+            sb.table("ai_usage")
+            .select("used_count")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        ai_total = sum(r.get("used_count", 0) for r in (ai_res.data or []))
+        if ai_total >= 5:
+            unlocked.append("ai_feedback_5")
+    except Exception as e:
+        logger.warning("achievements.ai_usage.fetch_failed user=%s err=%s", user_id, e)
+
     unlocked_set: Set[str] = set(unlocked)
 
     try:

@@ -19,6 +19,25 @@ class AchievementDef:
     condition: Callable[[List[Dict[str, Any]], List[Dict[str, Any]], int], bool]
 
 
+_LEVEL_ALIASES = {
+    "başlangıç": "beginner",
+    "beginner": "beginner",
+    "easy": "beginner",
+    "orta": "intermediate",
+    "intermediate": "intermediate",
+    "medium": "intermediate",
+    "ileri": "advanced",
+    "advanced": "advanced",
+    "hard": "advanced",
+}
+
+
+def _normalize_level(level: Any) -> str:
+    if not level:
+        return ""
+    return _LEVEL_ALIASES.get(str(level).strip().lower(), str(level).strip().lower())
+
+
 def _as_date(ts) -> Optional[datetime]:
     if not ts:
         return None
@@ -45,7 +64,7 @@ def _augment(attempts: List[Dict[str, Any]], questions: List[Dict[str, Any]]) ->
         q = qmeta.get(str(raw_qid)) if raw_qid is not None else None
         qa = dict(a)
         qa["category"] = (q.get("category") or "") if q else ""
-        qa["level"] = (q.get("level") or "") if q else ""
+        qa["level"] = _normalize_level(q.get("level")) if q else ""
         qa["language"] = a.get("language") or "python"
         out.append(qa)
     return out
@@ -81,7 +100,15 @@ def _first_success(atts, *_):
     return _any_success(atts)
 
 def _first_perfect(atts, *_):
-    return any(a.get("success") and a.get("passed_tests") == a.get("total_tests") and a.get("total_tests", 0) > 0 for a in atts)
+    first_by_q = {}
+    for a in sorted(atts, key=lambda x: x.get("created_at") or ""):
+        qid = a.get("question_id")
+        if qid is not None and qid not in first_by_q:
+            first_by_q[qid] = a
+    for a in first_by_q.values():
+        if a.get("success") and a.get("passed_tests") == a.get("total_tests") and a.get("total_tests", 0) > 0:
+            return True
+    return False
 
 def _first_fast(atts, *_):
     return any(a.get("success") and (a.get("execution_time_ms") or 0) <= 60000 for a in atts)
@@ -205,7 +232,7 @@ def _level_n(level, n):
 
 
 def _level_all(atts, questions):
-    all_levels = {q.get("level") for q in questions if q.get("level")}
+    all_levels = {_normalize_level(q.get("level")) for q in questions if q.get("level")}
     if not all_levels:
         all_levels = {"beginner", "intermediate", "advanced"}
     solved_levels = {a.get("level") for a in atts if a.get("success") and a.get("level")}
@@ -213,7 +240,12 @@ def _level_all(atts, questions):
 
 
 def _level_advanced_first_try(atts, *_):
-    for a in atts:
+    first_by_q = {}
+    for a in sorted(atts, key=lambda x: x.get("created_at") or ""):
+        qid = a.get("question_id")
+        if qid is not None and qid not in first_by_q:
+            first_by_q[qid] = a
+    for a in first_by_q.values():
         if a.get("level") == "advanced" and a.get("success"):
             return True
     return False
@@ -274,7 +306,7 @@ def _comeback(atts, *_):
     days = sorted({
         _as_date(a.get("created_at")).strftime("%Y-%m-%d")
         for a in atts
-        if _as_date(a.get("created_at"))
+        if a.get("success") and _as_date(a.get("created_at"))
     })
     for i in range(1, len(days)):
         d1 = datetime.strptime(days[i-1], "%Y-%m-%d")
@@ -347,7 +379,7 @@ ACHIEVEMENTS: List[AchievementDef] = [
     )),
 
     AchievementDef("cat_python_basics", "Programlama Temelleri", "programlama-temelleri'nde 10 başarılı", "book-open", 100, "category", _category_n("programlama-temelleri", 10)),
-    AchievementDef("cat_list_dict", "Koleksiyoncu", "list-dict'te 5 başarılı", "list", 100, "category", _category_n("list-dict", 5)),
+    AchievementDef("cat_list_dict", "Koleksiyoncu", "list-dict'te 4 başarılı", "list", 100, "category", _category_n("list-dict", 4)),
     AchievementDef("cat_data_structures", "Veri Yapıları Profu", "data-structures'ta 5 başarılı", "database", 100, "category", _category_n("data-structures", 5)),
     AchievementDef("cat_algorithms", "Algoritmacı", "algorithms'ta 5 başarılı", "cpu", 100, "category", _category_n("algorithms", 5)),
     AchievementDef("cat_dp", "DP Düşünürü", "dynamic-programming'de 3 başarılı", "layers", 150, "category", _category_n("dynamic-programming", 3)),
