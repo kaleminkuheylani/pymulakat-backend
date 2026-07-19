@@ -52,7 +52,7 @@ async def get_me(request: Request):
         except Exception as e:
             logger.warning("me.profile.fetch_failed user=%s err=%s", user_id, e)
 
-        total_attempts = success_count = fail_count = points = avg_time_ms = 0
+        total_attempts = success_count = fail_count = attempt_points = avg_time_ms = 0
         try:
             attempts = sb_admin.table("interview_attempts").select(
                 "passed_tests, total_tests, success, execution_time_ms"
@@ -60,11 +60,20 @@ async def get_me(request: Request):
             total_attempts = len(attempts)
             success_count = sum(1 for a in attempts if a.get("success"))
             fail_count = total_attempts - success_count
-            points = sum(a.get("passed_tests", 0) * 10 for a in attempts if a.get("success"))
+            attempt_points = sum(a.get("passed_tests", 0) * 10 for a in attempts if a.get("success"))
             if total_attempts > 0:
                 avg_time_ms = sum(a.get("execution_time_ms", 0) for a in attempts) / total_attempts
         except Exception as e:
             logger.warning("me.attempts.fetch_failed user=%s err=%s", user_id, e)
+
+        achievement_points = 0
+        try:
+            achievement_points = sum(
+                r.get("points", 0) or 0
+                for r in (sb_admin.table("user_achievements").select("points").eq("user_id", user_id).execute().data or [])
+            )
+        except Exception as e:
+            logger.warning("me.achievements.fetch_failed user=%s err=%s", user_id, e)
 
         email = user.get("email")
         # GitHub OAuth: kullanıcı email gizliyse user_metadata'dan login/username fallback
@@ -82,7 +91,9 @@ async def get_me(request: Request):
             "email": email,
             "username": username or "misafir",
             "is_verified": (profile or {}).get("is_verified", False),
-            "points": points,
+            "points": attempt_points + achievement_points,
+            "attempt_points": attempt_points,
+            "achievement_points": achievement_points,
             "total_attempts": total_attempts,
             "success_count": success_count,
             "fail_count": fail_count,

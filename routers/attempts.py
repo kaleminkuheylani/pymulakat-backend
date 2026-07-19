@@ -46,6 +46,8 @@ class AttemptStatsResponse(BaseModel):
     fail_count: int
     success_rate: int
     points: int
+    attempt_points: int = 0
+    achievement_points: int = 0
     solution_average_time: int
     solution_average_time_ms: int
 
@@ -256,17 +258,28 @@ async def my_stats(
         total = len(attempts)
         success = sum(1 for a in attempts if a.get("success"))
         fail = total - success
-        points = sum(a.get("passed_tests", 0) * 10 for a in attempts if a.get("success"))
+        attempt_points = sum(a.get("passed_tests", 0) * 10 for a in attempts if a.get("success"))
         avg_time_ms = (
             sum(a.get("execution_time_ms", 0) for a in attempts) / total if total else 0
         )
+
+        achievement_points = 0
+        try:
+            achievement_points = sum(
+                r.get("points", 0) or 0
+                for r in (sb.table("user_achievements").select("points").eq("user_id", user_id).execute().data or [])
+            )
+        except Exception as e:
+            logger.warning("attempts.stats.achievements.fetch_failed user=%s err=%s", user_id, e)
 
         return AttemptStatsResponse(
             total_attempts=total,
             success_count=success,
             fail_count=fail,
             success_rate=round((success / total * 100) if total else 0),
-            points=points,
+            points=attempt_points + achievement_points,
+            attempt_points=attempt_points,
+            achievement_points=achievement_points,
             solution_average_time=int(avg_time_ms / 1000),
             solution_average_time_ms=int(avg_time_ms),
         )
