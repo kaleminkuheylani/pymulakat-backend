@@ -4,8 +4,8 @@
 # (/auth/me) ve cikis stub'u saglar.
 
 import logging
-from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
 
 from dependencies import get_current_user
 from supabase_client import get_supabase_admin
@@ -15,17 +15,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-# ═══════════════════════════════════════════════════════════════
-# ─── Schemas ────────────────────────────────────────────────
-# ═══════════════════════════════════════════════════════════════
-
-class MessageResponse:
+class MessageResponse(BaseModel):
     ok: bool
     message: str
-
-    def __init__(self, ok: bool, message: str):
-        self.ok = ok
-        self.message = message
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -58,7 +50,7 @@ async def get_me(request: Request):
             rows = (result.data if result and getattr(result, "data", None) else []) or []
             profile = rows[0] if rows else None
         except Exception as e:
-            logging.warning("me.profile.fetch_failed user=%s err=%s", user_id, e)
+            logger.warning("me.profile.fetch_failed user=%s err=%s", user_id, e)
 
         total_attempts = success_count = fail_count = points = avg_time_ms = 0
         try:
@@ -72,12 +64,12 @@ async def get_me(request: Request):
             if total_attempts > 0:
                 avg_time_ms = sum(a.get("execution_time_ms", 0) for a in attempts) / total_attempts
         except Exception as e:
-            logging.warning("me.attempts.fetch_failed user=%s err=%s", user_id, e)
+            logger.warning("me.attempts.fetch_failed user=%s err=%s", user_id, e)
 
         return {
             "id": user_id,
             "email": user.get("email"),
-            "username": (profile or {}).get("username", user.get("email", "").split("@")[0]),
+            "username": (profile or {}).get("username", (user.get("email") or "").split("@")[0]),
             "is_verified": (profile or {}).get("is_verified", False),
             "points": points,
             "total_attempts": total_attempts,
