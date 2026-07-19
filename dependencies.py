@@ -9,6 +9,8 @@ import jwt
 from jwt import PyJWKClient
 from fastapi import HTTPException, Request
 
+from supabase_client import get_supabase_admin
+
 logger = logging.getLogger("pymulakat")
 
 
@@ -125,7 +127,7 @@ async def get_current_user(request: Request):
             user_id = payload.get("sub")
             email = payload.get("email")
             if user_id:
-                return {"id": str(user_id), "email": email}
+                return await _ensure_profile_lazy(user_id, email)
         except jwt.ExpiredSignatureError:
             logger.info("jwt_expired_es256")
             raise HTTPException(401, "Token süresi dolmuş.")
@@ -145,7 +147,7 @@ async def get_current_user(request: Request):
             email = payload.get("email")
             if user_id:
                 logger.info("hs256_decode_ok (legacy Supabase project)")
-                return {"id": str(user_id), "email": email}
+                return await _ensure_profile_lazy(user_id, email)
         except Exception as e:
             logger.info("hs256_decode_failed: %s", str(e)[:120])
 
@@ -169,9 +171,46 @@ async def get_current_user(request: Request):
             with urllib.request.urlopen(req, timeout=5) as resp:
                 data = _json.loads(resp.read())
                 if data and data.get("id"):
-                    return {"id": str(data["id"]), "email": data.get("email")}
+                    user_id = str(data["id"])
+                    email = data.get("email")
+                    return await _ensure_profile_lazy(user_id, email)
         except Exception as e:
             err_msg = str(e)[:200]
             logger.warning("supabase_auth_api_failed: %s", err_msg)
 
     raise HTTPException(401, "Token doğrulanamadı.")
+
+
+async def _ensure_profile_lazy(user_id: str, email: str | None) -> dict:
+    """
+    Lazy profile oluştur — OAuth ile gelen yeni user'lar Supabase auth.users'da
+    INSERT olur ama profiles tablosuna trigger YOK. Bu fonksiyon user'ın
+    profile satırı yoksa INSERT eder (idempotent). Boylece:
+      - Email/password register → _ensure_profile() (auth.py)
+      - Google/GitHub OAuth → _ensure_profile_lazy() (burada)
+    """
+    try:
+        sb_admin = get_supabase_admin()
+        # Profile var mi? (limit(1) + try/except — maybe_single None doner)
+        try:
+            result = sb_admin.table("profiles").select("id").eq("id", user_id).limit(1).execute()
+            rows = (result.data if result and getattr(result, "data", None) else []) or []
+        except Exception:
+            rows = []
+
+        if not rows:
+            # OAuth user'ları icin username email'den türetilir
+            username = (email or "user").split("@")[0][:32]
+            sb_admin.table("profiles").insert({
+                "id": user_id,
+                "email": email,
+                "username": username,
+                "is_verified": True,  # OAuth user'ları email doğrulanmış sayılır
+                "points": 0,
+            }).execute()
+            logger.info("lazy_profile_created user_id=%s email=%s", user_id[:8] + "...", email)
+    except Exception as e:
+        # Profile oluşturulamasa bile user'ı dondur — frontend'de stats 0 gorunur
+        logger.warning("lazy_profile_ensure_failed: %s", str(e)[:200])
+
+    return {"id": user_id, "email": email}
