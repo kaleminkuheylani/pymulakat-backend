@@ -63,33 +63,58 @@ async def get_current_user(request: Request):
     if not token:
         raise HTTPException(401, "Geçersiz token formatı.")
 
-    # Dogrulama — once HS256
+    # ── ADIM 1: HS256 ile JWT doğrula (imza kontrolü, GoTrue bypass) ──
     jwt_secret = os.environ.get("SUPABASE_JWT_SECRET")
+    jwt_payload = None
     if jwt_secret:
         try:
-            payload = jwt.decode(
+            jwt_payload = jwt.decode(
                 token, jwt_secret, algorithms=["HS256"], audience="authenticated"
             )
-            user_id = payload.get("sub")
-            email = payload.get("email")
-            if user_id:
-                return {"id": str(user_id), "email": email}
-        except Exception:
-            pass  # HS256 basarisiz, fallback dene
+        except Exception as e:
+            # HS256 başarısız — eski davranışla uyumlu şekilde logla ve fallback dene
+            logger.warning("hs256_decode_failed: %s", str(e)[:120])
+            # Yine de payload sub'ı almak için verify=False deneyebilirdik AMA
+            # güvenlik için verify=True başarısızsa ASLA user'ı kabul etmeyiz.
 
-    # Fallback — Supabase Auth API raw HTTP
+    # ── ADIM 2: Supabase /auth/v1/user (GoTrue cache — OAuth user'ı yeni oluştuysa burada görünmeyebilir) ──
     supabase_url = os.environ.get("SUPABASE_URL")
     if supabase_url:
         try:
             req = urllib.request.Request(
                 f"{supabase_url.rstrip('/')}/auth/v1/user",
-                headers={"Authorization": f"Bearer {token}", "apikey": os.environ.get("SUPABASE_ANON_KEY", "")},
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "apikey": os.environ.get("SUPABASE_ANON_KEY", ""),
+                },
             )
             with urllib.request.urlopen(req, timeout=5) as resp:
                 data = _json.loads(resp.read())
                 if data and data.get("id"):
                     return {"id": str(data["id"]), "email": data.get("email")}
         except Exception as e:
-            logger.warning("supabase_auth_api_failed: %s", str(e)[:120])
+            err_msg = str(e)[:120]
+            # 2026-07-19: "User from sub claim in JWT does not exist" — GoTrue cache
+            # yeni OAuth user'ını henüz yansıtmamış. profiles tablosuna düşmek için
+            # HS256 payload sub'ı kullan.
+            if "user from sub" in err_msg.lower() or "does not exist" in err_msg.lower():
+                logger.warning("supabase_gotrue_cache_miss — falling back to JWT sub")
+            else:
+                logger.warning("supabase_auth_api_failed: %s", err_msg)
+
+    # ── ADIM 3: HS256 başarılıysa + GoTrue başarısızsa → JWT sub'tan user_id al ──
+    # Bu OAuth flow için hayat kurtarıcı: yeni user auth.users'a INSERT edildi ama
+    # GoTrue cache'i invalidate olmamış olabilir. JWT'nin imzası doğrulandıysa
+    # user kesinlikle gerçek (güvenli).
+    if jwt_payload:
+        user_id = jwt_payload.get("sub")
+        email = jwt_payload.get("email")
+        if user_id:
+            logger.info(
+                "auth_via_jwt_sub user_id=%s email=%s (GoTrue bypass)",
+                user_id[:8] + "..." if user_id else "?",
+                email or "?",
+            )
+            return {"id": str(user_id), "email": email}
 
     raise HTTPException(401, "Token doğrulanamadı.")
