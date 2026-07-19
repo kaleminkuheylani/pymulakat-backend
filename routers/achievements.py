@@ -2,11 +2,13 @@
 # Kullanıcı achievements listesi + otomatik değerlendirme.
 
 import logging
-from typing import List, Dict, Any, Set
+from typing import Any, Dict, List, Set
+
 from fastapi import APIRouter, HTTPException, Request
+
 from dependencies import get_current_user
+from services.achievements import ACHIEVEMENTS, evaluate, get_achievements_with_state
 from supabase_client import get_supabase_admin
-from services.achievements import evaluate, get_achievements_with_state, ACHIEVEMENTS
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v2/achievements", tags=["achievements"])
@@ -51,8 +53,7 @@ async def list_achievements(request: Request):
         logger.warning("achievements.questions.fetch_failed user=%s err=%s", user_id, e)
         questions = []
 
-    unlocked = evaluate(attempts, questions)
-
+    shared = False
     try:
         share_res = (
             sb.table("forms")
@@ -62,11 +63,11 @@ async def list_achievements(request: Request):
             .limit(1)
             .execute()
         )
-        if share_res.data:
-            unlocked.append("share_first")
+        shared = bool(share_res.data)
     except Exception as e:
         logger.warning("achievements.forms.fetch_failed user=%s err=%s", user_id, e)
 
+    reported = False
     try:
         report_res = (
             sb.table("question_reports")
@@ -75,11 +76,11 @@ async def list_achievements(request: Request):
             .limit(1)
             .execute()
         )
-        if report_res.data:
-            unlocked.append("report_question")
+        reported = bool(report_res.data)
     except Exception as e:
         logger.warning("achievements.reports.fetch_failed user=%s err=%s", user_id, e)
 
+    ai_feedback_count = 0
     try:
         ai_res = (
             sb.table("ai_usage")
@@ -87,12 +88,12 @@ async def list_achievements(request: Request):
             .eq("user_id", user_id)
             .execute()
         )
-        ai_total = sum(r.get("used_count", 0) for r in (ai_res.data or []))
-        if ai_total >= 5:
-            unlocked.append("ai_feedback_5")
+        ai_feedback_count = sum(r.get("used_count", 0) for r in (ai_res.data or []))
     except Exception as e:
         logger.warning("achievements.ai_usage.fetch_failed user=%s err=%s", user_id, e)
 
+    context = {"shared": shared, "reported": reported, "ai_feedback_count": ai_feedback_count}
+    unlocked = evaluate(attempts, questions, context)
     unlocked_set: Set[str] = set(unlocked)
 
     try:

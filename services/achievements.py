@@ -5,19 +5,7 @@
 import math
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Dict, Any, Callable, Optional, Set
-
-
-@dataclass(frozen=True)
-class AchievementDef:
-    id: str
-    title: str
-    description: str
-    icon: str
-    points: int
-    group: str
-    condition: Callable[[List[Dict[str, Any]], List[Dict[str, Any]], int], bool]
-
+from typing import Any, Callable, Dict, List, Optional, Set
 
 _LEVEL_ALIASES = {
     "başlangıç": "beginner",
@@ -30,6 +18,17 @@ _LEVEL_ALIASES = {
     "advanced": "advanced",
     "hard": "advanced",
 }
+
+
+@dataclass(frozen=True)
+class AchievementDef:
+    id: str
+    title: str
+    description: str
+    icon: str
+    points: int
+    group: str
+    condition: Callable[..., bool]
 
 
 def _normalize_level(level: Any) -> str:
@@ -47,6 +46,13 @@ def _as_date(ts) -> Optional[datetime]:
         return datetime.fromisoformat(str(ts).replace("Z", "+00:00").replace("+00:00", ""))
     except Exception:
         return None
+
+
+def _attempt_sort_key(a: Dict[str, Any]) -> tuple:
+    dt = _as_date(a.get("created_at"))
+    if dt is None:
+        return (1, datetime.min)
+    return (0, dt)
 
 
 def _augment(attempts: List[Dict[str, Any]], questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -101,7 +107,7 @@ def _first_success(atts, *_):
 
 def _first_perfect(atts, *_):
     first_by_q = {}
-    for a in sorted(atts, key=lambda x: x.get("created_at") or ""):
+    for a in sorted(atts, key=_attempt_sort_key):
         qid = a.get("question_id")
         if qid is not None and qid not in first_by_q:
             first_by_q[qid] = a
@@ -122,8 +128,8 @@ def _first_js_success(atts, *_):
 def _hint_free_5(atts, *_):
     return _count_success([a for a in atts if a.get("hints_used", 0) == 0]) >= 5
 
-def _share_first(*_):
-    return False
+def _share_first(atts, questions, context, *_):
+    return bool(context.get("shared"))
 
 
 def _make_count_success(n, **filters):
@@ -160,7 +166,7 @@ def _streak_success_n(n):
     def check(atts, *_):
         longest = 0
         cur = 0
-        for a in sorted(atts, key=lambda x: x.get("created_at") or ""):
+        for a in sorted(atts, key=_attempt_sort_key):
             if a.get("success"):
                 cur += 1
                 longest = max(longest, cur)
@@ -174,7 +180,7 @@ def _daily_n(n):
     def check(atts, *_):
         from collections import Counter
         by_day = Counter()
-        for a in atts:
+        for a in sorted(atts, key=_attempt_sort_key):
             if not a.get("success"):
                 continue
             dt = _as_date(a.get("created_at"))
@@ -211,12 +217,14 @@ def _weekend(atts, *_):
 
 
 def _category_n(category, n):
-    def check(atts, *_):
-        return _count_success(atts, category=category) >= n
+    def check(atts, questions, *_):
+        count = sum(1 for q in questions if q.get("category") == category)
+        target = min(n, count) if count > 0 else float("inf")
+        return _count_success(atts, category=category) >= target
     return check
 
 
-def _cat_explorer(atts, questions):
+def _cat_explorer(atts, questions, *_):
     excluded = {"pandas", "queue"}
     valid_cats = {q.get("category") for q in questions if q.get("category") not in excluded}
     if not valid_cats:
@@ -226,12 +234,14 @@ def _cat_explorer(atts, questions):
 
 
 def _level_n(level, n):
-    def check(atts, *_):
-        return _count_success(atts, level=level) >= n
+    def check(atts, questions, *_):
+        count = sum(1 for q in questions if _normalize_level(q.get("level")) == level)
+        target = min(n, count) if count > 0 else float("inf")
+        return _count_success(atts, level=level) >= target
     return check
 
 
-def _level_all(atts, questions):
+def _level_all(atts, questions, *_):
     all_levels = {_normalize_level(q.get("level")) for q in questions if q.get("level")}
     if not all_levels:
         all_levels = {"beginner", "intermediate", "advanced"}
@@ -241,7 +251,7 @@ def _level_all(atts, questions):
 
 def _level_advanced_first_try(atts, *_):
     first_by_q = {}
-    for a in sorted(atts, key=lambda x: x.get("created_at") or ""):
+    for a in sorted(atts, key=_attempt_sort_key):
         qid = a.get("question_id")
         if qid is not None and qid not in first_by_q:
             first_by_q[qid] = a
@@ -259,7 +269,7 @@ def _attempt_distinct_n(n):
 
 
 def _solved_percent(percent):
-    def check(atts, questions):
+    def check(atts, questions, *_):
         total = len(questions)
         solved = {a.get("question_id") for a in atts if a.get("success") and a.get("question_id")}
         if total == 0:
@@ -317,16 +327,16 @@ def _comeback(atts, *_):
 
 
 def _persistent(atts, *_):
+    by_q = {}
     for a in atts:
-        if a.get("success"):
-            failures = [
-                x for x in atts
-                if x.get("question_id") == a.get("question_id")
-                and not x.get("success")
-                and (x.get("created_at") or "") < (a.get("created_at") or "")
-            ]
-            if len(failures) >= 5:
-                return True
+        by_q.setdefault(a.get("question_id"), []).append(a)
+    for _qid, qatts in by_q.items():
+        sorted_q = sorted(qatts, key=_attempt_sort_key)
+        for i, a in enumerate(sorted_q):
+            if a.get("success"):
+                failures_before = [x for x in sorted_q[:i] if not x.get("success")]
+                if len(failures_before) >= 5:
+                    return True
     return False
 
 
@@ -334,12 +344,12 @@ def _failure_10(atts, *_):
     return sum(1 for a in atts if not a.get("success")) >= 10
 
 
-def _ai_feedback_5(*_):
-    return False
+def _ai_feedback_5(atts, questions, context, *_):
+    return context.get("ai_feedback_count", 0) >= 5
 
 
-def _report_question(*_):
-    return False
+def _report_question(atts, questions, context, *_):
+    return bool(context.get("reported"))
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -415,9 +425,15 @@ ACHIEVEMENTS: List[AchievementDef] = [
 ]
 
 
-def evaluate(attempts: List[Dict[str, Any]], questions: List[Dict[str, Any]]) -> List[str]:
+def evaluate(
+    attempts: List[Dict[str, Any]],
+    questions: List[Dict[str, Any]],
+    context: Optional[Dict[str, Any]] = None,
+) -> List[str]:
+    if context is None:
+        context = {}
     atts = _augment(attempts, questions)
-    return [a.id for a in ACHIEVEMENTS if a.condition(atts, questions)]
+    return [a.id for a in ACHIEVEMENTS if a.condition(atts, questions, context)]
 
 
 def get_achievements_with_state(unlocked_ids: Set[str]) -> List[Dict[str, Any]]:
