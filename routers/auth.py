@@ -66,10 +66,21 @@ async def get_me(request: Request):
         except Exception as e:
             logger.warning("me.attempts.fetch_failed user=%s err=%s", user_id, e)
 
+        email = user.get("email")
+        # GitHub OAuth: kullanıcı email gizliyse user_metadata'dan login/username fallback
+        fallback_name = email
+        if not fallback_name:
+            fallback_name = (
+                user.get("user_metadata", {}).get("preferred_username")
+                or user.get("user_metadata", {}).get("user_name")
+                or user.get("user_metadata", {}).get("login")
+                or "misafir"
+            )
+        username = (profile or {}).get("username", (fallback_name or "").split("@")[0])
         return {
             "id": user_id,
-            "email": user.get("email"),
-            "username": (profile or {}).get("username", (user.get("email") or "").split("@")[0]),
+            "email": email,
+            "username": username or "misafir",
             "is_verified": (profile or {}).get("is_verified", False),
             "points": points,
             "total_attempts": total_attempts,

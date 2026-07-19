@@ -173,7 +173,7 @@ async def get_current_user(request: Request):
                 if data and data.get("id"):
                     user_id = str(data["id"])
                     email = data.get("email")
-                    return await _ensure_profile_lazy(user_id, email)
+                    return await _ensure_profile_lazy(user_id, data, email)
         except Exception as e:
             err_msg = str(e)[:200]
             logger.warning("supabase_auth_api_failed: %s", err_msg)
@@ -181,17 +181,18 @@ async def get_current_user(request: Request):
     raise HTTPException(401, "Token doğrulanamadı.")
 
 
-async def _ensure_profile_lazy(user_id: str, email: str | None) -> dict:
+async def _ensure_profile_lazy(user_id: str, user: dict, email: str | None) -> dict:
     """
     Lazy profile oluştur — OAuth ile gelen yeni user'lar Supabase auth.users'da
     INSERT olur ama profiles tablosuna trigger YOK. Bu fonksiyon user'ın
     profile satırı yoksa INSERT eder (idempotent). Boylece:
       - Email/password register → _ensure_profile() (auth.py)
       - Google/GitHub OAuth → _ensure_profile_lazy() (burada)
+
+    GitHub: email gizli olabilir; user_metadata'dan login/username fallback al.
     """
     try:
         sb_admin = get_supabase_admin()
-        # Profile var mi? (limit(1) + try/except — maybe_single None doner)
         try:
             result = sb_admin.table("profiles").select("id").eq("id", user_id).limit(1).execute()
             rows = (result.data if result and getattr(result, "data", None) else []) or []
@@ -199,18 +200,25 @@ async def _ensure_profile_lazy(user_id: str, email: str | None) -> dict:
             rows = []
 
         if not rows:
-            # OAuth user'ları icin username email'den türetilir
+            meta = user.get("user_metadata") or {}
             username = (email or "user").split("@")[0][:32]
+            if email in (None, ""):
+                username = (
+                    meta.get("preferred_username")
+                    or meta.get("user_name")
+                    or meta.get("login")
+                    or meta.get("name")
+                    or "github-user"
+                )[:32]
             sb_admin.table("profiles").insert({
                 "id": user_id,
                 "email": email,
                 "username": username,
-                "is_verified": True,  # OAuth user'ları email doğrulanmış sayılır
+                "is_verified": True,
                 "points": 0,
             }).execute()
             logger.info("lazy_profile_created user_id=%s email=%s", user_id[:8] + "...", email)
     except Exception as e:
-        # Profile oluşturulamasa bile user'ı dondur — frontend'de stats 0 gorunur
         logger.warning("lazy_profile_ensure_failed: %s", str(e)[:200])
 
     return {"id": user_id, "email": email}
