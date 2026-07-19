@@ -135,6 +135,7 @@ ai_feedback_v2 = try_include("routers.ai_feedback", "ai feedback (DB quota track
 question_reports_v2 = try_include("routers.question_reports", "question reports (soru hata bildirimi)")
 # 2026-07-18: Onboarding anket — 3 soru (kaynak, degerlendirme, yas)
 survey_v2 = try_include("routers.survey", "onboarding survey (kullanici memnuniyet)")
+achievements_v2 = try_include("routers.achievements", "achievements (unlocks)")
 # 📌 Mail koçu endpointleri kaldirildi (KVKK uyumu).
 # Sadece database tablolarinda varsa email gerekiyor, mail gonderimi YOK.
 
