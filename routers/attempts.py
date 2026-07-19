@@ -71,28 +71,46 @@ async def create_attempt(
         user_id = user["id"]
         # 📌 user_code KVKK uyumu icin kaydedilmiyor.
         # Sandbox zaten client-side (Pyodide), kod hic server'a gelmiyor.
+        raw_qid = payload.get("question_id")
         try:
-            question_id = int(payload.get("question_id") or 0)
+            question_id = int(raw_qid or 0)
         except (TypeError, ValueError):
             question_id = 0
         if question_id <= 0:
             raise HTTPException(400, "question_id gerekli ve > 0 olmali")
 
+        # ✅ question_id public (legacy_id) olabilir; interview_attempts FK questions.id'ye
+        # giderse gercek row id'yi bul.
+        sb = get_supabase_admin()
+        real_qid = question_id
+        try:
+            q_res = (
+                sb.table("questions")
+                .select("id, legacy_id")
+                .or_(f"id.eq.{question_id},legacy_id.eq.{question_id}")
+                .limit(1)
+                .execute()
+            )
+            if q_res.data:
+                real_qid = q_res.data[0].get("id") or question_id
+            else:
+                logger.warning("attempt.question_not_found user=%s q=%s", user_id, question_id)
+        except Exception as q_err:
+            logger.warning("attempt.question_lookup_failed user=%s q=%s err=%s", user_id, question_id, q_err)
+
         logger.info(
-            "attempt.create user=%s q=%s passed=%s/%s success=%s",
+            "attempt.create user=%s q=%s real_q=%s passed=%s/%s success=%s",
             user_id,
             question_id,
+            real_qid,
             payload.get("passed_tests"),
             payload.get("total_tests"),
             payload.get("success"),
         )
 
-        # ✅ SERVICE_ROLE kullan (RLS bypass)
-        sb = get_supabase_admin()
-
         attempt_data = {
             "user_id": user_id,
-            "question_id": question_id,
+            "question_id": real_qid,
             "passed_tests": int(payload.get("passed_tests", 0) or 0),
             "total_tests": int(payload.get("total_tests", 0) or 0),
             "success": bool(payload.get("success", False)),
@@ -103,7 +121,17 @@ async def create_attempt(
             # 📌 user_code KALDIRILDI — sadece stats kaydedilir
         }
 
-        result = sb.table("interview_attempts").insert(attempt_data).execute()
+        # Eger language kolonu migration calistirilmamis olursa fallback
+        try:
+            result = sb.table("interview_attempts").insert(attempt_data).execute()
+        except Exception as insert_err:
+            err_msg = str(insert_err).lower()
+            if "language" in err_msg or "column" in err_msg or "does not exist" in err_msg:
+                logger.warning("attempt.language_fallback user=%s q=%s err=%s", user_id, question_id, insert_err)
+                del attempt_data["language"]
+                result = sb.table("interview_attempts").insert(attempt_data).execute()
+            else:
+                raise
 
         if not result.data:
             logger.error("attempt.insert.empty user=%s q=%s", user_id, question_id)
@@ -115,7 +143,8 @@ async def create_attempt(
         raise
     except Exception as e:
         logger.exception("attempt.create failed: %s", e)
-        raise HTTPException(500, f"Attempt kaydedilemedi: {e}")
+        detail = f"Attempt kaydedilemedi: {e}"
+        raise HTTPException(500, detail[:500])
 
 
 # ═══════════════════════════════════════════════════════════════
