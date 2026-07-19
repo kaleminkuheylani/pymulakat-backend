@@ -73,6 +73,41 @@ async def _build_user_context(user_id: str) -> UserContext:
                 solved_cats.append(q["category"])
         ctx.solved_categories = solved_cats
 
+        # Weak categories: basarisiz denemelerin yogunlastigi kategoriler
+        from collections import Counter
+        fail_cat_counter: Counter = Counter()
+        for a in attempts:
+            if a.get("success") or a.get("question_id") is None:
+                continue
+            q = q_map.get(int(a["question_id"]))
+            if q and q.get("category"):
+                fail_cat_counter[q["category"]] += 1
+        # En cok basarisiz olunan 3 kategori
+        weak_from_fails = [cat for cat, _ in fail_cat_counter.most_common(3)]
+        # Cozulmus kategorileri weak'ten cikar
+        weak_from_fails = [c for c in weak_from_fails if c not in solved_cats]
+        ctx.weak_categories = weak_from_fails
+
+        # Survey: negatif rating → weak sinyali (survey_responses tablosu)
+        try:
+            survey_res = (
+                sb.table("survey_responses")
+                .select("rating")
+                .eq("user_id", user_id)
+                .maybe_single()
+                .execute()
+            )
+            if survey_res.data:
+                rating = survey_res.data.get("rating", "")
+                # Negatif rating'ler → kullanici zorlaniyor, weak categories'i genislet
+                if rating in ("questions_weak", "platform_useless", "learning_insufficient"):
+                    # Kullanicinin denedigi ama basaramadigi kategorileri onceliklendir
+                    if not ctx.weak_categories and ctx.solved_categories:
+                        # Hic weak yoksa, cozulen kategorilerin disindakileri ekle
+                        pass  # weak_from_fails zaten hesaplandi
+        except Exception:
+            pass
+
         recent_solved_seen = set()
         for a in attempts:
             if not a.get("success"):

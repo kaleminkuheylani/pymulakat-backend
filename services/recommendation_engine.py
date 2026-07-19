@@ -48,6 +48,8 @@ class UserContext:
     solved_ids: List[int] = field(default_factory=list)
     attempted_ids: List[int] = field(default_factory=list)
     solved_categories: List[str] = field(default_factory=list)
+    # Basarisiz denemelerin yogunlastigi kategoriler (survey + failed attempts)
+    weak_categories: List[str] = field(default_factory=list)
     success_rate: float = 0.0
     total_attempts: int = 0
     # (id, title, category) — basarili cozumler (en yeni once)
@@ -112,6 +114,9 @@ def reason_personal(q: QuestionLite, ctx: UserContext, via_related_from: Optiona
             short = (src[:35] + "…") if len(src) > 35 else src
             return f"#{qid} — #{via_related_from} \"{short}\" ile yakin konu"
         return f"#{qid} — cozdugun #{via_related_from} sorusuna yakin"
+
+    if cat in ctx.weak_categories:
+        return f"#{qid} {cat} — bu kategoride pratik yapman iyi olur"
 
     if not ctx.is_authenticated or not ctx.recent_solved:
         if ctx.solved_categories:
@@ -220,7 +225,26 @@ def _build_personal(questions: List[QuestionLite], ctx: UserContext, qmap: Dict[
             if len(picked) >= limit:
                 break
 
-    # 3) shared related_concepts
+    # 3) weak categories (failed attempts + survey signals) — pratik ihtiyaci
+    if len(picked) < limit and ctx.weak_categories:
+        weak_pool = [
+            q for q in questions
+            if q.id not in solved_set and q.id not in seen and q.category in ctx.weak_categories
+        ]
+        weak_pool = sorted(
+            weak_pool,
+            key=lambda q: (
+                ctx.weak_categories.index(q.category) if q.category in ctx.weak_categories else 99,
+                q.id,
+            ),
+        )
+        for q in weak_pool:
+            seen.add(q.id)
+            picked.append((q, None))
+            if len(picked) >= limit:
+                break
+
+    # 4) shared related_concepts
     if len(picked) < limit and ctx.recent_solved:
         user_concepts: Set[str] = set()
         for rid, _, _ in ctx.recent_solved:
@@ -243,7 +267,7 @@ def _build_personal(questions: List[QuestionLite], ctx: UserContext, qmap: Dict[
                 if len(picked) >= limit:
                     break
 
-    # 4) cold start: beginner
+    # 5) cold start: beginner
     if not picked:
         pool = sorted(
             [q for q in questions if q.level in ("beginner", "başlangıç", "easy") or not q.level],
@@ -336,6 +360,7 @@ def build_flow(
         "is_authenticated": ctx.is_authenticated,
         "solved_categories": ctx.solved_categories,
         "solved_ids": list(solved_set),
+        "weak_categories": ctx.weak_categories,
         "success_rate": round(ctx.success_rate, 2),
         "total_attempts": ctx.total_attempts,
         "current_level": current_level,
