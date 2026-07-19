@@ -1,7 +1,8 @@
 # backend/routers/recommendations.py
-# Router → Recommendation Engine köprüsü.
-# Asıl iş services/recommendation_engine.py'de (saf, deterministik, test edilebilir).
+# Router -> Recommendation Engine koprusu.
+# Kaynak: questions tablosu (DB-FIRST). Eski interwiews KALDIRILDI.
 
+from collections import Counter
 from fastapi import APIRouter, Request, HTTPException, Query
 from dependencies import get_current_user
 from supabase_client import get_supabase_admin
@@ -16,12 +17,12 @@ from services.recommendation_engine import (
 router = APIRouter(prefix="/api/v2/recommendations", tags=["recommendations"])
 
 
-# ─── User Context builder ─────────────────────────────
-async def _build_user_context(user_id: str) -> UserContext:
-    """Kullanıcının attempt'lerinden bağlam çıkar.
+def _qid(row: dict) -> int:
+    """questions satiri -> public id (legacy_id oncelikli)."""
+    return int(row.get("legacy_id") or row.get("id") or 0)
 
-    Son çözdüğü soruları (id, title, category) çek — personal section reason'ları için.
-    """
+
+async def _build_user_context(user_id: str) -> UserContext:
     sb = get_supabase_admin()
     ctx = UserContext(is_authenticated=True)
 
@@ -38,20 +39,33 @@ async def _build_user_context(user_id: str) -> UserContext:
         if not attempts:
             return ctx
 
-        ctx.solved_ids = list({a["question_id"] for a in attempts if a.get("success")})
-        ctx.attempted_ids = list({a["question_id"] for a in attempts})
+        ctx.solved_ids = list({int(a["question_id"]) for a in attempts if a.get("success") and a.get("question_id") is not None})
+        ctx.attempted_ids = list({int(a["question_id"]) for a in attempts if a.get("question_id") is not None})
         ctx.total_attempts = len(attempts)
         ctx.success_rate = sum(1 for a in attempts if a.get("success")) / max(len(attempts), 1)
 
-        # Kategori bilgisi — recent_solved için
-        q_ids = list({a["question_id"] for a in attempts})
-        try:
-            q_res = sb.table("interwiews").select("id, title, category").in_("id", q_ids).execute()
-            q_map = {r["id"]: r for r in (q_res.data or [])}
-        except Exception:
-            q_map = {}
+        q_ids = list({int(a["question_id"]) for a in attempts if a.get("question_id") is not None})
+        q_map = {}
+        if q_ids:
+            try:
+                # legacy_id veya id ile esles
+                by_legacy = sb.table("questions").select(
+                    "id, legacy_id, title, category, slug, level, related_question_ids, related_concepts"
+                ).in_("legacy_id", q_ids).execute().data or []
+                by_id = sb.table("questions").select(
+                    "id, legacy_id, title, category, slug, level, related_question_ids, related_concepts"
+                ).in_("id", q_ids).execute().data or []
+                for r in by_legacy + by_id:
+                    public_id = _qid(r)
+                    q_map[public_id] = r
+                    # ham id de map'e
+                    if r.get("id") is not None:
+                        q_map[int(r["id"])] = r
+                    if r.get("legacy_id") is not None:
+                        q_map[int(r["legacy_id"])] = r
+            except Exception:
+                q_map = {}
 
-        # solved_categories (unique)
         solved_cats = []
         for qid in ctx.solved_ids:
             q = q_map.get(qid)
@@ -59,74 +73,138 @@ async def _build_user_context(user_id: str) -> UserContext:
                 solved_cats.append(q["category"])
         ctx.solved_categories = solved_cats
 
-        # recent_solved: son başarılı denemelerden, soru başlığı ile birlikte
         recent_solved_seen = set()
         for a in attempts:
-            if a.get("success"):
-                qid = a["question_id"]
-                if qid in recent_solved_seen:
-                    continue
-                recent_solved_seen.add(qid)
-                q = q_map.get(qid)
-                if q:
-                    ctx.recent_solved.append((
-                        qid,
-                        q.get("title") or "",
-                        q.get("category") or "",
-                    ))
-                if len(ctx.recent_solved) >= 10:
-                    break
+            if not a.get("success"):
+                continue
+            qid = int(a["question_id"])
+            if qid in recent_solved_seen:
+                continue
+            recent_solved_seen.add(qid)
+            q = q_map.get(qid)
+            if q:
+                ctx.recent_solved.append((
+                    _qid(q) if q else qid,
+                    q.get("title") or "",
+                    q.get("category") or "",
+                ))
+            else:
+                ctx.recent_solved.append((qid, "", ""))
+            if len(ctx.recent_solved) >= 10:
+                break
+
+        # Son denemeler (unique question, en yeni once)
+        seen_attempt_q = set()
+        for a in attempts:
+            qid = a.get("question_id")
+            if qid is None:
+                continue
+            qid = int(qid)
+            if qid in seen_attempt_q:
+                continue
+            seen_attempt_q.add(qid)
+            q = q_map.get(qid)
+            title = (q or {}).get("title") or f"Soru #{qid}"
+            category = (q or {}).get("category") or "programlama-temelleri"
+            slug = (q or {}).get("slug") or ""
+            level = (q or {}).get("level") or "beginner"
+            public_id = _qid(q) if q else qid
+            ctx.recent_attempts.append((
+                public_id,
+                title,
+                category,
+                slug,
+                level,
+                bool(a.get("success")),
+                a.get("created_at") or "",
+                int(a.get("passed_tests") or 0),
+                int(a.get("total_tests") or 0),
+            ))
+            if len(ctx.recent_attempts) >= 12:
+                break
 
     except Exception:
         pass
     return ctx
 
 
-# ─── Tüm soruları DB'den çek ─────────────────────────
 def _fetch_all_questions() -> list:
-    """interwiews tablosundan tüm soruları QuestionLite listesine çevir."""
+    """questions tablosundan QuestionLite listesi + global attempt_count."""
     sb = get_supabase_admin()
     try:
-        rows = sb.table("interwiews").select(
-            "id, title, category, level, slug, function_name, view_count, attempt_count, created_at"
+        rows = sb.table("questions").select(
+            "id, legacy_id, title, category, level, slug, related_question_ids, related_concepts, created_at"
         ).execute().data or []
+
+        # Global popularity: interview_attempts group by question_id
+        attempt_counts: Counter = Counter()
+        try:
+            # Supabase'te aggregate yoksa ham cek (limit guvenli)
+            att = (
+                sb.table("interview_attempts")
+                .select("question_id")
+                .limit(5000)
+                .execute()
+                .data
+                or []
+            )
+            for a in att:
+                if a.get("question_id") is not None:
+                    attempt_counts[int(a["question_id"])] += 1
+        except Exception:
+            pass
+
         out = []
         for r in rows:
+            public_id = _qid(r)
+            rel_ids = r.get("related_question_ids") or []
+            rel_concepts = r.get("related_concepts") or []
+            if not isinstance(rel_ids, list):
+                rel_ids = []
+            if not isinstance(rel_concepts, list):
+                rel_concepts = []
+            # attempt_count: legacy_id veya id uzerinden
+            ac = attempt_counts.get(public_id, 0)
+            if r.get("id") is not None:
+                ac = max(ac, attempt_counts.get(int(r["id"]), 0))
+            if r.get("legacy_id") is not None:
+                ac = max(ac, attempt_counts.get(int(r["legacy_id"]), 0))
+
             out.append(QuestionLite(
-                id=int(r.get("id") or 0),
+                id=public_id,
                 title=r.get("title") or "",
-                category=r.get("category") or "python-basics",
+                category=r.get("category") or "programlama-temelleri",
                 level=(r.get("level") or "beginner").lower(),
                 slug=r.get("slug") or "",
-                function_name=r.get("function_name") or "",
-                view_count=int(r.get("view_count") or 0),
-                attempt_count=int(r.get("attempt_count") or 0),
+                view_count=0,
+                attempt_count=ac,
                 created_at=r.get("created_at") or "",
+                related_question_ids=tuple(int(x) for x in rel_ids if str(x).lstrip("-").isdigit()),
+                related_concepts=tuple(str(x) for x in rel_concepts if x),
             ))
         return out
     except Exception:
         return []
 
 
-# ─── Endpoint: Akış ────────────────────────────────────
 @router.get("/flow")
 async def get_flow(request: Request):
-    """4 section'lı kişiselleştirilmiş akış.
+    """Kisisellestirilmis akis.
 
     Sections:
-    - personal: Kullanıcının çözdüğü soruların kategorilerinden benzer sorular
-    - popular: attempt_count en yüksek 5 soru
-    - recent: created_at en yeni 5 soru
-    - next_level: başarı oranına göre bir üst seviye soruları
-
-    Deterministik: aynı (user, db_state) → aynı sonuç.
-    Misafir: personal section beginner sorularla dolar.
+    - personal: yakin konulu / related
+    - popular: en cok cozulenler
+    - recent: yeni eklenenler
+    - recent_attempts: son denemeler
     """
     user_ctx = UserContext(is_authenticated=False)
     try:
         user = await get_current_user(request)
-        user_ctx = await _build_user_context(user["id"])
+        if user and user.get("id"):
+            user_ctx = await _build_user_context(user["id"])
     except HTTPException:
+        pass
+    except Exception:
         pass
 
     questions = _fetch_all_questions()
@@ -138,12 +216,23 @@ async def get_flow(request: Request):
     }
 
 
-# ─── Endpoint: Topluluk ────────────────────────────────
+@router.get("/solved-ids")
+async def get_solved_ids(request: Request):
+    """Kullanicinin basariyla cozdugu soru id listesi (liste sayfasi rozeti)."""
+    try:
+        user = await get_current_user(request)
+        if not user or not user.get("id"):
+            return {"solved_ids": []}
+        ctx = await _build_user_context(user["id"])
+        return {"solved_ids": ctx.solved_ids}
+    except HTTPException:
+        return {"solved_ids": []}
+    except Exception:
+        return {"solved_ids": []}
+
+
 @router.get("/community")
-async def get_community(
-    limit: int = Query(15, le=50),
-):
-    """Topluluk tab'ı — form paylaşımları, tartışmalar."""
+async def get_community(limit: int = Query(15, le=50)):
     try:
         sb = get_supabase_admin()
         forms_res = (
@@ -177,21 +266,18 @@ async def get_community(
 def _explain_form(reply_count: int, created_at: str) -> str:
     d = days_since(created_at)
     if reply_count > 5:
-        return f"🔥 Aktif tartışma ({reply_count} yanıt)"
+        return f"Aktif tartisma ({reply_count} yanit)"
     if d <= 3:
-        return "🆕 Yeni paylaşım"
-    return "💬 Topluluk"
+        return "Yeni paylasim"
+    return "Topluluk"
 
 
-# ─── Eski endpoint (geriye uyumlu) ───────────────────
 @router.get("")
 async def get_recommendations_compat(request: Request, limit: int = 10):
-    """Geriye uyumluluk — düz liste (tüm section'lar birleşik)."""
     flow = await get_flow(request=request)
     all_items = []
     for section in flow["sections"].values():
         all_items.extend(section)
-    # ID ASC tie-break
     all_items.sort(key=lambda x: (x.get("section", ""), x.get("id", 0)))
     return {
         "data": all_items[:limit],
