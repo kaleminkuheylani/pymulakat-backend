@@ -80,9 +80,16 @@ async def list_achievements(request: Request):
             logger.exception("achievements.insert_failed user=%s new=%s err=%s", user_id, new_ids, e)
             # Yeni kilitli açılmamış kabul et, listeyi yine de dön
             unlocked_set = existing_ids
+            new_ids = set()
 
     total_points = sum(a.points for a in ACHIEVEMENTS if a.id in unlocked_set)
     items = get_achievements_with_state(unlocked_set)
+
+    new_unlocked = [
+        {"id": a.id, "title": a.title, "points": a.points}
+        for a in ACHIEVEMENTS
+        if a.id in new_ids
+    ]
 
     groups: Dict[str, List[Dict[str, Any]]] = {}
     for it in items:
@@ -91,6 +98,7 @@ async def list_achievements(request: Request):
     return {
         "items": items,
         "groups": groups,
+        "new_unlocked": new_unlocked,
         "unlocked_count": len(unlocked_set),
         "total": len(ACHIEVEMENTS),
         "achievement_points": total_points,
