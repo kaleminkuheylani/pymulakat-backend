@@ -346,7 +346,7 @@ ACHIEVEMENTS: List[AchievementDef] = [
         {a.get("question_id") for a in atts if a.get("success") and a.get("language") == "javascript"}
     )),
 
-    AchievementDef("cat_python_basics", "Python Temelleri", "python-basics'te 10 başarılı", "book-open", 100, "category", _category_n("python-basics", 10)),
+    AchievementDef("cat_python_basics", "Programlama Temelleri", "programlama-temelleri'nde 10 başarılı", "book-open", 100, "category", _category_n("programlama-temelleri", 10)),
     AchievementDef("cat_list_dict", "Koleksiyoncu", "list-dict'te 5 başarılı", "list", 100, "category", _category_n("list-dict", 5)),
     AchievementDef("cat_data_structures", "Veri Yapıları Profu", "data-structures'ta 5 başarılı", "database", 100, "category", _category_n("data-structures", 5)),
     AchievementDef("cat_algorithms", "Algoritmacı", "algorithms'ta 5 başarılı", "cpu", 100, "category", _category_n("algorithms", 5)),
