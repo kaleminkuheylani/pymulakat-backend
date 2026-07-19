@@ -71,12 +71,20 @@ async def create_attempt(
         user_id = user["id"]
         # 📌 user_code KVKK uyumu icin kaydedilmiyor.
         # Sandbox zaten client-side (Pyodide), kod hic server'a gelmiyor.
-        logger.debug(
-            "attempt.create user=%s q=%s passed=%s/%s",
+        try:
+            question_id = int(payload.get("question_id") or 0)
+        except (TypeError, ValueError):
+            question_id = 0
+        if question_id <= 0:
+            raise HTTPException(400, "question_id gerekli ve > 0 olmali")
+
+        logger.info(
+            "attempt.create user=%s q=%s passed=%s/%s success=%s",
             user_id,
-            payload.get("question_id"),
+            question_id,
             payload.get("passed_tests"),
             payload.get("total_tests"),
+            payload.get("success"),
         )
 
         # ✅ SERVICE_ROLE kullan (RLS bypass)
@@ -84,32 +92,30 @@ async def create_attempt(
 
         attempt_data = {
             "user_id": user_id,
-            "question_id": int(payload.get("question_id", 0)),
-            "passed_tests": int(payload.get("passed_tests", 0)),
-            "total_tests": int(payload.get("total_tests", 0)),
+            "question_id": question_id,
+            "passed_tests": int(payload.get("passed_tests", 0) or 0),
+            "total_tests": int(payload.get("total_tests", 0) or 0),
             "success": bool(payload.get("success", False)),
-            "execution_time_ms": int(payload.get("execution_time_ms", 0)),
-            "hints_used": int(payload.get("hints_used", 0)),
+            "execution_time_ms": int(payload.get("execution_time_ms", 0) or 0),
+            "hints_used": int(payload.get("hints_used", 0) or 0),
             # 2026-07-15: Hangi dilde denendi (python/javascript/rust) - istatistik + filtering
-            "language": str(payload.get("language", "python")).lower()[:20],
+            "language": str(payload.get("language", "python") or "python").lower()[:20],
             # 📌 user_code KALDIRILDI — sadece stats kaydedilir
         }
-
-
 
         result = sb.table("interview_attempts").insert(attempt_data).execute()
 
         if not result.data:
-            logger.error("attempt.insert.empty user=%s q=%s", user_id, attempt_data["question_id"])
+            logger.error("attempt.insert.empty user=%s q=%s", user_id, question_id)
             raise HTTPException(500, "Attempt kaydedilemedi")
 
-        logger.debug("attempt.saved user=%s id=%s", user_id, result.data[0].get("id"))
+        logger.info("attempt.saved user=%s id=%s q=%s", user_id, result.data[0].get("id"), question_id)
         return {"ok": True, "id": str(result.data[0].get("id"))}
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("attempt.create failed user=%s", user_id)
-        raise HTTPException(500, "Attempt kaydedilemedi")
+        logger.exception("attempt.create failed: %s", e)
+        raise HTTPException(500, f"Attempt kaydedilemedi: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════
