@@ -136,6 +136,7 @@ question_reports_v2 = try_include("routers.question_reports", "question reports 
 # 2026-07-18: Onboarding anket — 3 soru (kaynak, degerlendirme, yas)
 survey_v2 = try_include("routers.survey", "onboarding survey (kullanici memnuniyet)")
 achievements_v2 = try_include("routers.achievements", "achievements (unlocks)")
+user_performance_v2 = try_include("routers.user_performance", "user performance (usage + streak)")
 # 📌 Mail koçu endpointleri kaldirildi (KVKK uyumu).
 # Sadece database tablolarinda varsa email gerekiyor, mail gonderimi YOK.
 
