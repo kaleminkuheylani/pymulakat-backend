@@ -177,8 +177,6 @@ def _resolve_user(
     # 3) Anon fallback (limit 0)
     return None, "", MAX_FREE_FEEDBACK_ANON
 
-    return None, pymulakat_anon_id, MAX_FREE_FEEDBACK_ANON
-
 
 # ═══════════════════════════════════════════════════════════════
 # Endpoints
@@ -233,6 +231,9 @@ async def get_usage(
         .limit(1)
         .execute()
     )
+    if getattr(result, "error", None):
+        print(f"[AI /usage ERROR] {result.error}", flush=True)
+        raise HTTPException(status_code=500, detail="DB quota read error")
     print(f"[AI /usage SELECT] user_id={user_id} period={period_iso} rows={len(result.data or [])} data={result.data}", flush=True)
 
     used = result.data[0]["used_count"] if result.data else 0
@@ -299,6 +300,9 @@ async def increment_usage(
         .limit(1)
         .execute()
     )
+    if getattr(existing, "error", None):
+        print(f"[AI /increment SELECT ERROR] {existing.error}", flush=True)
+        raise HTTPException(status_code=500, detail="DB quota read error")
 
     current = existing.data[0]["used_count"] if existing.data else 0
 
@@ -317,18 +321,24 @@ async def increment_usage(
     # UPSERT ai_usage (user_id, period_start) — atomik
     if existing.data:
         print(f"[AI /increment UPDATE] id={existing.data[0]['id']} new_count={new_count}", flush=True)
-        sb.table("ai_usage").update({
+        update_res = sb.table("ai_usage").update({
             "used_count": new_count,
             "last_used_at": "now()",
             "updated_at": "now()",
         }).eq("id", existing.data[0]["id"]).execute()
+        if getattr(update_res, "error", None):
+            print(f"[AI /increment UPDATE ERROR] {update_res.error}", flush=True)
+            raise HTTPException(status_code=500, detail="DB quota update error")
     else:
         print(f"[AI /increment INSERT] user_id={user_id} period={period_iso} new_count={new_count}", flush=True)
-        sb.table("ai_usage").insert({
+        insert_res = sb.table("ai_usage").insert({
             "user_id": user_id,
             "period_start": period_iso,
             "used_count": new_count,
         }).execute()
+        if getattr(insert_res, "error", None):
+            print(f"[AI /increment INSERT ERROR] {insert_res.error}", flush=True)
+            raise HTTPException(status_code=500, detail="DB quota insert error")
 
     remaining = max(0, max_count - new_count)
     return IncrementResponse(
