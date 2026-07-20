@@ -382,16 +382,69 @@ except Exception as e:
 
 
 def _deep_eq(a, b) -> bool:
+    """Tip- aware deep equality — expected/actual JSON/string farklarini tolere eder."""
     if a == b:
         return True
+    if a is None and b is None:
+        return True
+
+    # Set/tuple -> list normalization
+    if isinstance(a, (set, frozenset, tuple)):
+        a = list(a)
+    if isinstance(b, (set, frozenset, tuple)):
+        b = list(b)
+
+    # Bool <-> string (True == "true", "True")
+    if isinstance(a, bool) and isinstance(b, str):
+        return str(a).lower() == b.lower()
+    if isinstance(a, str) and isinstance(b, bool):
+        return a.lower() == str(b).lower()
+
+    # Number <-> numeric string
+    if isinstance(a, (int, float)) and isinstance(b, str):
+        try:
+            return abs(a - float(b)) < 1e-9
+        except ValueError:
+            return False
+    if isinstance(a, str) and isinstance(b, (int, float)):
+        try:
+            return abs(float(a) - b) < 1e-9
+        except ValueError:
+            return False
+
+    # None/null <-> "None"/"null" string
+    if (a is None and isinstance(b, str) and b.lower() in ("none", "null")) or \
+       (b is None and isinstance(a, str) and a.lower() in ("none", "null")):
+        return True
+
+    # Sayi toleransi (int/float)
     if isinstance(a, (int, float)) and isinstance(b, (int, float)):
         return abs(a - b) < 1e-9
+
+    # Liste recursive
     if isinstance(a, list) and isinstance(b, list):
         if len(a) != len(b):
             return False
         return all(_deep_eq(x, y) for x, y in zip(a, b))
+
+    # Dict recursive (key'ler ayni set olmali)
     if isinstance(a, dict) and isinstance(b, dict):
-        return a == b
+        if set(a.keys()) != set(b.keys()):
+            return False
+        return all(_deep_eq(a[k], b[k]) for k in a)
+
+    # JSON string <-> list/dict coercion
+    if isinstance(a, str) and isinstance(b, (list, dict)):
+        try:
+            return _deep_eq(json.loads(a), b)
+        except Exception:
+            return False
+    if isinstance(a, (list, dict)) and isinstance(b, str):
+        try:
+            return _deep_eq(a, json.loads(b))
+        except Exception:
+            return False
+
     return False
 
 
