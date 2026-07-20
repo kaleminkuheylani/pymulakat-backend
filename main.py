@@ -131,6 +131,8 @@ guides_v1 = try_include("routers.guides", "guides (study materials)")
 # try_include ile güvenli yükleme (bir router patlarsa diğerleri çalışır)
 
 ai_feedback_v2 = try_include("routers.ai_feedback", "ai feedback (DB quota tracking)")
+# 2026-07-20: DeepSeek bulk audit (sadece is_audited=false sorular)
+deepseek_bulk_audit_v2 = try_include("routers.bulk_audit_deepseek", "deepseek bulk audit (is_audited=false)")
 # 2026-07-17: Kullanici "Soru hataliysa bildir" butonu icin
 question_reports_v2 = try_include("routers.question_reports", "question reports (soru hata bildirimi)")
 # 2026-07-18: Onboarding anket — 3 soru (kaynak, degerlendirme, yas)
