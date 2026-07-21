@@ -151,14 +151,19 @@ def _tests_passed(n):
 
 
 def _perfect_n(n):
-    def check(atts, *_):
-        perfect = [
-            a for a in atts
+    def check(atts, questions, *_):
+        total = len(questions)
+        if total == 0:
+            return False
+        perfect = {
+            a.get("question_id")
+            for a in atts
             if a.get("success")
             and a.get("passed_tests") == a.get("total_tests")
             and a.get("total_tests", 0) > 0
-        ]
-        return len(perfect) >= n
+        }
+        target = min(n, total)
+        return len(perfect) >= target
     return check
 
 
@@ -262,9 +267,13 @@ def _level_advanced_first_try(atts, *_):
 
 
 def _attempt_distinct_n(n):
-    def check(atts, *_):
+    def check(atts, questions, *_):
+        total = len(questions)
+        if total == 0:
+            return False
         ids = {a.get("question_id") for a in atts if a.get("question_id")}
-        return len(ids) >= n
+        target = min(n, total)
+        return len(ids) >= target
     return check
 
 
