@@ -44,6 +44,7 @@ class QuestionOut(BaseModel):
     meta_title: Optional[str] = None
     meta_description: Optional[str] = None
     meta_keywords: list[str] = Field(default_factory=list)
+    question_type: Optional[str] = "public"
 
 
 class TestsResponse(BaseModel):
@@ -144,6 +145,7 @@ def _to_question_out(q, include_starter: bool = False) -> QuestionOut:
         meta_title=_q_get(q, "meta_title"),
         meta_description=_q_get(q, "meta_description"),
         meta_keywords=_to_jsonb_list(_q_get(q, "meta_keywords", [])),
+        question_type=_q_get(q, "question_type") or "public",
     )
 
 
@@ -157,11 +159,12 @@ def list_questions(
     level: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     tag: Optional[str] = Query(None),
+    question_type: Optional[str] = Query(None, description="Soru tipi filtresi (örn. public, private)"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
 ):
     try:
-        filtered = filter_questions(category=category, level=level, search=search, tag=tag)
+        filtered = filter_questions(category=category, level=level, search=search, tag=tag, question_type=question_type)
     except Exception as e:
         import traceback
         logger.error(f"[questions] filter_questions hatasi: {e}\n{traceback.format_exc()}")
@@ -188,15 +191,20 @@ def list_questions(
 @router.get("/all", response_model=AllQuestionsResponse)
 def list_all_questions(
     category: Optional[str] = Query(None, description="Kategori slug filtresi (örn. python-basics)"),
+    question_type: Optional[str] = Query(None, description="Soru tipi filtresi (örn. public, private)"),
     limit: Optional[int] = Query(None, ge=1, le=1000, description="Max sonuç (default: hepsi)"),
 ):
     """Slug listesi için minimal payload (canonical URL üretimi).
 
     2026-07-15: category + limit query eklendi. /interviews sayfasi
     kategori filtresi icin bunu kullaniyor (eski: yoksayiliyordu).
+    2026-07-21: question_type filtresi eklendi (public sorular section).
     """
     try:
-        filtered = filter_questions(category=category) if category else filter_questions()
+        kwargs: dict = {"question_type": question_type}
+        if category:
+            kwargs["category"] = category
+        filtered = filter_questions(**kwargs)
         if limit:
             filtered = filtered[:limit]
         items = [_to_question_out(q, include_starter=False) for q in filtered]
@@ -204,6 +212,31 @@ def list_all_questions(
     except Exception as e:
         import traceback
         logger.error(f"[questions/all] hatasi: {e}\n{traceback.format_exc()}")
+        raise HTTPException(500, f"DB hatasi: {str(e)[:200]}")
+
+
+# ═══════════════════════════════════════════════════════════════
+# ─── 2b. PUBLIC — GET /api/v2/questions/public ───────────
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/public", response_model=AllQuestionsResponse)
+def list_public_questions(
+    limit: int = Query(20, ge=1, le=100, description="Max sonuç (default: 20)"),
+    category: Optional[str] = Query(None, description="Kategori slug filtresi (örn. python-basics)"),
+):
+    """Sadece public soruları listele (question_type = public)."""
+    try:
+        kwargs: dict = {"question_type": "public"}
+        if category:
+            kwargs["category"] = category
+        filtered = filter_questions(**kwargs)
+        if limit:
+            filtered = filtered[:limit]
+        items = [_to_question_out(q, include_starter=False) for q in filtered]
+        return AllQuestionsResponse(data=items, total=len(items))
+    except Exception as e:
+        import traceback
+        logger.error(f"[questions/public] hatasi: {e}\n{traceback.format_exc()}")
         raise HTTPException(500, f"DB hatasi: {str(e)[:200]}")
 
 

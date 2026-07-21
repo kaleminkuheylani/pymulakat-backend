@@ -50,6 +50,7 @@ class Question:
     meta_title: Optional[str] = None
     meta_description: Optional[str] = None
     meta_keywords: List[str] = field(default_factory=list)
+    question_type: str = "public"
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -115,6 +116,7 @@ def _row_to_question(row: dict) -> Question:
         meta_title=row.get("meta_title"),
         meta_description=row.get("meta_description"),
         meta_keywords=row.get("meta_keywords", []) or [],
+        question_type=row.get("question_type", "public") or "public",
     )
 
 
@@ -129,15 +131,15 @@ LEVEL_ALIASES = {
 }
 
 
-# Per-filter in-memory cache: (category, level, search, tag) → (ts, results)
+# Per-filter in-memory cache: (category, level, search, tag, question_type) → (ts, results)
 # 2026-07-13 refactor: TUM-sorular cache'i yerine per-filter cache.
 # Avantaj: her filter kombinasyonu ayri cache'lenir, sadece o kategori memory'de tutulur.
 _FILTER_CACHE: Dict[str, Any] = {}
 _CACHE_TTL_SEC = int(os.getenv("QUESTION_CACHE_TTL", "60"))
 
 
-def _cache_key(category, level, search, tag) -> str:
-    return f"cat={category or ''}|lvl={level or ''}|s={search or ''}|t={tag or ''}"
+def _cache_key(category, level, search, tag, question_type) -> str:
+    return f"cat={category or ''}|lvl={level or ''}|s={search or ''}|t={tag or ''}|qt={question_type or ''}"
 
 
 def _db_query(
@@ -145,6 +147,7 @@ def _db_query(
     level: Optional[str] = None,
     search: Optional[str] = None,
     tag: Optional[str] = None,
+    question_type: Optional[str] = None,
 ) -> List[Question]:
     """DB-side filtre ile soru çek (2026-07-13 refactor).
 
@@ -163,7 +166,7 @@ def _db_query(
         RuntimeError: DB baglantısı başarısız veya sorgu hatası.
     """
     import time
-    key = _cache_key(category, level, search, tag)
+    key = _cache_key(category, level, search, tag, question_type)
     now = time.time()
 
     # Cache hit?
@@ -178,6 +181,8 @@ def _db_query(
         query = sb.table("questions").select("*")
         if category:
             query = query.eq("category", category)
+        if question_type:
+            query = query.eq("question_type", question_type)
         if level:
             lvl = level.lower().strip()
             accepted = LEVEL_ALIASES.get(lvl, [lvl])
@@ -240,6 +245,7 @@ def to_public_dict(q: Any) -> Dict:
         "hints": getattr(q, "hints", []),
         "tags": getattr(q, "tags", []) or [],
         "slug": getattr(q, "slug", None),
+        "question_type": getattr(q, "question_type", "public") or "public",
     }
 
 
@@ -248,6 +254,7 @@ def filter_questions(
     level: Optional[str] = None,
     search: Optional[str] = None,
     tag: Optional[str] = None,
+    question_type: Optional[str] = None,
 ) -> List[Question]:
     """DB-side filtre ile soru listesi (kullanici direktifi 2026-07-13).
 
@@ -257,7 +264,7 @@ def filter_questions(
     Returns:
         Eşleşen Question listesi.
     """
-    return _db_query(category=category, level=level, search=search, tag=tag)
+    return _db_query(category=category, level=level, search=search, tag=tag, question_type=question_type)
 
 
 def get_question(question_id, category: Optional[str] = None) -> Optional[Question]:
